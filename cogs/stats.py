@@ -29,8 +29,6 @@ class StatsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        print(f"[ANY MSG] channel={message.channel.id} author={message.author.id} ({message.author.name})")
-
         counting_channel_id = config.CONFIG.get("counting_channel_id")
         if counting_channel_id and message.channel.id == counting_channel_id and not message.author.bot:
             message_stats_col.update_one(
@@ -41,36 +39,19 @@ class StatsCog(commands.Cog):
 
         bump_channel_id = config.CONFIG.get("bump_channel_id")
         if bump_channel_id and message.channel.id == bump_channel_id:
-            print("=== DEBUG BUMP MESSAGE ===")
-            print("author:", message.author.id, message.author.name)
+            if message.author.id != config.DISBOARD_BOT_ID:
+                return
 
             interaction_meta = getattr(message, "interaction_metadata", None)
             interaction_old = getattr(message, "interaction", None)  # deprecated, но пока даёт .name
 
-            print("interaction_metadata:", interaction_meta)
-            print("interaction (old):", interaction_old)
-
-            for embed in message.embeds:
-                print("embed title:", embed.title)
-                print("embed description:", embed.description)
-
-            # if message.author.id != config.DISBOARD_BOT_ID:
-            #     return
-
             user = getattr(interaction_meta, "user", None) or getattr(interaction_old, "user", None)
             command_name = getattr(interaction_old, "name", None) or ""
 
-            print("resolved user:", user)
-            print("resolved command_name:", repr(command_name))
-
             if not user or user.bot:
-                print(">>> STOP: no user or user is bot")
-                print("===========================")
                 return
 
             if command_name and "bump" not in command_name.lower():
-                print(">>> STOP: command_name doesn't contain 'bump'")
-                print("===========================")
                 return
 
             bump_success = any(
@@ -78,19 +59,12 @@ class StatsCog(commands.Cog):
                 or "bump done" in (embed.title or "").lower()
                 for embed in message.embeds
             )
-            print("bump_success:", bump_success)
-
             if bump_success:
                 bump_stats_col.update_one(
                     {"channel_id": bump_channel_id, "user_id": user.id, "day": utc_day()},
                     {"$inc": {"count": 1}, "$set": {"last_command": command_name or "bump"}},
                     upsert=True,
                 )
-                print(">>> RECORDED bump for user:", user.id)
-            else:
-                print(">>> STOP: bump_success is False")
-
-            print("===========================")
 
     @commands.command(name="sumarries", aliases=["sum"])
     @check_access_decorator("sum")
