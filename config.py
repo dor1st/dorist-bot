@@ -37,7 +37,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Администрация",
         "emoji": "<:mod:1522343179205087363>",
         "roles": [1542602508252487710, 1501503300200304640],
-        "commands": ["deleteticket"],
+        "commands": ["deleteticket", "deletelogs"],
     },
     "owner": {
         "name": "Владелец",
