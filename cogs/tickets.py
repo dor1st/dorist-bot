@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands
@@ -5,6 +6,82 @@ from discord.ext import commands
 import config
 from database import tickets_col, deleted_tickets_col, get_next_sequence_value
 from utils import check_access_decorator, make_error_embed, make_status_embed, log_action
+
+
+class TicketLogsView(discord.ui.View):
+    def __init__(self, author: discord.User, target: discord.User, logs: list):
+        super().__init__(timeout=180)  # Таймаут активности кнопок (3 минуты)
+        self.author = author
+        self.target = target
+        self.logs = logs
+        self.per_page = getattr(config, "LOGS_PER_PAGE", 3)
+        self.current_page = 0
+        self.max_pages = math.ceil(len(logs) / self.per_page)
+
+        self.update_buttons()
+
+    def update_buttons(self):
+        # Настройка состояния кнопок (активна/неактивна)
+        self.prev_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.max_pages - 1
+
+    def create_embed(self) -> discord.Embed:
+        start_idx = self.current_page * self.per_page
+        end_idx = start_idx + self.per_page
+        page_logs = self.logs[start_idx:end_idx]
+
+        description_parts = [
+            f"{self.target.id}",
+            "--------------------------------------------------"
+        ]
+
+        for doc in page_logs:
+            created_at = doc.get("created_at")
+            if isinstance(created_at, datetime):
+                time_str = f"<t:{int(created_at.timestamp())}:F>"
+            else:
+                time_str = ""
+
+            ticket_text = (
+                f"**Тикет No{doc['_id']}**\n"
+                f"**Модератор:** {self.target.display_name} ({self.target.mention})\n"
+                f"**Категория:** {doc.get('category', 'Не указана')}\n"
+                f"**Транскрипт:** {doc.get('transcript_url', 'Ссылка отсутствует')}\n"
+                f"{time_str}"
+            )
+            description_parts.append(ticket_text)
+
+        embed = discord.Embed(
+            title=f"🎟️ Тикеты — {self.target.name}",
+            description="\n\n".join(description_parts),
+            color=config.EMBED_COLOR
+        )
+
+        footer_text = f"Страница {self.current_page + 1}/{self.max_pages} ({len(self.logs)} логов)"
+        if hasattr(config, "FOOTER_TEXT") and config.FOOTER_TEXT:
+            footer_text += f" • {config.FOOTER_TEXT}"
+
+        embed.set_footer(text=footer_text)
+        return embed
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # Проверка: на кнопки может нажимать только тот, кто вызвал команду
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("Вы не можете использовать эти кнопки.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
+    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page -= 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.create_embed(), view=self)
+
+    @discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page += 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.create_embed(), view=self)
 
 
 class TicketsCog(commands.Cog):
@@ -83,15 +160,14 @@ class TicketsCog(commands.Cog):
     async def ticketlogs_cmd(self, ctx: commands.Context, target: discord.User = None):
         target = target or ctx.author
         logs = list(tickets_col.find({"staff_id": target.id}).sort("_id", 1))
+
         if not logs:
             embed = make_status_embed("Тикеты", f"У модератора {target.mention} нет логов тикетов.", "info")
             return await ctx.send(embed=embed)
 
-        lines = [f"**Лог №{doc['_id']}** | {doc['category']} | [Ссылка]({doc['transcript_url']})" for doc in logs[:5]]
-
-        embed = discord.Embed(title=f"📜 Логи тикетов — {target.name}", description="\n".join(lines), color=config.EMBED_COLOR)
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
+        view = TicketLogsView(author=ctx.author, target=target, logs=logs)
+        embed = view.create_embed()
+        await ctx.send(embed=embed, view=view)
 
     @commands.command(name="ticketstats", aliases=["ts"])
     @check_access_decorator("ticketstats")
