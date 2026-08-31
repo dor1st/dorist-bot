@@ -48,11 +48,13 @@ class TicketLogsView(discord.ui.View):
             else:
                 time_str = "—"
 
+            transcript_url = doc.get("transcript_url", "—")
+
             description_lines.append(
                 f"**Тикет №{index}**\n"
                 f"**Модератор:** {self.target.name} ({self.target.mention})\n"
                 f"**Категория:** {doc.get('category', 'Не указана')}\n"
-                f"**Транскрипт:** [Ссылка]({doc.get('transcript_url', '#')})\n"
+                f"**Транскрипт:** {transcript_url}\n"
                 f"{time_str}\n"
             )
 
@@ -124,11 +126,12 @@ class DeletedTicketLogsView(discord.ui.View):
                 time_str = "—"
 
             original_id = doc.get("original_log_id", "—")
+            transcript_url = doc.get("transcript_url", "—")
 
             description_lines.append(
                 f"**Удаление №{index}** (Лог №{original_id})\n"
                 f"**Модератор:** {self.target.name} ({self.target.mention})\n"
-                f"**Транскрипт:** [Ссылка]({doc.get('transcript_url', '#')})\n"
+                f"**Транскрипт:** {transcript_url}\n"
                 f"**Дата удаления:** {time_str}\n"
             )
 
@@ -275,6 +278,13 @@ class TicketsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
+        if deleted_tickets_col.find_one({"transcript_url": transcript_url}):
+            embed = make_error_embed(
+                "Дубликат удаления",
+                "Этот транскрипт уже использовался для удаления тикета ранее!"
+            )
+            return await ctx.send(embed=embed)
+
         now = datetime.now(timezone.utc)
         deleted_id = get_next_sequence_value("deleted_ticket_id")
 
@@ -371,6 +381,7 @@ class TicketsCog(commands.Cog):
         )
         tr_all = tickets_col.count_documents({"author_id": target.id})
 
+        # 3. Удалено тикетов (staff_id в deleted_tickets_col)
         del_7d = deleted_tickets_col.count_documents(
             {"staff_id": target.id, "created_at": {"$gte": days_7}}
         )
