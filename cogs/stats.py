@@ -28,20 +28,35 @@ class StatsCog(commands.Cog):
         )
 
     @commands.Cog.listener()
-    async def on_interaction(self, interaction: discord.Interaction):
-        channel_id = config.CONFIG.get("bump_channel_id")
-        if not channel_id or interaction.channel_id != channel_id or interaction.user.bot:
-            return
-        if interaction.type != discord.InteractionType.application_command:
-            return
-        command_name = (interaction.data or {}).get("name")
-        if not command_name:
-            return
-        bump_stats_col.update_one(
-            {"channel_id": channel_id, "user_id": interaction.user.id, "day": utc_day()},
-            {"$inc": {"count": 1}, "$set": {"last_command": command_name}},
-            upsert=True,
-        )
+    async def on_message(self, message: discord.Message):
+        
+        counting_channel_id = config.CONFIG.get("counting_channel_id")
+        if counting_channel_id and message.channel.id == counting_channel_id and not message.author.bot:
+            message_stats_col.update_one(
+                {"channel_id": counting_channel_id, "user_id": message.author.id, "day": utc_day()},
+                {"$inc": {"count": 1}},
+                upsert=True,
+            )
+
+        bump_channel_id = config.CONFIG.get("bump_channel_id")
+        if bump_channel_id and message.channel.id == bump_channel_id:
+            interaction_info = getattr(message, "interaction_metadata", None) or getattr(message, "interaction", None)
+            if interaction_info:
+                command_name = getattr(interaction_info, "name", "") or ""
+                user = getattr(interaction_info, "user", None)
+
+                if user and not user.bot and "bump" in command_name.lower():
+                    bump_success = any(
+                        "bump done" in (embed.description or "").lower()
+                        or "bump done" in (embed.title or "").lower()
+                        for embed in message.embeds
+                    )
+                    if bump_success:
+                        bump_stats_col.update_one(
+                            {"channel_id": bump_channel_id, "user_id": user.id, "day": utc_day()},
+                            {"$inc": {"count": 1}, "$set": {"last_command": command_name}},
+                            upsert=True,
+                        )
 
     @commands.command(name="sumarries", aliases=["sum"])
     @check_access_decorator("sum")
@@ -61,7 +76,7 @@ class StatsCog(commands.Cog):
             pipeline.extend([
                 {"$group": {"_id": "$user_id", "count": {"$sum": "$count"}}},
                 {"$sort": {"count": -1}},
-                {"$limit": 10},
+                {"$limit": 3},   # было 10
             ])
             return [(doc["_id"], doc["count"]) for doc in collection.aggregate(pipeline)]
 
