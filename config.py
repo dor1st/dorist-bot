@@ -23,19 +23,19 @@ LOGGABLE_COMMANDS_DEFAULT = {
 PERMISSION_GROUPS_DEFAULT = {
     "support": {
         "name": "Поддержка",
-        "emoji": "🛟",
+        "emoji": "<:ticket:1522343287816716379>",
         "roles": [1501507449860001853, 1322962344040464424],
         "commands": ["help", "ticketstats", "leaderboard", "sum"],
     },
     "transcript": {
         "name": "Транскрипты",
-        "emoji": "🧾",
+        "emoji": "<:logs:1522340749998428160>",
         "roles": [1542601770461569044, 1323348388762226759],
         "commands": ["addticket", "deleteticket", "ticketlogs"],
     },
     "admin": {
         "name": "Администрация",
-        "emoji": "🛡️",
+        "emoji": "<:mod:1522343179205087363>",
         "roles": [1322962317885046844, 1502684875868737796],
         "commands": ["deletelog", "resetlogs"],
     },
@@ -72,7 +72,6 @@ def load_config():
         "counting_channel_id": None,
         "bump_channel_id": None,
         "permission_groups": {k: dict(v) for k, v in PERMISSION_GROUPS_DEFAULT.items()},
-        "emojis": dict(EMOJI_DEFAULTS),
     }
 
     doc = settings_col.find_one({"_id": "config"})
