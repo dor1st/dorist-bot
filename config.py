@@ -7,15 +7,6 @@ VALID_CATEGORIES = ["Помощь по серверу", "Получение пр
 
 LOGS_PER_PAGE = 3
 
-EMOJI_DEFAULTS = {
-    "success": "<a:gif_verify:1522328481956888686>",
-    "warning": "<:zzz:1522341702852022412>",
-    "error": "<:bruh:1521904409582375174>",
-    "permission": "<:imcrine:1543711667647418381>",
-    "info": "ℹ️",
-    "delete": "🗑️",
-}
-
 LOGGABLE_COMMANDS_DEFAULT = {
     "addticket": True,
     "deleteticket": True,
