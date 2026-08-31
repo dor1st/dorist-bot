@@ -11,6 +11,12 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
     if category == "main":
         embed.description = "Выберите категорию ниже, чтобы просмотреть доступные команды."
         embed.add_field(
+            name="<:sparkles:1522342290494849034> Общие команды",
+            value="`.help` — *Показать меню команд.*\n\n"
+            "`.config` — *Открыть меню настроек бота (цвет, footer, доступ).*\n\n",
+            inline=False
+        )
+        embed.add_field(
             name="<:info:1522329987514892398> Доступные категории",
             value="<:ticket:1522343287816716379> **Тикеты** — Полный список команд для работы с тикетами и транскриптами.",
             inline=False
@@ -21,8 +27,7 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
 
         embed.add_field(
             name="<:ticket:1522343287816716379> Группа Поддержка",
-            value="`.help` — *Показать меню команд.*\n\n"
-                  "`.ticketstats [ID / упоминание]`\n| *Посмотреть статистику тикетов, транскриптов и удалений.*\n\n"
+            value="`.ticketstats [ID / упоминание]`\n| *Посмотреть статистику тикетов, транскриптов и удалений.*\n\n"
                   "`.leaderboard`\n| *Посмотреть топ модераторов по тикетам, транскриптам и удалениям.*",
             inline=False
         )
@@ -37,11 +42,6 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
             name="<:mod:1522343179205087363> Группа Администрация",
             value="`.deletelog [ID лога]`\n| *Удалить конкретный лог тикета по ID.*\n\n"
                   "`.resetlogs [ID / упоминание]`\n| *Очистить абсолютно все логи модератора (тикеты, транскрипты, удаления).*",
-            inline=False
-        )
-        embed.add_field(
-            name="<:staff:1522338131339251823> Группа Владелец",
-            value="`.config`\n| *Открыть меню настроек бота (цвет, footer, доступ).*",
             inline=False
         )
 
@@ -66,7 +66,7 @@ class HelpView(discord.ui.View):
 
     def show_main_buttons(self):
         self.clear_items()
-        tickets_btn = discord.ui.Button(label="Тикеты", emoji="<:ticket:1522343287816716379>", style=discord.ButtonStyle.primary, custom_id="help_tickets")
+        tickets_btn = discord.ui.Button(label="Тикеты", emoji="<:ticket:1522343287816716379>", style=discord.ButtonStyle.gray, custom_id="help_tickets")
         tickets_btn.callback = self.tickets_callback
         self.add_item(tickets_btn)
 
