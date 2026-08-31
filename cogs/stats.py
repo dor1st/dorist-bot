@@ -29,6 +29,7 @@ class StatsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        print(f"[ANY MSG] channel={message.channel.id} author={message.author.id} ({message.author.name})")
         
         counting_channel_id = config.CONFIG.get("counting_channel_id")
         if counting_channel_id and message.channel.id == counting_channel_id and not message.author.bot:
