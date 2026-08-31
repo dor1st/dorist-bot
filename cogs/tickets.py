@@ -252,6 +252,7 @@ class TicketsCog(commands.Cog):
         days_7 = now - timedelta(days=7)
         days_30 = now - timedelta(days=30)
 
+        # 1. Обработано тикетов (staff_id)
         t_7d = tickets_col.count_documents(
             {"staff_id": target.id, "created_at": {"$gte": days_7}}
         )
@@ -260,6 +261,7 @@ class TicketsCog(commands.Cog):
         )
         t_all = tickets_col.count_documents({"staff_id": target.id})
 
+        # 2. Занесено транскриптов (author_id)
         tr_7d = tickets_col.count_documents(
             {"author_id": target.id, "created_at": {"$gte": days_7}}
         )
@@ -268,6 +270,7 @@ class TicketsCog(commands.Cog):
         )
         tr_all = tickets_col.count_documents({"author_id": target.id})
 
+        # 3. Удалено тикетов (staff_id в deleted_tickets_col)
         del_7d = deleted_tickets_col.count_documents(
             {"staff_id": target.id, "created_at": {"$gte": days_7}}
         )
@@ -276,61 +279,59 @@ class TicketsCog(commands.Cog):
         )
         del_all = deleted_tickets_col.count_documents({"staff_id": target.id})
 
-        def fmt(count, unit):
-            if count > 0:
-                return f"{target.mention} — **{count}** {unit}"
-            return "—"
-
         embed = discord.Embed(
             title=f"<:sparkles:1522342290494849034> Статистика — {target.name}",
             color=config.EMBED_COLOR,
         )
 
+        # Ряд 1: Обработано тикетов
         embed.add_field(
-            name="<:ticket:1522343287816716379> Тикетов (7 дн.)",
-            value=f"`1.` {fmt(t_7d, 'тикетов')}\n`2.` —\n`3.` —",
+            name="<:ticket:1522343287816716379> Обработано тикетов",
+            value=f"**7 дн.:** {t_7d}",
             inline=True,
         )
         embed.add_field(
-            name="<:ticket:1522343287816716379> Тикетов (30 дн.)",
-            value=f"`1.` {fmt(t_30d, 'тикетов')}\n`2.` —\n`3.` —",
+            name="<:ticket:1522343287816716379> Обработано тикетов",
+            value=f"**30 дн.:** {t_30d}",
             inline=True,
         )
         embed.add_field(
-            name="<:ticket:1522343287816716379> Тикетов (Все время)",
-            value=f"`1.` {fmt(t_all, 'тикетов')}\n`2.` —\n`3.` —",
-            inline=True,
-        )
-
-        embed.add_field(
-            name="<:logs:1522340749998428160> Транскриптов (7 дн.)",
-            value=f"`1.` {fmt(tr_7d, 'транскриптов')}\n`2.` —\n`3.` —",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:logs:1522340749998428160> Транскриптов (30 дн.)",
-            value=f"`1.` {fmt(tr_30d, 'транскриптов')}\n`2.` —\n`3.` —",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:logs:1522340749998428160> Транскриптов (Все время)",
-            value=f"`1.` {fmt(tr_all, 'транскриптов')}\n`2.` —\n`3.` —",
+            name="<:ticket:1522343287816716379> Обработано тикетов",
+            value=f"**Всё время:** {t_all}",
             inline=True,
         )
 
+        # Ряд 2: Занесено транскриптов
         embed.add_field(
-            name="<:lighting:1522337543360872489> Удалено тикетов (7 дн.)",
-            value=f"`1.` {fmt(del_7d, 'удалений')}\n`2.` —\n`3.` —",
+            name="<:logs:1522340749998428160> Занесено транскриптов",
+            value=f"**7 дн.:** {tr_7d}",
             inline=True,
         )
         embed.add_field(
-            name="<:lighting:1522337543360872489> Удалено тикетов (30 дн.)",
-            value=f"`1.` {fmt(del_30d, 'удалений')}\n`2.` —\n`3.` —",
+            name="<:logs:1522340749998428160> Занесено транскриптов",
+            value=f"**30 дн.:** {tr_30d}",
             inline=True,
         )
         embed.add_field(
-            name="<:lighting:1522337543360872489> Удалено тикетов (Все время)",
-            value=f"`1.` {fmt(del_all, 'удалений')}\n`2.` —\n`3.` —",
+            name="<:logs:1522340749998428160> Занесено транскриптов",
+            value=f"**Всё время:** {tr_all}",
+            inline=True,
+        )
+
+        # Ряд 3: Удалено тикетов
+        embed.add_field(
+            name="<:lighting:1522337543360872489> Удалено тикетов",
+            value=f"**7 дн.:** {del_7d}",
+            inline=True,
+        )
+        embed.add_field(
+            name="<:lighting:1522337543360872489> Удалено тикетов",
+            value=f"**30 дн.:** {del_30d}",
+            inline=True,
+        )
+        embed.add_field(
+            name="<:lighting:1522337543360872489> Удалено тикетов",
+            value=f"**Всё время:** {del_all}",
             inline=True,
         )
 
