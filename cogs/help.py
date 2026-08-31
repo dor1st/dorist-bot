@@ -46,7 +46,7 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
         )
 
     user_group = "Владелец" if is_owner_user(user) else "Пользователь"
-    embed.set_footer(text=f"Ваша текущая группа: {user_group} • {config.FOOTER_TEXT}")
+    embed.set_footer(text=f"Вызвано: {user.display_name} • Ваша текущая группа: {user_group} • {config.FOOTER_TEXT}")
     return embed
 
 

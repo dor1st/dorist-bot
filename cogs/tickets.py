@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands
@@ -6,21 +7,145 @@ import config
 from database import tickets_col, deleted_tickets_col, get_next_sequence_value
 from utils import check_access_decorator, make_error_embed, make_status_embed, log_action
 
+LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
+
+def build_page_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"<:ticket:1522343287816716379> Тикеты — {self.target.name}",
+            color=config.EMBED_COLOR,
+        )
+
+        start_idx = self.current_page * LOGS_PER_PAGE
+        end_idx = start_idx + LOGS_PER_PAGE
+        page_logs = self.logs[start_idx:end_idx]
+
+        description_lines = [
+            f"`{self.target.id}`",
+            "--------------------------------------------------\n",
+        ]
+
+        for index, doc in enumerate(page_logs, start=start_idx + 1):
+            created_dt = doc.get("created_at")
+            if isinstance(created_dt, datetime):
+                timestamp = int(created_dt.timestamp())
+                time_str = f"<t:{timestamp}:f>"
+            else:
+                time_str = "—"
+
+            description_lines.append(
+                f"**Тикет No{index}**\n"
+                f"**Модератор:** {self.target.name} ({self.target.mention})\n"
+                f"**Категория:** {doc.get('category', 'Не указана')}\n"
+                f"**Транскрипт:** [Ссылка]({doc.get('transcript_url', '#')})\n"
+                f"{time_str}\n"
+            )
+
+        embed.description = "\n".join(description_lines)
+        embed.set_footer(
+            text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.logs)} логов) • {config.FOOTER_TEXT}"
+        )
+        return embed
+
+
+class TicketLogsView(discord.ui.View):
+    """Pagination View with navigation arrows matching Image 2."""
+
+    def __init__(self, target: discord.User, logs: list, timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.target = target
+        self.logs = logs
+        self.current_page = 0
+        self.total_pages = math.ceil(len(logs) / LOGS_PER_PAGE)
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+
+    def build_page_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"<:ticket:1522343287816716379> Тикеты — {self.target.name}",
+            color=config.EMBED_COLOR,
+        )
+
+        start_idx = self.current_page * LOGS_PER_PAGE
+        end_idx = start_idx + LOGS_PER_PAGE
+        page_logs = self.logs[start_idx:end_idx]
+
+        description_lines = [
+            f"`{self.target.id}`",
+            "--------------------------------------------------\n",
+        ]
+
+        for index, doc in enumerate(page_logs, start=start_idx + 1):
+            created_dt = doc.get("created_at")
+            if isinstance(created_dt, datetime):
+                timestamp = int(created_dt.timestamp())
+                time_str = f"<t:{timestamp}:f>"
+            else:
+                time_str = "—"
+
+            description_lines.append(
+                f"**Тикет No{index}**\n"
+                f"**Модератор:** {self.target.name} ({self.target.mention})\n"
+                f"**Категория:** {doc.get('category', 'Не указана')}\n"
+                f"**Транскрипт:** [Ссылка]({doc.get('transcript_url', '#')})\n"
+                f"{time_str}\n"
+            )
+
+        embed.description = "\n".join(description_lines)
+        embed.set_footer(
+            text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.logs)} логов) • {config.FOOTER_TEXT}"
+        )
+        return embed
+
+    @discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
+    async def prev_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+    @discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
+    async def next_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
 
 class TicketsCog(commands.Cog):
+
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(name="addticket", aliases=["t"])
     @check_access_decorator("addticket")
-    async def addticket_cmd(self, ctx: commands.Context, staff: discord.User = None, transcript_url: str = None, *, category: str = None):
+    async def addticket_cmd(
+        self,
+        ctx: commands.Context,
+        staff: discord.User = None,
+        transcript_url: str = None,
+        *,
+        category: str = None,
+    ):
         if not staff or not transcript_url or not category:
-            embed = make_error_embed("Недостаточно аргументов", config.COMMAND_USAGE_HELP["addticket"])
-            return await ctx.send(embed=embed)
+            return await ctx.send(embed=build_command_help_embed("addticket"))
 
         if category not in config.VALID_CATEGORIES:
             cats = ", ".join(f"`{c}`" for c in config.VALID_CATEGORIES)
-            embed = make_error_embed("Неверная категория", f"Указана недопустимая категория!\nРазрешенные: {cats}")
+            embed = make_error_embed(
+                "Неверная категория",
+                f"Указана недопустимая категория!\nРазрешенные: {cats}",
+            )
             return await ctx.send(embed=embed)
 
         log_id = get_next_sequence_value("ticket_id")
@@ -32,19 +157,40 @@ class TicketsCog(commands.Cog):
             "author_id": ctx.author.id,
             "transcript_url": transcript_url,
             "category": category,
-            "created_at": now
+            "created_at": now,
         }
         tickets_col.insert_one(ticket_doc)
 
         month_ago = now - timedelta(days=30)
-        month_count = tickets_col.count_documents({"staff_id": staff.id, "created_at": {"$gte": month_ago}})
+        month_count = tickets_col.count_documents(
+            {"staff_id": staff.id, "created_at": {"$gte": month_ago}}
+        )
 
-        embed = discord.Embed(title=f"<:logs:1522340749998428160> Лог №{log_id} — {staff.name}", color=config.EMBED_COLOR)
-        embed.add_field(name="Дата транскрипта", value=f"<t:{int(now.timestamp())}:f>", inline=False)
-        embed.add_field(name="Ссылка на транскрипт", value=transcript_url, inline=False)
-        embed.add_field(name="Кто вёл тикет", value=f"{staff.id} ({staff.mention})", inline=False)
-        embed.add_field(name="Внёс в базу", value=ctx.author.mention, inline=False)
-        embed.add_field(name="Тикетов за последний месяц", value=str(month_count), inline=False)
+        embed = discord.Embed(
+            title=f"<:logs:1522340749998428160> Лог №{log_id} — {staff.name}",
+            color=config.EMBED_COLOR,
+        )
+        embed.add_field(
+            name="Дата транскрипта",
+            value=f"<t:{int(now.timestamp())}:f>",
+            inline=False,
+        )
+        embed.add_field(
+            name="Ссылка на транскрипт", value=transcript_url, inline=False
+        )
+        embed.add_field(
+            name="Кто вёл тикет",
+            value=f"{staff.id} ({staff.mention})",
+            inline=False,
+        )
+        embed.add_field(
+            name="Внёс в базу", value=ctx.author.mention, inline=False
+        )
+        embed.add_field(
+            name="Тикетов за последний месяц",
+            value=str(month_count),
+            inline=False,
+        )
         embed.add_field(name="Категория", value=category, inline=False)
         embed.set_footer(text=config.FOOTER_TEXT)
 
@@ -53,10 +199,16 @@ class TicketsCog(commands.Cog):
 
     @commands.command(name="deleteticket")
     @check_access_decorator("deleteticket")
-    async def deleteticket_cmd(self, ctx: commands.Context, log_id: int = None, transcript_url: str = None):
+    async def deleteticket_cmd(
+        self,
+        ctx: commands.Context,
+        log_id: int = None,
+        transcript_url: str = None,
+    ):
         if log_id is None or transcript_url is None:
-            embed = make_error_embed("Недостаточно аргументов", config.COMMAND_USAGE_HELP["deleteticket"])
-            return await ctx.send(embed=embed)
+            return await ctx.send(
+                embed=build_command_help_embed("deleteticket")
+            )
 
         now = datetime.now(timezone.utc)
         deleted_id = get_next_sequence_value("deleted_ticket_id")
@@ -66,45 +218,72 @@ class TicketsCog(commands.Cog):
             "original_log_id": log_id,
             "staff_id": ctx.author.id,
             "transcript_url": transcript_url,
-            "created_at": now
+            "created_at": now,
         }
         deleted_tickets_col.insert_one(deleted_doc)
 
         embed = make_status_embed(
             "Тикет удален",
             f"Удаление тикета по логу **№{log_id}** успешно зафиксировано!\nМодератору {ctx.author.mention} добавлено **+1** удаление тикета в казну.",
-            "delete"
+            "delete",
         )
         await ctx.send(embed=embed)
         await log_action(ctx.guild, "deleteticket", embed)
 
     @commands.command(name="ticketlogs", aliases=["tl"])
     @check_access_decorator("ticketlogs")
-    async def ticketlogs_cmd(self, ctx: commands.Context, target: discord.User = None):
+    async def ticketlogs_cmd(
+        self, ctx: commands.Context, target: discord.User = None
+    ):
         target = target or ctx.author
         logs = list(tickets_col.find({"staff_id": target.id}).sort("_id", 1))
+
         if not logs:
-            embed = make_status_embed("Тикеты", f"У модератора {target.mention} нет логов тикетов.", "info")
+            embed = make_status_embed(
+                "Тикеты",
+                f"У модератора {target.mention} нет логов тикетов.",
+                "info",
+            )
             return await ctx.send(embed=embed)
 
-        lines = [f"**Лог №{doc['_id']}** | {doc['category']} | [Ссылка]({doc['transcript_url']})" for doc in logs[:5]]
+        view = TicketLogsView(target=target, logs=logs)
+        embed = view.build_page_embed()
 
-        embed = discord.Embed(title=f"<:logs:1522340749998428160> Логи тикетов — {target.name}", description="\n".join(lines), color=config.EMBED_COLOR)
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
+        # If logs count is less than or equal to LOGS_PER_PAGE, don't show buttons
+        if len(logs) <= LOGS_PER_PAGE:
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed, view=view)
 
     @commands.command(name="ticketstats", aliases=["ts"])
     @check_access_decorator("ticketstats")
-    async def ticketstats_cmd(self, ctx: commands.Context, target: discord.User = None):
+    async def ticketstats_cmd(
+        self, ctx: commands.Context, target: discord.User = None
+    ):
         target = target or ctx.author
         t_count = tickets_col.count_documents({"staff_id": target.id})
         tr_count = tickets_col.count_documents({"author_id": target.id})
         del_count = deleted_tickets_col.count_documents({"staff_id": target.id})
 
-        embed = discord.Embed(title=f"<:sparkles:1522342290494849034> Статистика — {target.name}", color=config.EMBED_COLOR)
-        embed.add_field(name="<:ticket:1522343287816716379> Обработано тикетов", value=str(t_count), inline=True)
-        embed.add_field(name="<:logs:1522340749998428160> Занесено транскриптов", value=str(tr_count), inline=True)
-        embed.add_field(name="<:lighting:1522337543360872489> Удалено тикетов", value=str(del_count), inline=True)
+        embed = discord.Embed(
+            title=f"<:sparkles:1522342290494849034> Статистика — {target.name}",
+            color=config.EMBED_COLOR,
+        )
+        embed.add_field(
+            name="<:ticket:1522343287816716379> Обработано тикетов",
+            value=str(t_count),
+            inline=True,
+        )
+        embed.add_field(
+            name="<:logs:1522340749998428160> Занесено транскриптов",
+            value=str(tr_count),
+            inline=True,
+        )
+        embed.add_field(
+            name="<:lighting:1522337543360872489> Удалено тикетов",
+            value=str(del_count),
+            inline=True,
+        )
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
