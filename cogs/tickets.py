@@ -194,7 +194,6 @@ class TicketsCog(commands.Cog):
         log_id: int = None,
         transcript_url: str = None,
     ):
-        # 1. Если не передан хотя бы один аргумент -> показываем меню помощи
         if log_id is None or transcript_url is None:
             return await ctx.send(embed=build_command_help_embed("deleteticket"))
 

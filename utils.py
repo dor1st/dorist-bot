@@ -41,7 +41,7 @@ def check_access_decorator(command_name: str | None = None):
 
 def make_error_embed(title: str, description: str) -> discord.Embed:
     embed = discord.Embed(
-        title=f"{config.get_emoji('error')} {title}",
+        title=f"<:imcrine:1543711667647418381> {title}",
         description=description,
         color=discord.Color.red()
     )
