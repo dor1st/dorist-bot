@@ -13,12 +13,12 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "deleteticket": True,
     "deletelog": True,
     "resetlogs": True,
-    "ticketlogs": False,
-    "ticketstats": False,
-    "leaderboard": False,
+    "ticketlogs": True,
+    "ticketstats": True,
+    "leaderboard": True,
     "sum": False,
     "help": False,
-    "config": True,
+    "config": False,
 }
 
 PERMISSION_GROUPS_DEFAULT = {
@@ -70,8 +70,8 @@ def load_config():
         "footer_text": "ТУСОВКА ДОРИСТА",
         "log_channel_id": 1543903998677876836,
         "log_toggles": dict(LOGGABLE_COMMANDS_DEFAULT),
-        "counting_channel_id": None,
-        "bump_channel_id": None,
+        "counting_channel_id": 1323344709724405782,
+        "bump_channel_id": 1467961847511781386,
         "permission_groups": {k: dict(v) for k, v in PERMISSION_GROUPS_DEFAULT.items()},
     }
 

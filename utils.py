@@ -50,7 +50,6 @@ def make_error_embed(title: str, description: str) -> discord.Embed:
 
 
 def make_status_embed(title: str, message: str, kind: str = "info") -> discord.Embed:
-
     embed = discord.Embed(
         title=title,
         description=f"<:imcrine:1543711667647418381> {message}",
@@ -70,3 +69,51 @@ async def log_action(guild: discord.Guild, command_name: str, embed: discord.Emb
     channel = guild.get_channel(log_channel_id)
     if channel:
         await channel.send(embed=embed)
+
+
+def build_command_help_embed(command_name: str) -> discord.Embed:
+    embed = discord.Embed(color=config.EMBED_COLOR)
+
+    if command_name == "addticket":
+        cats = ", ".join(f"`{c}`" for c in getattr(config, "VALID_CATEGORIES", []))
+        embed.title = "Команда: addticket"
+        embed.description = (
+            "Добавить новый лог об обработанном тикете\n\n"
+            "**Кулдаун:**\n"
+            "3 секунды (Для Администрации отсутствует)\n\n"
+            "**Правила аргументов:**\n"
+            "1. Ссылка должна содержать: `https://discord.com/`\n"
+            "2. Вы **не можете** указать свой собственный ID\n"
+            "3. Один и тот же транскрипт нельзя вносить дважды\n"
+            f"4. Допустимые категории: {cats}\n\n"
+            "**Использование:**\n"
+            "`.addticket [ID модератора] [ссылка на транскрипт] [категория]`\n\n"
+            "**Пример:**\n"
+            "`.addticket 851443344718430210 https://discord.com/channels/... Получение призов`"
+        )
+    elif command_name == "deleteticket":
+        embed.title = "Команда: deleteticket"
+        embed.description = (
+            "Удалить запись о тикете\n\n"
+            "**Правила аргументов:**\n"
+            "1. Ссылка должна содержать: `https://discord.com/`\n\n"
+            "**Использование:**\n"
+            "`.deleteticket [ID лога] [ссылка на транскрипт]`\n\n"
+            "**Пример:**\n"
+            "`.deleteticket 12 https://discord.com/channels/...`"
+        )
+    elif command_name == "ticketlogs":
+        embed.title = "Команда: ticketlogs"
+        embed.description = (
+            "Просмотреть список всех зафиксированных логов тикетов модератора\n\n"
+            "**Правила аргументов:**\n"
+            "1. Укажите упоминание или ID модератора (необязательно).\n"
+            "2. Если аргумент не указан, выводятся ваши логи.\n\n"
+            "**Использование:**\n"
+            "`.ticketlogs [упоминание / ID модератора]`\n\n"
+            "**Пример:**\n"
+            "`.ticketlogs @Пользователь` или `.tl 851443344718430210`"
+        )
+
+    embed.set_footer(text=config.FOOTER_TEXT)
+    return embed

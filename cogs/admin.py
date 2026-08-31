@@ -6,121 +6,17 @@ from database import tickets_col, deleted_tickets_col
 from utils import check_access_decorator, make_error_embed, make_status_embed, is_owner_user, log_action
 
 
-class EditConfigModal(discord.ui.Modal):
-    def __init__(self, key: str, title: str, current_val: str, category_view: "ConfigCategoryView"):
-        super().__init__(title=title)
-        self.key = key
-        self.category_view = category_view
-        
-        self.val_input = discord.ui.TextInput(
-            label="Новое значение",
-            default=str(current_val if current_val is not None else ""),
-            required=True
-        )
-        self.add_item(self.val_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        new_val = self.val_input.value
-        if self.key == "embed_color":
-            try:
-                new_val = int(new_val.replace("#", ""), 16) if "#" in new_val else int(new_val)
-            except ValueError:
-                return await interaction.response.send_message("Неверный формат цвета! Укажите число или HEX (например, #2171169).", ephemeral=True)
-        
-        config.CONFIG[self.key] = new_val
-
-        await self.category_view.update_category_message(interaction, "server")
-
-
-class ServerParamSelect(discord.ui.Select):
-    def __init__(self, category_view: "ConfigCategoryView"):
-        self.category_view = category_view
-        options = [
-            discord.SelectOption(label="Цвет Embed", value="embed_color", description="Изменить цвет вложений"),
-            discord.SelectOption(label="Footer Текст", value="footer_text", description="Изменить текст футера"),
-            discord.SelectOption(label="Канал считалки", value="counting_channel_id", description="Указать канал для считалки"),
-            discord.SelectOption(label="Канал бампа", value="bump_channel_id", description="Указать канал для бампа")
-        ]
-        super().__init__(placeholder="Выберите параметр для изменения...", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        selected_key = self.values[0]
-
-        if selected_key in ["counting_channel_id", "bump_channel_id"]:
-            view = ChannelPickerView(self.category_view, selected_key)
-            await interaction.response.send_message(f"Выберите новый текстовый канал для **{selected_key}**:", view=view, ephemeral=True)
-        else:
-            modal_title = "Изменение цвета" if selected_key == "embed_color" else "Изменение текста футера"
-            modal = EditConfigModal(selected_key, modal_title, config.CONFIG.get(selected_key), self.category_view)
-            await interaction.response.send_modal(modal)
-
-
-class TicketParamSelect(discord.ui.Select):
-    def __init__(self, category_view: "ConfigCategoryView"):
-        self.category_view = category_view
-        
-        toggles = config.CONFIG.get("log_toggles", {})
-        options = [
-            discord.SelectOption(label="Канал логов тикетов", value="log_channel_id", description="Выбрать канал для логов")
-        ]
-        
-        for cmd_name, is_enabled in toggles.items():
-            options.append(discord.SelectOption(
-                label=f"Лог: {cmd_name}",
-                value=f"toggle_{cmd_name}",
-                description=f"Сейчас: {'Включено' if is_enabled else 'Выключено'}"
-            ))
-
-        super().__init__(placeholder="Выберите параметр для изменения...", min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        selected_key = self.values[0]
-
-        if selected_key == "log_channel_id":
-            view = ChannelPickerView(self.category_view, selected_key)
-            await interaction.response.send_message("Выберите новый канал для логов тикетов:", view=view, ephemeral=True)
-        elif selected_key.startswith("toggle_"):
-            cmd = selected_key.replace("toggle_", "")
-            toggles = config.CONFIG.setdefault("log_toggles", {})
-            toggles[cmd] = not toggles.get(cmd, False)
-
-            await self.category_view.update_category_message(interaction, "tickets")
-
-
-class ChannelPickerView(discord.ui.View):
-    def __init__(self, category_view: "ConfigCategoryView", config_key: str):
-        super().__init__(timeout=60)
-        self.category_view = category_view
-        self.config_key = config_key
-
-        select = discord.ui.ChannelSelect(
-            channel_types=[discord.ChannelType.text],
-            placeholder="Выберите текстовый канал..."
-        )
-        select.callback = self.channel_select_callback
-        self.add_item(select)
-
-    async def channel_select_callback(self, interaction: discord.Interaction):
-        channel = interaction.data["values"][0]
-        config.CONFIG[self.config_key] = int(channel)
-
-        await interaction.response.send_message("Канал успешно обновлен!", ephemeral=True)
-        await self.category_view.update_category_message(interaction, "server" if "channel_id" in self.config_key and self.config_key != "log_channel_id" else "tickets", edit_interaction=False)
-
-
-# --- MAIN VIEWS ---
-
 class ConfigSelect(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Сервер", description="Цвет embed, Footer, Итоги, Доступ", emoji="<:buildercap:1541377896189534238>", value="server"),
-            discord.SelectOption(label="Тикеты", description="Настройка тикетов и канала логов", emoji="<:ticket:1522343287816716379>", value="tickets"),
+            discord.SelectOption(label="Сервер", description="Перегляд налаштувань сервера", emoji="<:buildercap:1541377896189534238>", value="server"),
+            discord.SelectOption(label="Тикеты", description="Перегляд налаштувань тикетів", emoji="<:ticket:1522343287816716379>", value="tickets"),
         ]
-        super().__init__(placeholder="Выберите категорию настроек...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="Выберите категорию для просмотра...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         category = self.values[0]
-        category_view = ConfigCategoryView(interaction.user.id, self.view)
+        category_view = ConfigCategoryView(interaction.user.id)
         await category_view.update_category_message(interaction, category)
 
 
@@ -139,10 +35,9 @@ class ConfigMainView(discord.ui.View):
 
 
 class ConfigCategoryView(discord.ui.View):
-    def __init__(self, author_id: int, parent_view: ConfigMainView):
+    def __init__(self, author_id: int):
         super().__init__(timeout=120)
         self.author_id = author_id
-        self.parent_view = parent_view
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
@@ -160,7 +55,7 @@ class ConfigCategoryView(discord.ui.View):
                 f"**Footer Текст:** `{config.CONFIG.get('footer_text')}`\n\n"
                 f"**Канал считалки:** <#{config.CONFIG.get('counting_channel_id')}>\n"
                 f"**Канал бампа:** <#{config.CONFIG.get('bump_channel_id')}>\n\n"
-                f"**Права и доступ:** Управляются через конфиг."
+                f"*Изменение параметров доступно только через код.*"
             )
         elif category == "tickets":
             log_chan = config.CONFIG.get('log_channel_id')
@@ -169,50 +64,42 @@ class ConfigCategoryView(discord.ui.View):
             embed.title = "<:ticket:1522343287816716379> Настройки тикетов"
             embed.description = (
                 f"**Канал логов тикетов:** <#{log_chan}>\n\n"
-                f"**Логирование команд:**\n{toggles_fmt}"
+                f"**Логирование команд:**\n{toggles_fmt}\n\n"
+                f"*Изменение параметров доступно только через код.*"
             )
         embed.set_footer(text=config.FOOTER_TEXT)
         return embed
 
-    async def update_category_message(self, interaction: discord.Interaction, category: str, edit_interaction: bool = True):
+    async def update_category_message(self, interaction: discord.Interaction, category: str):
         self.clear_items()
         
-        if category == "server":
-            self.add_item(ServerParamSelect(self))
-        elif category == "tickets":
-            self.add_item(TicketParamSelect(self))
-            
-        back_btn = discord.ui.Button(label="Назад", emoji="◀️", style=discord.ButtonStyle.secondary)
+        back_btn = discord.ui.Button(label="Назад", emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary)
         back_btn.callback = self.back_button_callback
         self.add_item(back_btn)
 
         embed = self.build_embed(category)
 
-        if edit_interaction:
-            if interaction.response.is_done():
-                await interaction.message.edit(embed=embed, view=self)
-            else:
-                await interaction.response.edit_message(embed=embed, view=self)
-        else:
+        if interaction.response.is_done():
             await interaction.message.edit(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(embed=embed, view=self)
 
     async def back_button_callback(self, interaction: discord.Interaction):
         embed = build_config_embed()
-        new_main_view = ConfigMainView(self.author_id)
-        await interaction.response.edit_message(embed=embed, view=new_main_view)
+        main_view = ConfigMainView(self.author_id)
+        await interaction.response.edit_message(embed=embed, view=main_view)
 
 
 def build_config_embed() -> discord.Embed:
     embed = discord.Embed(
-        title="<:buildercap:1541377896189534238> Настройки бота",
-        description="Выберите категорию в выпадающем меню ниже для перехода к настройкам.",
+        title="<:buildercap:1541377896189534238> Настройки бота (Режим просмотра)",
+        description="Выберите категорию в выпадающем меню ниже для просмотра текущих настроек.",
         color=config.EMBED_COLOR
     )
-    embed.add_field(name="<:buildercap:1541377896189534238> Сервер", value="Настройка цвета, футера, каналов итогов и прав доступа.", inline=False)
-    embed.add_field(name="<:ticket:1522343287816716379> Тикеты", value="Настройка тикетов и каналов логирования.", inline=False)
+    embed.add_field(name="<:buildercap:1541377896189534238> Сервер", value="Просмотр цвета, футера и каналов.", inline=False)
+    embed.add_field(name="<:ticket:1522343287816716379> Тикеты", value="Просмотр каналов и статусов логирования.", inline=False)
     embed.set_footer(text=config.FOOTER_TEXT)
     return embed
-
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):

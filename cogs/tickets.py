@@ -5,46 +5,9 @@ from discord.ext import commands
 
 import config
 from database import tickets_col, deleted_tickets_col, get_next_sequence_value
-from utils import check_access_decorator, make_error_embed, make_status_embed, log_action
+from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, build_command_help_embed
 
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
-
-def build_page_embed(self) -> discord.Embed:
-        embed = discord.Embed(
-            title=f"<:ticket:1522343287816716379> Тикеты — {self.target.name}",
-            color=config.EMBED_COLOR,
-        )
-
-        start_idx = self.current_page * LOGS_PER_PAGE
-        end_idx = start_idx + LOGS_PER_PAGE
-        page_logs = self.logs[start_idx:end_idx]
-
-        description_lines = [
-            f"`{self.target.id}`",
-            "--------------------------------------------------\n",
-        ]
-
-        for index, doc in enumerate(page_logs, start=start_idx + 1):
-            created_dt = doc.get("created_at")
-            if isinstance(created_dt, datetime):
-                timestamp = int(created_dt.timestamp())
-                time_str = f"<t:{timestamp}:f>"
-            else:
-                time_str = "—"
-
-            description_lines.append(
-                f"**Тикет No{index}**\n"
-                f"**Модератор:** {self.target.name} ({self.target.mention})\n"
-                f"**Категория:** {doc.get('category', 'Не указана')}\n"
-                f"**Транскрипт:** [Ссылка]({doc.get('transcript_url', '#')})\n"
-                f"{time_str}\n"
-            )
-
-        embed.description = "\n".join(description_lines)
-        embed.set_footer(
-            text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.logs)} логов) • {config.FOOTER_TEXT}"
-        )
-        return embed
 
 
 class TicketLogsView(discord.ui.View):
@@ -99,7 +62,7 @@ class TicketLogsView(discord.ui.View):
         )
         return embed
 
-    @discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary)
     async def prev_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -110,7 +73,7 @@ class TicketLogsView(discord.ui.View):
                 embed=self.build_page_embed(), view=self
             )
 
-    @discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(emoji="<:darkright:1543990036129783948>", style=discord.ButtonStyle.secondary)
     async def next_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -137,14 +100,40 @@ class TicketsCog(commands.Cog):
         *,
         category: str = None,
     ):
-        if not staff or not transcript_url or not category:
+        # 1. Если не передан хотя бы один аргумент -> показываем меню помощи
+        if staff is None or transcript_url is None or category is None:
             return await ctx.send(embed=build_command_help_embed("addticket"))
 
+        # 2. Проверка: Нельзя указать свой собственный ID
+        if staff.id == ctx.author.id:
+            embed = make_error_embed(
+                "Ошибка аргумента",
+                "Вы **не можете** указать свой собственный ID в качестве модератора!"
+            )
+            return await ctx.send(embed=embed)
+
+        # 3. Проверка: Ссылка должна содержать https://discord.com/
+        if not transcript_url.startswith("https://discord.com/"):
+            embed = make_error_embed(
+                "Неверная ссылка",
+                "Ссылка на транскрипт должна начинаться с `https://discord.com/`!"
+            )
+            return await ctx.send(embed=embed)
+
+        # 4. Проверка: Один и тот же транскрипт нельзя вносить дважды
+        if tickets_col.find_one({"transcript_url": transcript_url}):
+            embed = make_error_embed(
+                "Дубликат транскрипта",
+                "Этот транскрипт уже был внесен в базу данных ранее!"
+            )
+            return await ctx.send(embed=embed)
+
+        # 5. Проверка категории
         if category not in config.VALID_CATEGORIES:
             cats = ", ".join(f"`{c}`" for c in config.VALID_CATEGORIES)
             embed = make_error_embed(
                 "Неверная категория",
-                f"Указана недопустимая категория!\nРазрешенные: {cats}",
+                f"Указана недопустимая категория!\nРазрешенные категории: {cats}",
             )
             return await ctx.send(embed=embed)
 
@@ -205,10 +194,17 @@ class TicketsCog(commands.Cog):
         log_id: int = None,
         transcript_url: str = None,
     ):
+        # 1. Если не передан хотя бы один аргумент -> показываем меню помощи
         if log_id is None or transcript_url is None:
-            return await ctx.send(
-                embed=build_command_help_embed("deleteticket")
+            return await ctx.send(embed=build_command_help_embed("deleteticket"))
+
+        # 2. Проверка ссылки
+        if not transcript_url.startswith("https://discord.com/"):
+            embed = make_error_embed(
+                "Неверная ссылка",
+                "Ссылка на транскрипт должна начинаться с `https://discord.com/`!"
             )
+            return await ctx.send(embed=embed)
 
         now = datetime.now(timezone.utc)
         deleted_id = get_next_sequence_value("deleted_ticket_id")
@@ -249,7 +245,6 @@ class TicketsCog(commands.Cog):
         view = TicketLogsView(target=target, logs=logs)
         embed = view.build_page_embed()
 
-        # If logs count is less than or equal to LOGS_PER_PAGE, don't show buttons
         if len(logs) <= LOGS_PER_PAGE:
             await ctx.send(embed=embed)
         else:
