@@ -9,8 +9,8 @@ from utils import check_access_decorator, make_error_embed, make_status_embed, i
 class ConfigSelect(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Сервер", description="Перегляд налаштувань сервера", emoji="<:buildercap:1541377896189534238>", value="server"),
-            discord.SelectOption(label="Тикеты", description="Перегляд налаштувань тикетів", emoji="<:ticket:1522343287816716379>", value="tickets"),
+            discord.SelectOption(label="Сервер", description="Просмотр настроек сервера", emoji="<:buildercap:1541377896189534238>", value="server"),
+            discord.SelectOption(label="Тикеты", description="Просмотр настроек тикетов", emoji="<:ticket:1522343287816716379>", value="tickets"),
         ]
         super().__init__(placeholder="Выберите категорию для просмотра...", min_values=1, max_values=1, options=options)
 
@@ -60,7 +60,7 @@ class ConfigCategoryView(discord.ui.View):
         elif category == "tickets":
             log_chan = config.CONFIG.get('log_channel_id')
             toggles = config.CONFIG.get("log_toggles", {})
-            toggles_fmt = "\n".join([f"`{cmd}`: {'<:verify:1522329028420173976>' if val else '<:imcrine:1543711667647418381>'}" for cmd, val in toggles.items()])
+            toggles_fmt = "\n".join([f"`{cmd}`: {'<:verify:1522329028420173976>' if val else '<a:alert:1544047350345891851>'}" for cmd, val in toggles.items()])
             embed.title = "<:ticket:1522343287816716379> Настройки тикетов"
             embed.description = (
                 f"**Канал логов тикетов:** <#{log_chan}>\n\n"

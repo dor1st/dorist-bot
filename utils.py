@@ -41,7 +41,7 @@ def check_access_decorator(command_name: str | None = None):
 
 def make_error_embed(title: str, description: str) -> discord.Embed:
     embed = discord.Embed(
-        title=f"<:imcrine:1543711667647418381> {title}",
+        title=f"<a:alert:1544047350345891851> {title}",
         description=description,
         color=discord.Color.red()
     )
@@ -52,7 +52,7 @@ def make_error_embed(title: str, description: str) -> discord.Embed:
 def make_status_embed(title: str, message: str, kind: str = "info") -> discord.Embed:
     embed = discord.Embed(
         title=title,
-        description=f"<:imcrine:1543711667647418381> {message}",
+        description=f"<a:alert:1544047350345891851> {message}",
         color=config.EMBED_COLOR,
     )
     embed.set_footer(text=config.FOOTER_TEXT)

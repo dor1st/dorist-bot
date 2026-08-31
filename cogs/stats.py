@@ -43,7 +43,7 @@ class StatsCog(commands.Cog):
             upsert=True,
         )
 
-    @commands.command(name="sum", aliases=["summaries"])
+    @commands.command(name="sumarries", aliases=["sum"])
     @check_access_decorator("sum")
     async def summaries_cmd(self, ctx: commands.Context):
         now = datetime.now(timezone.utc)
@@ -70,18 +70,18 @@ class StatsCog(commands.Cog):
                 return "— *Нет данных*"
             return "\n".join(f"`{i}.` <@{uid}> — **{count}**" for i, (uid, count) in enumerate(rows, 1))
 
-        embed = discord.Embed(title=f"<:info:1522329987514892398> Итоги", color=config.EMBED_COLOR)
+        embed = discord.Embed(title=f"<:info:1522329987514892398> Подсчет", color=config.EMBED_COLOR)
 
         embed.add_field(name="🧮 Сообщения — 7 дней", value=fmt(top_stats(message_stats_col, d7, config.CONFIG.get("counting_channel_id"))), inline=True)
-        embed.add_field(name="🚀 Bump — 7 дней", value=fmt(top_stats(bump_stats_col, d7, config.CONFIG.get("bump_channel_id"))), inline=True)
+        embed.add_field(name="<:bump:1522334649580392518> Bump — 7 дней", value=fmt(top_stats(bump_stats_col, d7, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         embed.add_field(name="🧮 Сообщения — 30 дней", value=fmt(top_stats(message_stats_col, d30, config.CONFIG.get("counting_channel_id"))), inline=True)
-        embed.add_field(name="🚀 Bump — 30 дней", value=fmt(top_stats(bump_stats_col, d30, config.CONFIG.get("bump_channel_id"))), inline=True)
+        embed.add_field(name="<:bump:1522334649580392518> Bump — 30 дней", value=fmt(top_stats(bump_stats_col, d30, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         embed.add_field(name="🧮 Сообщения — Все время", value=fmt(top_stats(message_stats_col, None, config.CONFIG.get("counting_channel_id"))), inline=True)
-        embed.add_field(name="🚀 Bump — Все время", value=fmt(top_stats(bump_stats_col, None, config.CONFIG.get("bump_channel_id"))), inline=True)
+        embed.add_field(name="<:bump:1522334649580392518> Bump — Все время", value=fmt(top_stats(bump_stats_col, None, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         count_channel = config.CONFIG.get("counting_channel_id")

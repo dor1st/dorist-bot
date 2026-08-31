@@ -9,9 +9,8 @@ from utils import check_access_decorator, make_error_embed, make_status_embed, l
 
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
-
 class TicketLogsView(discord.ui.View):
-    """Pagination View with navigation arrows matching Image 2."""
+    """Pagination View with navigation arrows."""
 
     def __init__(self, target: discord.User, logs: list, timeout: int = 180):
         super().__init__(timeout=timeout)
@@ -100,11 +99,9 @@ class TicketsCog(commands.Cog):
         *,
         category: str = None,
     ):
-        # 1. Проверка на недостающие аргументы
         if staff is None or transcript_url is None or category is None:
             return await ctx.send(embed=build_command_help_embed("addticket"))
 
-        # 2. Ошибка: Вы не можете указать свой собственный ID (или упомянуть себя)
         if staff.id == ctx.author.id:
             embed = make_error_embed(
                 "Ошибка аргумента",
@@ -112,7 +109,6 @@ class TicketsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
-        # 3. Проверка ссылки (должна начинаться с https://discord.com/)
         if not transcript_url.startswith("https://discord.com/"):
             embed = make_error_embed(
                 "Неверная ссылка",
@@ -120,7 +116,6 @@ class TicketsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
-        # 4. Проверка на дубликат транскрипта
         if tickets_col.find_one({"transcript_url": transcript_url}):
             embed = make_error_embed(
                 "Дубликат транскрипта",
@@ -128,7 +123,6 @@ class TicketsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
-        # 5. Проверка категории
         if category not in config.VALID_CATEGORIES:
             cats = ", ".join(f"`{c}`" for c in config.VALID_CATEGORIES)
             embed = make_error_embed(
@@ -197,7 +191,6 @@ class TicketsCog(commands.Cog):
         if log_id is None or transcript_url is None:
             return await ctx.send(embed=build_command_help_embed("deleteticket"))
 
-        # 2. Проверка ссылки
         if not transcript_url.startswith("https://discord.com/"):
             embed = make_error_embed(
                 "Неверная ссылка",
@@ -255,9 +248,35 @@ class TicketsCog(commands.Cog):
         self, ctx: commands.Context, target: discord.User = None
     ):
         target = target or ctx.author
-        t_count = tickets_col.count_documents({"staff_id": target.id})
-        tr_count = tickets_col.count_documents({"author_id": target.id})
-        del_count = deleted_tickets_col.count_documents({"staff_id": target.id})
+        now = datetime.now(timezone.utc)
+        days_7 = now - timedelta(days=7)
+        days_30 = now - timedelta(days=30)
+
+        # 1. Обработано тикетов (staff_id)
+        t_7d = tickets_col.count_documents(
+            {"staff_id": target.id, "created_at": {"$gte": days_7}}
+        )
+        t_30d = tickets_col.count_documents(
+            {"staff_id": target.id, "created_at": {"$gte": days_30}}
+        )
+        t_all = tickets_col.count_documents({"staff_id": target.id})
+
+        tr_7d = tickets_col.count_documents(
+            {"author_id": target.id, "created_at": {"$gte": days_7}}
+        )
+        tr_30d = tickets_col.count_documents(
+            {"author_id": target.id, "created_at": {"$gte": days_30}}
+        )
+        tr_all = tickets_col.count_documents({"author_id": target.id})
+
+        # 3. Удалено тикетов (staff_id в deleted_tickets_col)
+        del_7d = deleted_tickets_col.count_documents(
+            {"staff_id": target.id, "created_at": {"$gte": days_7}}
+        )
+        del_30d = deleted_tickets_col.count_documents(
+            {"staff_id": target.id, "created_at": {"$gte": days_30}}
+        )
+        del_all = deleted_tickets_col.count_documents({"staff_id": target.id})
 
         embed = discord.Embed(
             title=f"<:sparkles:1522342290494849034> Статистика — {target.name}",
@@ -265,17 +284,17 @@ class TicketsCog(commands.Cog):
         )
         embed.add_field(
             name="<:ticket:1522343287816716379> Обработано тикетов",
-            value=str(t_count),
+            value=f"**7 дн.:** {t_7d}\n**30 дн.:** {t_30d}\n**Всё время:** {t_all}",
             inline=True,
         )
         embed.add_field(
             name="<:logs:1522340749998428160> Занесено транскриптов",
-            value=str(tr_count),
+            value=f"**7 дн.:** {tr_7d}\n**30 дн.:** {tr_30d}\n**Всё время:** {tr_all}",
             inline=True,
         )
         embed.add_field(
             name="<:lighting:1522337543360872489> Удалено тикетов",
-            value=str(del_count),
+            value=f"**7 дн.:** {del_7d}\n**30 дн.:** {del_30d}\n**Всё время:** {del_all}",
             inline=True,
         )
         embed.set_footer(text=config.FOOTER_TEXT)
