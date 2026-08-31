@@ -1,0 +1,117 @@
+import discord
+from database import settings_col
+
+OWNER_ID = 851443344718430210
+ALLOWED_CHANNEL_IDS = [1322968592202993746, 1537220150267220018]
+VALID_CATEGORIES = ["Помощь по серверу", "Получение призов", "Получение роли", "Покупка рекламы"]
+
+LOGS_PER_PAGE = 3
+
+EMOJI_DEFAULTS = {
+    "success": "<a:gif_verify:1522328481956888686>",
+    "warning": "<:zzz:1522341702852022412>",
+    "error": "<:bruh:1521904409582375174>",
+    "permission": "<:imcrine:1543711667647418381>",
+    "info": "ℹ️",
+    "delete": "🗑️",
+}
+
+LOGGABLE_COMMANDS_DEFAULT = {
+    "addticket": True,
+    "deleteticket": True,
+    "deletelog": True,
+    "resetlogs": True,
+    "ticketlogs": False,
+    "ticketstats": False,
+    "leaderboard": False,
+    "sum": False,
+    "help": False,
+    "config": True,
+}
+
+PERMISSION_GROUPS_DEFAULT = {
+    "support": {
+        "name": "Поддержка",
+        "emoji": "🛟",
+        "roles": [1501507449860001853, 1322962344040464424],
+        "commands": ["help", "ticketstats", "leaderboard", "sum"],
+    },
+    "transcript": {
+        "name": "Транскрипты",
+        "emoji": "🧾",
+        "roles": [1542601770461569044, 1323348388762226759],
+        "commands": ["addticket", "deleteticket", "ticketlogs"],
+    },
+    "admin": {
+        "name": "Администрация",
+        "emoji": "🛡️",
+        "roles": [1322962317885046844, 1502684875868737796],
+        "commands": ["deletelog", "resetlogs"],
+    },
+}
+
+COMMAND_USAGE_HELP = {
+    "addticket": "`.addticket [ID_модератора] [ссылка] [категория]` — Внести новый обработанный тикет в базу.",
+    "deleteticket": "`.deleteticket [ID_лога] [ссылка_на_транскрипт]` — Записать удаление тикета.",
+    "ticketlogs": "`.ticketlogs [ID / упоминание]` — Просмотреть логи тикетов пользователя.",
+    "ticketstats": "`.ticketstats [ID / упоминание]` — Просмотреть статистику тикетов пользователя.",
+    "deletelog": "`.deletelog [ID_лога]` — Удалить конкретный лог тикета.",
+    "resetlogs": "`.resetlogs [ID / упоминание]` — Очистить все логи модератора.",
+}
+
+CONFIG = {}
+EMBED_COLOR = discord.Color(0x212121)
+FOOTER_TEXT = "ТУСОВКА ДОРИСТА"
+
+
+def apply_config_globals():
+    global EMBED_COLOR, FOOTER_TEXT
+    EMBED_COLOR = discord.Color(CONFIG["embed_color"])
+    FOOTER_TEXT = CONFIG["footer_text"]
+
+
+def load_config():
+    global CONFIG
+    defaults = {
+        "_id": "config",
+        "embed_color": 0x212121,
+        "footer_text": "ТУСОВКА ДОРИСТА",
+        "log_channel_id": 1543903998677876836,
+        "log_toggles": dict(LOGGABLE_COMMANDS_DEFAULT),
+        "counting_channel_id": None,
+        "bump_channel_id": None,
+        "permission_groups": {k: dict(v) for k, v in PERMISSION_GROUPS_DEFAULT.items()},
+        "emojis": dict(EMOJI_DEFAULTS),
+    }
+
+    doc = settings_col.find_one({"_id": "config"})
+    if doc is None:
+        settings_col.insert_one(defaults)
+        doc = defaults
+    else:
+        updated = False
+        for key, value in defaults.items():
+            if key not in doc:
+                doc[key] = value
+                updated = True
+            if updated:
+                settings_col.update_one({"_id": "config"}, {"$set": doc}, upsert=True)
+
+    CONFIG = doc
+    apply_config_globals()
+
+
+def update_config(patch: dict):
+    global CONFIG
+    settings_col.update_one({"_id": "config"}, {"$set": patch}, upsert=True)
+    for key, value in patch.items():
+        CONFIG[key] = value
+    apply_config_globals()
+
+
+def get_emoji(name: str) -> str:
+    return CONFIG.get("emojis", {}).get(name, EMOJI_DEFAULTS.get(name, ""))
+
+
+# Загружаем настройки при импорте модуля
+load_config()
