@@ -27,21 +27,21 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
 
         embed.add_field(
             name="<:ticket:1522343287816716379> Группа Поддержка",
-            value="`.ticketstats [ID / упоминание]`\n| *Посмотреть статистику тикетов, транскриптов и удалений.*\n\n"
-                  "`.leaderboard`\n| *Посмотреть топ модераторов по тикетам, транскриптам и удалениям.*",
+            value="`.ticketstats [ID / упоминание]`\n> *Посмотреть статистику тикетов, транскриптов и удалений.*\n\n"
+                  "`.leaderboard`\n> *Посмотреть топ модераторов по тикетам, транскриптам и удалениям.*",
             inline=False
         )
         embed.add_field(
             name="<:logs:1522340749998428160> Группа Транскрипт",
-            value="`.addticket [ID модератора] [ссылка] [категория]`\n| *Записать новый обработанный тикет в базу данных.*\n\n"
-                  "`.ticketlogs [ID / упоминание]`\n| *Посмотреть логи тикетов модератора (с кнопками листания).*\n\n"
-                  "`.deleteticket [номер лога] [ссылка на транскрипт]`\n| *Записать удаление тикета (канала) и добавить +1 удалённый тикет модератору.*",
+            value="`.addticket [ID модератора] [ссылка] [категория]`\n> *Записать новый обработанный тикет в базу данных.*\n\n"
+                  "`.ticketlogs [ID / упоминание]`\n> *Посмотреть логи тикетов модератора (с кнопками листания).*\n\n"
+                  "`.deleteticket [номер лога] [ссылка на транскрипт]`\n> *Записать удаление тикета (канала) и добавить +1 удалённый тикет модератору.*",
             inline=False
         )
         embed.add_field(
             name="<:mod:1522343179205087363> Группа Администрация",
-            value="`.deletelog [ID лога]`\n| *Удалить конкретный лог тикета по ID.*\n\n"
-                  "`.resetlogs [ID / упоминание]`\n| *Очистить абсолютно все логи модератора (тикеты, транскрипты, удаления).*",
+            value="`.deletelog [ID лога]`\n> *Удалить конкретный лог тикета по ID.*\n\n"
+                  "`.resetlogs [ID / упоминание]`\n> *Очистить абсолютно все логи модератора (тикеты, транскрипты, удаления).*",
             inline=False
         )
 
@@ -72,7 +72,7 @@ class HelpView(discord.ui.View):
 
     def show_back_button(self):
         self.clear_items()
-        back_btn = discord.ui.Button(label="Назад", emoji="◀️", style=discord.ButtonStyle.secondary, custom_id="help_back")
+        back_btn = discord.ui.Button(label="Назад", emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary, custom_id="help_back")
         back_btn.callback = self.back_callback
         self.add_item(back_btn)
 
