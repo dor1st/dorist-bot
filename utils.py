@@ -12,6 +12,7 @@ def check_access(user: discord.Member | discord.User, channel_id: int, command_n
         return False, "Команды работают только на сервере."
     if is_owner_user(user) or user.guild_permissions.administrator:
         return True, ""
+    print(f"config.ALLOWED_CHANNEL_IDS: {config.ALLOWED_CHANNEL_IDS}")
     if config.ALLOWED_CHANNEL_IDS and channel_id not in config.ALLOWED_CHANNEL_IDS:
         channels_mention = ", ".join(f"<#{cid}>" for cid in config.ALLOWED_CHANNEL_IDS)
         return False, f"Эта команда доступна только в каналах: {channels_mention}"
