@@ -1,7 +1,6 @@
 from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands
-from pymongo.errors import DuplicateKeyError
 
 import config
 from database import tickets_col, deleted_tickets_col, get_next_sequence_value
@@ -24,11 +23,6 @@ class TicketsCog(commands.Cog):
             embed = make_error_embed("Неверная категория", f"Указана недопустимая категория!\nРазрешенные: {cats}")
             return await ctx.send(embed=embed)
 
-        # Перевірка чи вже існує транскрипт в базі перед вставкою
-        if tickets_col.find_one({"transcript_url": transcript_url}):
-            embed = make_error_embed("Ошибка", "Транскрипт с такой ссылкой уже существует в базе данных!")
-            return await ctx.send(embed=embed)
-
         log_id = get_next_sequence_value("ticket_id")
         now = datetime.now(timezone.utc)
 
@@ -40,12 +34,7 @@ class TicketsCog(commands.Cog):
             "category": category,
             "created_at": now
         }
-
-        try:
-            tickets_col.insert_one(ticket_doc)
-        except DuplicateKeyError:
-            embed = make_error_embed("Ошибка", "Транскрипт с такой ссылкой уже занесён в базу!")
-            return await ctx.send(embed=embed)
+        tickets_col.insert_one(ticket_doc)
 
         month_ago = now - timedelta(days=30)
         month_count = tickets_col.count_documents({"staff_id": staff.id, "created_at": {"$gte": month_ago}})
