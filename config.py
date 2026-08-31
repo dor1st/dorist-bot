@@ -2,7 +2,7 @@ import discord
 from database import settings_col
 
 OWNER_ID = 851443344718430210
-ALLOWED_CHANNEL_IDS = [1322968592202993746, 1537220150267220018]
+ALLOWED_CHANNEL_IDS = [1466886479396737024]
 VALID_CATEGORIES = ["Помощь по серверу", "Получение призов", "Получение роли", "Покупка рекламы"]
 
 LOGS_PER_PAGE = 3
