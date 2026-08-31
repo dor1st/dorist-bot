@@ -30,7 +30,7 @@ class StatsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         print(f"[ANY MSG] channel={message.channel.id} author={message.author.id} ({message.author.name})")
-        
+
         counting_channel_id = config.CONFIG.get("counting_channel_id")
         if counting_channel_id and message.channel.id == counting_channel_id and not message.author.bot:
             message_stats_col.update_one(
@@ -40,6 +40,16 @@ class StatsCog(commands.Cog):
             )
 
         bump_channel_id = config.CONFIG.get("bump_channel_id")
+        if bump_channel_id and message.channel.id == bump_channel_id:
+            print("=== DEBUG BUMP MESSAGE ===")
+            print("author:", message.author.id, message.author.name)
+            print("interaction_metadata:", getattr(message, "interaction_metadata", None))
+            print("interaction:", getattr(message, "interaction", None))
+            for embed in message.embeds:
+                print("embed title:", embed.title)
+                print("embed description:", embed.description)
+            print("===========================")
+
         if bump_channel_id and message.channel.id == bump_channel_id:
             if message.author.id != config.DISBOARD_BOT_ID:
                 return
