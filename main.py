@@ -39,7 +39,7 @@ async def on_ready():
     embed = discord.Embed(
         title="<a:hacker:1543711533773885551> Бот запущен",
         description=(
-            "Бот успешно перезапущен и готов к работе.\n"
+            "<:verify:1522329028420173976> Бот успешно перезапущен и готов к работе.\n"
             f"**Время запуска:** <t:{launch_timestamp}:f> (<t:{launch_timestamp}:R>)"
         ),
         color=config.EMBED_COLOR,

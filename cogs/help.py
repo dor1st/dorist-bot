@@ -12,8 +12,8 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
         embed.description = "Выберите категорию ниже, чтобы просмотреть доступные команды."
         embed.add_field(
             name="<:sparkles:1522342290494849034> Общие команды",
-            value="`.help` — *Показать меню команд.*\n\n"
-            "`.config` — *Открыть меню настроек бота (цвет, footer, доступ).*\n\n",
+            value="`.help` — *Показать меню команд.*\n"
+            "`.config` — *Открыть меню настроек бота (цвет, footer, доступ).*\n",
             inline=False
         )
         embed.add_field(
