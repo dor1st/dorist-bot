@@ -99,10 +99,5 @@ def update_config(patch: dict):
         CONFIG[key] = value
     apply_config_globals()
 
-
-def get_emoji(name: str) -> str:
-    return CONFIG.get("emojis", {}).get(name, EMOJI_DEFAULTS.get(name, ""))
-
-
 # Загружаем настройки при импорте модуля
 load_config()

@@ -50,10 +50,10 @@ def make_error_embed(title: str, description: str) -> discord.Embed:
 
 
 def make_status_embed(title: str, message: str, kind: str = "info") -> discord.Embed:
-    emoji = config.get_emoji(kind)
+
     embed = discord.Embed(
         title=title,
-        description=f"{emoji} {message}" if emoji else message,
+        description=f"<:imcrine:1543711667647418381> {message}",
         color=config.EMBED_COLOR,
     )
     embed.set_footer(text=config.FOOTER_TEXT)

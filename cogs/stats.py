@@ -70,17 +70,17 @@ class StatsCog(commands.Cog):
                 return "— *Нет данных*"
             return "\n".join(f"`{i}.` <@{uid}> — **{count}**" for i, (uid, count) in enumerate(rows, 1))
 
-        embed = discord.Embed(title=f"{config.get_emoji('info')} Итоги", color=config.EMBED_COLOR)
+        embed = discord.Embed(title=f"<:info:1522329987514892398> Итоги", color=config.EMBED_COLOR)
 
-        embed.add_field(name="💬 Сообщения — 7 дней", value=fmt(top_stats(message_stats_col, d7, config.CONFIG.get("counting_channel_id"))), inline=True)
+        embed.add_field(name="🧮 Сообщения — 7 дней", value=fmt(top_stats(message_stats_col, d7, config.CONFIG.get("counting_channel_id"))), inline=True)
         embed.add_field(name="🚀 Bump — 7 дней", value=fmt(top_stats(bump_stats_col, d7, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
-        embed.add_field(name="💬 Сообщения — 30 дней", value=fmt(top_stats(message_stats_col, d30, config.CONFIG.get("counting_channel_id"))), inline=True)
+        embed.add_field(name="🧮 Сообщения — 30 дней", value=fmt(top_stats(message_stats_col, d30, config.CONFIG.get("counting_channel_id"))), inline=True)
         embed.add_field(name="🚀 Bump — 30 дней", value=fmt(top_stats(bump_stats_col, d30, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
-        embed.add_field(name="💬 Сообщения — Все время", value=fmt(top_stats(message_stats_col, None, config.CONFIG.get("counting_channel_id"))), inline=True)
+        embed.add_field(name="🧮 Сообщения — Все время", value=fmt(top_stats(message_stats_col, None, config.CONFIG.get("counting_channel_id"))), inline=True)
         embed.add_field(name="🚀 Bump — Все время", value=fmt(top_stats(bump_stats_col, None, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
@@ -137,9 +137,9 @@ class StatsCog(commands.Cog):
         embed.add_field(name="<:logs:1522340749998428160> Транскриптов (30 дн.)", value=format_top_with_dashes(get_top(tickets_col, "author_id", d30, True), "транскриптов"), inline=True)
         embed.add_field(name="<:logs:1522340749998428160> Транскриптов (Все время)", value=format_top_with_dashes(get_top(tickets_col, "author_id", exclude_zero=True), "транскриптов"), inline=True)
 
-        embed.add_field(name="🗑️ Удалено тикетов (7 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d7), "удалений"), inline=True)
-        embed.add_field(name="🗑️ Удалено тикетов (30 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d30), "удалений"), inline=True)
-        embed.add_field(name="🗑️ Удалено тикетов (Все время)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id"), "удалений"), inline=True)
+        embed.add_field(name="<:staff:1522338131339251823> Удалено тикетов (7 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d7), "удалений"), inline=True)
+        embed.add_field(name="<:staff:1522338131339251823> Удалено тикетов (30 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d30), "удалений"), inline=True)
+        embed.add_field(name="<:staff:1522338131339251823> Удалено тикетов (Все время)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id"), "удалений"), inline=True)
 
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
         await ctx.send(embed=embed)

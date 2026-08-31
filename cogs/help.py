@@ -6,7 +6,7 @@ from utils import make_error_embed, is_owner_user
 
 
 def build_help_embed(category: str = "main", user: discord.Member | discord.User = None) -> discord.Embed:
-    embed = discord.Embed(title="⚙ Меню команд бота", color=config.EMBED_COLOR)
+    embed = discord.Embed(title="<:buildercap:1541377896189534238> Меню команд бота", color=config.EMBED_COLOR)
 
     if category == "main":
         embed.description = "Выберите категорию ниже, чтобы просмотреть доступные команды."
