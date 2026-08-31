@@ -40,6 +40,9 @@ class StatsCog(commands.Cog):
 
         bump_channel_id = config.CONFIG.get("bump_channel_id")
         if bump_channel_id and message.channel.id == bump_channel_id:
+            if message.author.id != config.DISBOARD_BOT_ID:
+                return
+
             interaction_info = getattr(message, "interaction_metadata", None) or getattr(message, "interaction", None)
             if interaction_info:
                 command_name = getattr(interaction_info, "name", "") or ""
