@@ -6,6 +6,7 @@ from database import tickets_col, deleted_tickets_col
 from utils import check_access_decorator, make_error_embed, make_status_embed, is_owner_user, log_action
 
 
+# --- MODALS & SELECTS FOR CONFIGURATION ---
 
 class EditConfigModal(discord.ui.Modal):
     def __init__(self, key: str, title: str, current_val: str, category_view: "ConfigCategoryView"):
@@ -21,19 +22,21 @@ class EditConfigModal(discord.ui.Modal):
         self.add_item(self.val_input)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # Быстрый ответ, чтобы Discord не выдал таймаут при сохранении
+        await interaction.response.defer(ephemeral=True)
+
         new_val = self.val_input.value
         if self.key == "embed_color":
             try:
-                # Преобразование цвета (hex или int)
                 new_val = int(new_val.replace("#", ""), 16) if "#" in new_val else int(new_val)
             except ValueError:
-                return await interaction.response.send_message("Неверный формат цвета! Укажите число или HEX (например, #2171169).", ephemeral=True)
+                return await interaction.followup.send("Неверный формат цвета! Укажите число или HEX (например, #2171169).", ephemeral=True)
         
         config.CONFIG[self.key] = new_val
-        # Функция сохранения в БД/файл при необходимости:
         # config.save_config()
 
         await self.category_view.update_category_message(interaction, "server")
+        await interaction.followup.send("Значение успешно обновлено!", ephemeral=True)
 
 
 class ServerParamSelect(discord.ui.Select):
@@ -51,9 +54,11 @@ class ServerParamSelect(discord.ui.Select):
         selected_key = self.values[0]
 
         if selected_key in ["counting_channel_id", "bump_channel_id"]:
+            # Для отправки ChannelPicker используем мгновенный ответ
             view = ChannelPickerView(self.category_view, selected_key)
             await interaction.response.send_message(f"Выберите новый текстовый канал для **{selected_key}**:", view=view, ephemeral=True)
         else:
+            # Для модального окна вызываем send_modal СРАЗУ без defer
             modal_title = "Изменение цвета" if selected_key == "embed_color" else "Изменение текста футера"
             modal = EditConfigModal(selected_key, modal_title, config.CONFIG.get(selected_key), self.category_view)
             await interaction.response.send_modal(modal)
@@ -84,6 +89,9 @@ class TicketParamSelect(discord.ui.Select):
             view = ChannelPickerView(self.category_view, selected_key)
             await interaction.response.send_message("Выберите новый канал для логов тикетов:", view=view, ephemeral=True)
         elif selected_key.startswith("toggle_"):
+            # Оповещаем Discord мгновенно
+            await interaction.response.defer()
+
             cmd = selected_key.replace("toggle_", "")
             toggles = config.CONFIG.setdefault("log_toggles", {})
             toggles[cmd] = not toggles.get(cmd, False)
@@ -94,7 +102,7 @@ class TicketParamSelect(discord.ui.Select):
 
 class ChannelPickerView(discord.ui.View):
     def __init__(self, category_view: "ConfigCategoryView", config_key: str):
-        super().__init__(timeout=60)
+        super().__init__(timeout=180)
         self.category_view = category_view
         self.config_key = config_key
 
@@ -106,12 +114,17 @@ class ChannelPickerView(discord.ui.View):
         self.add_item(select)
 
     async def channel_select_callback(self, interaction: discord.Interaction):
-        channel = interaction.data["values"][0]
-        config.CONFIG[self.config_key] = int(channel)
+        await interaction.response.defer(ephemeral=True)
+
+        channel_id = int(interaction.data["values"][0])
+        config.CONFIG[self.config_key] = channel_id
         # config.save_config()
 
-        await interaction.response.send_message("Канал успешно обновлен!", ephemeral=True)
-        await self.category_view.update_category_message(interaction, "server" if "channel_id" in self.config_key and self.config_key != "log_channel_id" else "tickets", edit_interaction=False)
+        await interaction.followup.send("Канал успешно обновлен!", ephemeral=True)
+        await self.category_view.update_category_message(
+            interaction, 
+            "server" if "channel_id" in self.config_key and self.config_key != "log_channel_id" else "tickets"
+        )
 
 
 # --- MAIN VIEWS ---
@@ -125,6 +138,7 @@ class ConfigSelect(discord.ui.Select):
         super().__init__(placeholder="Выберите категорию настроек...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         category = self.values[0]
         category_view = ConfigCategoryView(interaction.user.id, self.view)
         await category_view.update_category_message(interaction, category)
@@ -132,7 +146,8 @@ class ConfigSelect(discord.ui.Select):
 
 class ConfigMainView(discord.ui.View):
     def __init__(self, author_id: int):
-        super().__init__(timeout=120)
+        # timeout=None снимает ограничение по времени (меню не будет отключено со временем)
+        super().__init__(timeout=None)
         self.author_id = author_id
         self.add_item(ConfigSelect())
 
@@ -146,7 +161,7 @@ class ConfigMainView(discord.ui.View):
 
 class ConfigCategoryView(discord.ui.View):
     def __init__(self, author_id: int, parent_view: ConfigMainView):
-        super().__init__(timeout=120)
+        super().__init__(timeout=None)
         self.author_id = author_id
         self.parent_view = parent_view
 
@@ -180,33 +195,30 @@ class ConfigCategoryView(discord.ui.View):
         embed.set_footer(text=config.FOOTER_TEXT)
         return embed
 
-    async def update_category_message(self, interaction: discord.Interaction, category: str, edit_interaction: bool = True):
+    async def update_category_message(self, interaction: discord.Interaction, category: str):
         self.clear_items()
         
-        # Добавляем выпадающий список параметров в зависимости от категории
         if category == "server":
             self.add_item(ServerParamSelect(self))
         elif category == "tickets":
             self.add_item(TicketParamSelect(self))
             
-        # Возвращаем кнопку "Назад"
         back_btn = discord.ui.Button(label="Назад", emoji="◀️", style=discord.ButtonStyle.secondary)
         back_btn.callback = self.back_button_callback
         self.add_item(back_btn)
 
         embed = self.build_embed(category)
 
-        if edit_interaction:
-            if interaction.response.is_done():
-                await interaction.message.edit(embed=embed, view=self)
-            else:
-                await interaction.response.edit_message(embed=embed, view=self)
+        # Безопасное обновление сообщения независимое от того, был вызван defer() или нет
+        if interaction.response.is_done():
+            await interaction.edit_original_response(embed=embed, view=self)
         else:
-            await interaction.message.edit(embed=embed, view=self)
+            await interaction.response.edit_message(embed=embed, view=self)
 
     async def back_button_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         embed = build_config_embed()
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        await interaction.edit_original_response(embed=embed, view=self.parent_view)
 
 
 def build_config_embed() -> discord.Embed:
