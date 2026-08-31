@@ -37,7 +37,7 @@ async def on_ready():
     launch_timestamp = int(datetime.now(timezone.utc).timestamp())
 
     embed = discord.Embed(
-        title="<:hacker:1543711533773885551> Бот запущен",
+        title="<a:hacker:1543711533773885551> Бот запущен",
         description=(
             "Бот успешно перезапущен и готов к работе.\n"
             f"**Время запуска:** <t:{launch_timestamp}:f> (<t:{launch_timestamp}:R>)"
