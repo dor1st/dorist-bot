@@ -6,7 +6,6 @@ from database import tickets_col, deleted_tickets_col
 from utils import check_access_decorator, make_error_embed, make_status_embed, is_owner_user, log_action
 
 
-
 class EditConfigModal(discord.ui.Modal):
     def __init__(self, key: str, title: str, current_val: str, category_view: "ConfigCategoryView"):
         super().__init__(title=title)
@@ -24,14 +23,11 @@ class EditConfigModal(discord.ui.Modal):
         new_val = self.val_input.value
         if self.key == "embed_color":
             try:
-                # Преобразование цвета (hex или int)
                 new_val = int(new_val.replace("#", ""), 16) if "#" in new_val else int(new_val)
             except ValueError:
                 return await interaction.response.send_message("Неверный формат цвета! Укажите число или HEX (например, #2171169).", ephemeral=True)
         
         config.CONFIG[self.key] = new_val
-        # Функция сохранения в БД/файл при необходимости:
-        # config.save_config()
 
         await self.category_view.update_category_message(interaction, "server")
 
@@ -87,7 +83,6 @@ class TicketParamSelect(discord.ui.Select):
             cmd = selected_key.replace("toggle_", "")
             toggles = config.CONFIG.setdefault("log_toggles", {})
             toggles[cmd] = not toggles.get(cmd, False)
-            # config.save_config()
 
             await self.category_view.update_category_message(interaction, "tickets")
 
@@ -108,7 +103,6 @@ class ChannelPickerView(discord.ui.View):
     async def channel_select_callback(self, interaction: discord.Interaction):
         channel = interaction.data["values"][0]
         config.CONFIG[self.config_key] = int(channel)
-        # config.save_config()
 
         await interaction.response.send_message("Канал успешно обновлен!", ephemeral=True)
         await self.category_view.update_category_message(interaction, "server" if "channel_id" in self.config_key and self.config_key != "log_channel_id" else "tickets", edit_interaction=False)
@@ -183,13 +177,11 @@ class ConfigCategoryView(discord.ui.View):
     async def update_category_message(self, interaction: discord.Interaction, category: str, edit_interaction: bool = True):
         self.clear_items()
         
-        # Добавляем выпадающий список параметров в зависимости от категории
         if category == "server":
             self.add_item(ServerParamSelect(self))
         elif category == "tickets":
             self.add_item(TicketParamSelect(self))
             
-        # Возвращаем кнопку "Назад"
         back_btn = discord.ui.Button(label="Назад", emoji="◀️", style=discord.ButtonStyle.secondary)
         back_btn.callback = self.back_button_callback
         self.add_item(back_btn)
@@ -206,7 +198,8 @@ class ConfigCategoryView(discord.ui.View):
 
     async def back_button_callback(self, interaction: discord.Interaction):
         embed = build_config_embed()
-        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+        new_main_view = ConfigMainView(self.author_id)
+        await interaction.response.edit_message(embed=embed, view=new_main_view)
 
 
 def build_config_embed() -> discord.Embed:
