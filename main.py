@@ -27,9 +27,9 @@ async def setup_hook():
     for ext in INITIAL_EXTENSIONS:
         try:
             await bot.load_extension(ext)
-            print(f"Модуль {ext} успішно завантажено.")
+            print(f"Модуль {ext} успешно загружен.")
         except Exception as e:
-            print(f"Помилка завантаження модуля {ext}: {e}")
+            print(f"Ошибка загрузки модуля {ext}: {e}")
     await bot.tree.sync()
 
 @bot.event
