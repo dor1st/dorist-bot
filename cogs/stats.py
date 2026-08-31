@@ -137,9 +137,9 @@ class StatsCog(commands.Cog):
         embed.add_field(name="<:logs:1522340749998428160> Транскриптов (30 дн.)", value=format_top_with_dashes(get_top(tickets_col, "author_id", d30, True), "транскриптов"), inline=True)
         embed.add_field(name="<:logs:1522340749998428160> Транскриптов (Все время)", value=format_top_with_dashes(get_top(tickets_col, "author_id", exclude_zero=True), "транскриптов"), inline=True)
 
-        embed.add_field(name="<:staff:1522338131339251823> Удалено тикетов (7 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d7), "удалений"), inline=True)
-        embed.add_field(name="<:staff:1522338131339251823> Удалено тикетов (30 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d30), "удалений"), inline=True)
-        embed.add_field(name="<:staff:1522338131339251823> Удалено тикетов (Все время)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id"), "удалений"), inline=True)
+        embed.add_field(name="<:staff:1522338131339251823> Удалено (7 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d7), "удалений"), inline=True)
+        embed.add_field(name="<:staff:1522338131339251823> Удалено (30 дн.)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id", d30), "удалений"), inline=True)
+        embed.add_field(name="<:staff:1522338131339251823> Удалено (Все время)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id"), "удалений"), inline=True)
 
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
         await ctx.send(embed=embed)
