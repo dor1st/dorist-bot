@@ -105,7 +105,7 @@ class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="deletelog", aliases=["del"])
+    @commands.command(name="deletelog")
     @check_access_decorator("deletelog")
     async def deletelog_cmd(self, ctx: commands.Context, log_id: int = None):
         if log_id is None:

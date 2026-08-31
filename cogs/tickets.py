@@ -9,8 +9,9 @@ from utils import check_access_decorator, make_error_embed, make_status_embed, l
 
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
+
 class TicketLogsView(discord.ui.View):
-    """Pagination View with navigation arrows."""
+    """Пагинация для обычных логов тикетов."""
 
     def __init__(self, target: discord.User, logs: list, timeout: int = 180):
         super().__init__(timeout=timeout)
@@ -48,7 +49,7 @@ class TicketLogsView(discord.ui.View):
                 time_str = "—"
 
             description_lines.append(
-                f"**Тикет No{index}**\n"
+                f"**Тикет №{index}**\n"
                 f"**Модератор:** {self.target.name} ({self.target.mention})\n"
                 f"**Категория:** {doc.get('category', 'Не указана')}\n"
                 f"**Транскрипт:** [Ссылка]({doc.get('transcript_url', '#')})\n"
@@ -58,6 +59,82 @@ class TicketLogsView(discord.ui.View):
         embed.description = "\n".join(description_lines)
         embed.set_footer(
             text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.logs)} логов) • {config.FOOTER_TEXT}"
+        )
+        return embed
+
+    @discord.ui.button(emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary)
+    async def prev_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+    @discord.ui.button(emoji="<:darkright:1543990036129783948>", style=discord.ButtonStyle.secondary)
+    async def next_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+
+class DeletedTicketLogsView(discord.ui.View):
+    """Пагинация для логов удаленных тикетов."""
+
+    def __init__(self, target: discord.User, logs: list, timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.target = target
+        self.logs = logs
+        self.current_page = 0
+        self.total_pages = math.ceil(len(logs) / LOGS_PER_PAGE)
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+
+    def build_page_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"<:staff:1522338131339251823> Удаленные тикеты — {self.target.name}",
+            color=config.EMBED_COLOR,
+        )
+
+        start_idx = self.current_page * LOGS_PER_PAGE
+        end_idx = start_idx + LOGS_PER_PAGE
+        page_logs = self.logs[start_idx:end_idx]
+
+        description_lines = [
+            f"`{self.target.id}`",
+            "--------------------------------------------------\n",
+        ]
+
+        for index, doc in enumerate(page_logs, start=start_idx + 1):
+            created_dt = doc.get("created_at")
+            if isinstance(created_dt, datetime):
+                timestamp = int(created_dt.timestamp())
+                time_str = f"<t:{timestamp}:f>"
+            else:
+                time_str = "—"
+
+            original_id = doc.get("original_log_id", "—")
+
+            description_lines.append(
+                f"**Удаление №{index}** (Лог №{original_id})\n"
+                f"**Модератор:** {self.target.name} ({self.target.mention})\n"
+                f"**Транскрипт:** [Ссылка]({doc.get('transcript_url', '#')})\n"
+                f"**Дата удаления:** {time_str}\n"
+            )
+
+        embed.description = "\n".join(description_lines)
+        embed.set_footer(
+            text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.logs)} удалений) • {config.FOOTER_TEXT}"
         )
         return embed
 
@@ -180,7 +257,7 @@ class TicketsCog(commands.Cog):
         await ctx.send(embed=embed)
         await log_action(ctx.guild, "addticket", embed)
 
-    @commands.command(name="deleteticket")
+    @commands.command(name="deleteticket", aliases=["del", "dt"])
     @check_access_decorator("deleteticket")
     async def deleteticket_cmd(
         self,
@@ -242,6 +319,30 @@ class TicketsCog(commands.Cog):
         else:
             await ctx.send(embed=embed, view=view)
 
+    @commands.command(name="deletelogs", aliases=["dl"])
+    @check_access_decorator("deletelogs")
+    async def deletelogs_cmd(
+        self, ctx: commands.Context, target: discord.User = None
+    ):
+        target = target or ctx.author
+        logs = list(deleted_tickets_col.find({"staff_id": target.id}).sort("_id", 1))
+
+        if not logs:
+            embed = make_status_embed(
+                "Удаленные тикеты",
+                f"У модератора {target.mention} нет логов удаленных тикетов.",
+                "info",
+            )
+            return await ctx.send(embed=embed)
+
+        view = DeletedTicketLogsView(target=target, logs=logs)
+        embed = view.build_page_embed()
+
+        if len(logs) <= LOGS_PER_PAGE:
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed, view=view)
+
     @commands.command(name="ticketstats", aliases=["ts"])
     @check_access_decorator("ticketstats")
     async def ticketstats_cmd(
@@ -270,7 +371,6 @@ class TicketsCog(commands.Cog):
         )
         tr_all = tickets_col.count_documents({"author_id": target.id})
 
-        # 3. Удалено тикетов (staff_id в deleted_tickets_col)
         del_7d = deleted_tickets_col.count_documents(
             {"staff_id": target.id, "created_at": {"$gte": days_7}}
         )
@@ -316,7 +416,7 @@ class TicketsCog(commands.Cog):
             value=f"`{tr_all}`",
             inline=True,
         )
-    
+
         embed.add_field(
             name="<:staff:1522338131339251823> Удалено (7 дн.)",
             value=f"`{del_7d}`",
