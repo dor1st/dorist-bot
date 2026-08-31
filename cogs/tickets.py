@@ -100,19 +100,19 @@ class TicketsCog(commands.Cog):
         *,
         category: str = None,
     ):
-        # 1. Если не передан хотя бы один аргумент -> показываем меню помощи
+        # 1. Проверка на недостающие аргументы
         if staff is None or transcript_url is None or category is None:
             return await ctx.send(embed=build_command_help_embed("addticket"))
 
-        # 2. Проверка: Нельзя указать свой собственный ID
+        # 2. Ошибка: Вы не можете указать свой собственный ID (или упомянуть себя)
         if staff.id == ctx.author.id:
             embed = make_error_embed(
                 "Ошибка аргумента",
-                "Вы **не можете** указать свой собственный ID в качестве модератора!"
+                "Вы **не можете** указать свой собственный ID / аккаунт!"
             )
             return await ctx.send(embed=embed)
 
-        # 3. Проверка: Ссылка должна содержать https://discord.com/
+        # 3. Проверка ссылки (должна начинаться с https://discord.com/)
         if not transcript_url.startswith("https://discord.com/"):
             embed = make_error_embed(
                 "Неверная ссылка",
@@ -120,7 +120,7 @@ class TicketsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
-        # 4. Проверка: Один и тот же транскрипт нельзя вносить дважды
+        # 4. Проверка на дубликат транскрипта
         if tickets_col.find_one({"transcript_url": transcript_url}):
             embed = make_error_embed(
                 "Дубликат транскрипта",
