@@ -287,50 +287,49 @@ class TicketsCog(commands.Cog):
         # Ряд 1: Обработано тикетов
         embed.add_field(
             name="<:ticket:1522343287816716379> Тикетов (7 дн.)",
-            value=f"{t_7d}",
+            value=f"`{t_7d}`",
             inline=True,
         )
         embed.add_field(
             name="<:ticket:1522343287816716379> Тикетов (30 дн.)",
-            value=f"{t_30d}",
+            value=f"`{t_30d}`",
             inline=True,
         )
         embed.add_field(
             name="<:ticket:1522343287816716379> Тикетов (Все время)",
-            value=f"{t_all}",
+            value=f"`{t_all}`",
             inline=True,
         )
 
         embed.add_field(
             name="<:logs:1522340749998428160> Транскриптов (7 дн.)",
-            value=f"{tr_7d}",
+            value=f"`{tr_7d}`",
             inline=True,
         )
         embed.add_field(
             name="<:logs:1522340749998428160> Транскриптов (30 дн.)",
-            value=f"{tr_30d}",
+            value=f"`{tr_30d}`",
             inline=True,
         )
         embed.add_field(
             name="<:logs:1522340749998428160> Транскриптов (Все время)",
-            value=f"{tr_all}",
+            value=f"`{tr_all}`",
             inline=True,
         )
-
-        # Ряд 3: Удалено тикетов
+    
         embed.add_field(
-            name="<:lighting:1522337543360872489> Удалено (7 дн.)",
-            value=f"{del_7d}",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:lighting:1522337543360872489> Удалено (30 дн.)",
-            value=f"{del_30d}",
+            name="<:staff:1522338131339251823> Удалено (7 дн.)",
+            value=f"`{del_7d}`",
             inline=True,
         )
         embed.add_field(
-            name="<:lighting:1522337543360872489> Удалено (Все время)",
-            value=f"{del_all}",
+            name="<:staff:1522338131339251823> Удалено (30 дн.)",
+            value=f"`{del_30d}`",
+            inline=True,
+        )
+        embed.add_field(
+            name="<:staff:1522338131339251823> Удалено (Все время)",
+            value=f"`{del_all}`",
             inline=True,
         )
 
