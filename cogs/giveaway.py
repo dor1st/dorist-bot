@@ -314,6 +314,17 @@ class GiveawaySetupView(discord.ui.View):
     ):
         await interaction.response.defer(ephemeral=True)
 
+        channel = self.target_channel
+        if not hasattr(channel, "send"):
+            channel = self.guild.get_channel(channel.id)
+
+        if not channel or not hasattr(channel, "send"):
+            await interaction.followup.send(
+                "Не удалось найти выбранный текстовый канал. Попробуйте выбрать его заново.",
+                ephemeral=True,
+            )
+            return
+
         ends_at = utcnow() + self.duration
 
         embed = build_giveaway_embed(
@@ -331,7 +342,7 @@ class GiveawaySetupView(discord.ui.View):
         )
 
         try:
-            message = await self.target_channel.send(embed=embed)
+            message = await channel.send(embed=embed)
             await message.add_reaction(GIVEAWAY_EMOJI)
         except discord.HTTPException:
             await interaction.followup.send(
@@ -340,6 +351,8 @@ class GiveawaySetupView(discord.ui.View):
                 ephemeral=True,
             )
             return
+
+        # Запись в БД и дальнейшая логика без изменений...
 
         doc = {
             "type": "giveaway",
@@ -418,7 +431,14 @@ class ChannelSelect(discord.ui.ChannelSelect):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        self.setup.target_channel = self.values[0]
+        selected_channel = self.values[0]
+
+        full_channel = interaction.guild.get_channel(selected_channel.id)
+
+        if full_channel is None:
+            full_channel = await interaction.guild.fetch_channel(selected_channel.id)
+
+        self.setup.target_channel = full_channel
         await self.setup.refresh_setup_message()
         await interaction.response.edit_message(
             content=f"Канал установлен: {self.setup.target_channel.mention}",
@@ -928,7 +948,7 @@ class GiveawayCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
-    @giveaway_group.command(name="create")
+    @giveaway_group.command(name="create", aliases=["cr"])
     @check_access_decorator("giveaway")
     async def giveaway_create(
         self,
@@ -1053,7 +1073,7 @@ class GiveawayCog(commands.Cog):
             )
         )
 
-    @giveaway_group.command(name="delete")
+    @giveaway_group.command(name="delete", aliases=["del"])
     @check_access_decorator("giveaway")
     async def giveaway_delete(
         self,
