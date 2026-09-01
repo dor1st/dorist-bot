@@ -49,6 +49,25 @@ def parse_duration(value: str) -> timedelta | None:
     return duration if duration <= MAX_DURATION else None
 
 
+def format_timedelta(td: timedelta) -> str:
+    total_seconds = int(td.total_seconds())
+    days, remainder = divmod(total_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days} дн.")
+    if hours > 0:
+        parts.append(f"{hours} ч.")
+    if minutes > 0:
+        parts.append(f"{minutes} мин.")
+    if seconds > 0 or not parts:
+        parts.append(f"{seconds} сек.")
+
+    return " ".join(parts)
+
+
 def role_mentions(guild: discord.Guild, role_ids: list[int]) -> str:
     roles = []
     for role_id in role_ids:
@@ -79,49 +98,46 @@ def build_giveaway_embed(
     )
 
     lines = [
-        f"• **Hosted by** {host.mention}",
-        f"• **Ends:** <t:{int(ends_at.timestamp())}:f> (<t:{int(ends_at.timestamp())}:R>)",
-        f"• **Winners:** **{winners_count}**",
-        f"• **Participants:** **{participant_count}**",
+        f"• **Розыгрыш от:** {host.mention}",
+        f"• **Завершение:** <t:{int(ends_at.timestamp())}:f> (<t:{int(ends_at.timestamp())}:R>)",
+        f"• **Победителей:** **{winners_count}**",
+        f"• **Участников:** **{participant_count}**",
     ]
 
     if claim_time and claim_time != "—":
-        lines.append(f"• **Claim Time:** **{claim_time}**")
+        lines.append(f"• **Время на получение:** **{claim_time}**")
 
-    # Требования
     requirements = []
     if min_messages > 0:
-        requirements.append(f"• Messages required: **{min_messages}**")
+        requirements.append(f"• Сообщений требуется: **{min_messages}**")
     if min_invites > 0:
-        requirements.append(f"• Invites required: **{min_invites}**")
+        requirements.append(f"• Приглашений требуется: **{min_invites}**")
     if required_roles:
-        mode_text = "all" if role_mode == "all" else "any"
+        mode_text = "все" if role_mode == "all" else "одна из"
         requirements.append(
-            f"• Roles ({mode_text}): {role_mentions(host.guild, required_roles)}"
+            f"• Роли ({mode_text}): {role_mentions(host.guild, required_roles)}"
         )
 
     if requirements:
         lines.append("")
-        lines.append("**Requirements:**")
+        lines.append("**Требования:**")
         lines.extend(requirements)
 
-    # Дополнительные шансы
     if bonus_roles:
         lines.append("")
-        lines.append("**Roles with bonus entries:**")
+        lines.append("**Роли с дополнительными шансами:**")
         for role_id, entries in bonus_roles.items():
             role = host.guild.get_role(int(role_id))
             role_name = role.mention if role else f"`{role_id}`"
-            lines.append(f"• {role_name} • **+{entries} bonus entries**")
+            lines.append(f"• {role_name} • **+{entries} доп. шансов**")
 
-    # Победители при завершении
     if ended:
         lines.append("")
         if winner_ids:
             mentions = ", ".join(f"<@{uid}>" for uid in winner_ids)
-            lines.append(f"**Winners:** {mentions}")
+            lines.append(f"**Победители:** {mentions}")
         else:
-            lines.append("**Winners:** Подходящих участников не найдено.")
+            lines.append("**Победители:** Подходящих участников не найдено.")
 
     embed.description = "\n".join(lines)
     embed.set_footer(text=config.FOOTER_TEXT)
@@ -151,7 +167,7 @@ class GiveawaySetupView(discord.ui.View):
         self.winners_count = winners_count
         self.claim_time = claim_time
 
-        self.target_channel = ctx.channel  # По умолчанию текущий канал
+        self.target_channel = ctx.channel
 
         self.role_mode = "all"
         self.required_roles: list[int] = []
@@ -189,7 +205,7 @@ class GiveawaySetupView(discord.ui.View):
         )
 
         embed = discord.Embed(
-            title="🎉 Настройка розыгрыша",
+            title="<:giveaway:1522331215976206446> Настройка розыгрыша",
             description=(
                 "Заполните дополнительные параметры, "
                 "после чего нажмите **«Создать розыгрыш»**.\n\n"
@@ -239,7 +255,7 @@ class GiveawaySetupView(discord.ui.View):
 
     @discord.ui.button(
         label="Канал",
-        emoji="📢",
+        emoji="<:textchat:1522331990517616752>",
         style=discord.ButtonStyle.secondary,
         row=0,
     )
@@ -256,7 +272,7 @@ class GiveawaySetupView(discord.ui.View):
 
     @discord.ui.button(
         label="Роли",
-        emoji="🎭",
+        emoji="<:roles:1522341200542044351>",
         style=discord.ButtonStyle.secondary,
         row=0,
     )
@@ -273,7 +289,7 @@ class GiveawaySetupView(discord.ui.View):
 
     @discord.ui.button(
         label="Требования",
-        emoji="📋",
+        emoji="<:logs:1522340749998428160>",
         style=discord.ButtonStyle.secondary,
         row=0,
     )
@@ -286,7 +302,7 @@ class GiveawaySetupView(discord.ui.View):
 
     @discord.ui.button(
         label="Доп. шансы",
-        emoji="✨",
+        emoji="<:sparkles:1522342290494849034>",
         style=discord.ButtonStyle.secondary,
         row=0,
     )
@@ -303,7 +319,7 @@ class GiveawaySetupView(discord.ui.View):
 
     @discord.ui.button(
         label="Создать розыгрыш",
-        emoji="🎉",
+        emoji="<:verify:1522329028420173976>",
         style=discord.ButtonStyle.success,
         row=1,
     )
@@ -352,8 +368,6 @@ class GiveawaySetupView(discord.ui.View):
             )
             return
 
-        # Запись в БД и дальнейшая логика без изменений...
-
         doc = {
             "type": "giveaway",
             "status": "active",
@@ -376,6 +390,7 @@ class GiveawaySetupView(discord.ui.View):
                 str(role_id): entries
                 for role_id, entries in self.bonus_roles.items()
             },
+            "eligible_user_ids": [],
         }
 
         result = giveaways_col.insert_one(doc)
@@ -393,7 +408,7 @@ class GiveawaySetupView(discord.ui.View):
             pass
 
         await interaction.followup.send(
-            f"Розыгрыш создан в канале {self.target_channel.mention}: {message.jump_url}",
+            f"🎉 **Розыгрыш успешно создан!**\nКанал: {self.target_channel.mention}\nСсылка: {message.jump_url}",
             ephemeral=True,
         )
 
@@ -773,7 +788,6 @@ class GiveawayCog(commands.Cog):
                 "type": "giveaway",
                 "guild_id": payload.guild_id,
                 "message_id": payload.message_id,
-                "status": "active",
             }
         )
 
@@ -786,6 +800,16 @@ class GiveawayCog(commands.Cog):
 
         member = payload.member or guild.get_member(payload.user_id)
         if not member or member.bot:
+            return
+
+        # Если розыгрыш уже завершён, снимаем реакцию и игнорируем пользователя
+        if doc.get("status") != "active":
+            message = await self._get_giveaway_message(doc)
+            if message:
+                try:
+                    await message.remove_reaction(payload.emoji, member)
+                except discord.HTTPException:
+                    pass
             return
 
         # Проверка соответствия требованиям
@@ -828,11 +852,13 @@ class GiveawayCog(commands.Cog):
 
         users = await self._get_reaction_users(message)
         eligible = []
+        eligible_user_ids = []
 
         for user in users:
             member = guild.get_member(user.id)
             if member and self._is_eligible(member, doc):
                 eligible.append((member, self._weight(member, doc)))
+                eligible_user_ids.append(member.id)
 
         winner_count = min(doc.get("winners_count", 1), len(eligible))
         winners = []
@@ -878,7 +904,6 @@ class GiveawayCog(commands.Cog):
 
         try:
             await message.edit(embed=ended_embed)
-            await message.clear_reaction(GIVEAWAY_EMOJI)
         except discord.HTTPException:
             pass
 
@@ -889,6 +914,7 @@ class GiveawayCog(commands.Cog):
                     "status": "ended",
                     "ended_at": utcnow(),
                     "winner_ids": winner_ids,
+                    "eligible_user_ids": eligible_user_ids,
                     "participant_count": len(users),
                     "forced_end": forced,
                 }
@@ -897,9 +923,9 @@ class GiveawayCog(commands.Cog):
 
         if winners:
             mentions = ", ".join(member.mention for member in winners)
-            await message.channel.send(f"🎉 **Розыгрыш завершён!** Победители: {mentions}")
+            await message.channel.send(f"<:giveaway:1522331215976206446> **Розыгрыш завершён!** Победители: {mentions}")
         else:
-            await message.channel.send("🎉 **Розыгрыш завершён!** Подходящих участников не найдено.")
+            await message.channel.send("<:giveaway:1522331215976206446> **Розыгрыш завершён!** Подходящих участников не найдено.")
 
         return True
 
@@ -928,7 +954,7 @@ class GiveawayCog(commands.Cog):
 
     @commands.group(
         name="giveaway",
-        aliases=["giveaways"],
+        aliases=["giveaways", "gw", "gws"],
         invoke_without_command=True,
     )
     async def giveaway_group(
@@ -936,12 +962,13 @@ class GiveawayCog(commands.Cog):
         ctx: commands.Context,
     ):
         embed = discord.Embed(
-            title="📋 Меню розыгрышей",
+            title="<:giveaway:1522331215976206446> Меню розыгрышей",
             description=(
-                "Укажите категорию розыгрыша:\n\n"
-                "• `.giveaway create` — Создать новый розыгрыш\n"
-                "• `.giveaway delete` — Удалить существующий розыгрыш\n"
-                "• `.giveaway end` — Досрочно завершить розыгрыш"
+                "Укажите команду для управления розыгрышами:\n\n"
+                "• `.gw cr` — Создать новый розыгрыш\n"
+                "• `.gw end [ID]` — Завершить розыгрыш\n"
+                "• `.gw rr [ID]` — Перевыбрать победителя (реролл)\n"
+                "• `.gw del [ID]` — Удалить розыгрыш"
             ),
             color=config.EMBED_COLOR,
         )
@@ -970,9 +997,9 @@ class GiveawayCog(commands.Cog):
                     "Неверное использование",
                     (
                         "Использование:\n"
-                        "`.giveaway create [приз] [длительность] [победители] [время на получение]`\n\n"
+                        "`.gw cr [приз] [длительность] [победители] [время на получение]`\n\n"
                         "Пример:\n"
-                        "`.giveaway create 1000 Robux 7d 1 24h`"
+                        "`.gw cr 1000 Robux 7d 1 24h`"
                     ),
                 )
             )
@@ -1073,6 +1100,83 @@ class GiveawayCog(commands.Cog):
             )
         )
 
+    @giveaway_group.command(name="reroll", aliases=["rr"])
+    @check_access_decorator("giveaway")
+    async def giveaway_reroll(
+        self,
+        ctx: commands.Context,
+        message_id: str,
+    ):
+        if not ctx.guild:
+            return
+
+        try:
+            message_id_int = int(message_id)
+        except ValueError:
+            await ctx.send(embed=make_error_embed("Ошибка", "ID сообщения должен быть числом."))
+            return
+
+        doc = giveaways_col.find_one(
+            {
+                "type": "giveaway",
+                "guild_id": ctx.guild.id,
+                "message_id": message_id_int,
+                "status": "ended",
+            }
+        )
+
+        if not doc:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Розыгрыш не найден",
+                    "Завершённый розыгрыш с таким ID не найден.",
+                )
+            )
+            return
+
+        eligible_ids = doc.get("eligible_user_ids", [])
+        if not eligible_ids:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Ошибка реролла",
+                    "Среди участников, успевших войти до конца розыгрыша, нет подходящих кандидатов.",
+                )
+            )
+            return
+
+        pool = []
+        for uid in eligible_ids:
+            member = ctx.guild.get_member(uid)
+            if member:
+                pool.append((member, self._weight(member, doc)))
+
+        if not pool:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Ошибка реролла",
+                    "Ни один из прошлых участников больше не найден на сервере.",
+                )
+            )
+            return
+
+        total_weight = sum(w for _, w in pool)
+        roll = random.uniform(0, total_weight)
+        current = 0
+        new_winner = pool[-1][0]
+
+        for member, weight in pool:
+            current += weight
+            if roll <= current:
+                new_winner = member
+                break
+
+        message = await self._get_giveaway_message(doc)
+        target_channel = message.channel if message else ctx.channel
+
+        await target_channel.send(
+            f"<:giveaway:1522331215976206446> Новый победитель розыгрыша **{doc['prize']}**: {new_winner.mention}!"
+        )
+
     @giveaway_group.command(name="delete", aliases=["del"])
     @check_access_decorator("giveaway")
     async def giveaway_delete(
@@ -1122,6 +1226,96 @@ class GiveawayCog(commands.Cog):
                 "success",
             )
         )
+
+    @commands.command(name="checktime", aliases=["ct"])
+    @check_access_decorator("giveaway")
+    async def check_time(
+        self,
+        ctx: commands.Context,
+        giveaway_msg_id: str,
+        user_msg_id: str,
+    ):
+        if not ctx.guild:
+            return
+
+        try:
+            gw_id_int = int(giveaway_msg_id)
+            usr_id_int = int(user_msg_id)
+        except ValueError:
+            await ctx.send(
+                embed=make_error_embed("Ошибка", "ID сообщений должны быть числами.")
+            )
+            return
+
+        doc = giveaways_col.find_one(
+            {
+                "type": "giveaway",
+                "guild_id": ctx.guild.id,
+                "message_id": gw_id_int,
+            }
+        )
+
+        if not doc:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Розыгрыш не найден",
+                    "Розыгрыш с указанным ID сообщения не найден в базе данных.",
+                )
+            )
+            return
+
+        try:
+            user_msg = await ctx.channel.fetch_message(usr_id_int)
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            await ctx.send(
+                embed=make_error_embed(
+                    "Сообщение не найдено",
+                    "Не удалось найти сообщение участника в текущем канале.",
+                )
+            )
+            return
+
+        ends_at = doc["ends_at"]
+        if ends_at.tzinfo is None:
+            ends_at = ends_at.replace(tzinfo=timezone.utc)
+
+        msg_created_at = user_msg.created_at
+
+        embed = discord.Embed(
+            title="<a:gifclock:1544347190984441858> Проверка времени ответа",
+            color=config.EMBED_COLOR,
+        )
+
+        embed.add_field(
+            name="Время конца розыгрыша",
+            value=f"<t:{int(ends_at.timestamp())}:f>",
+            inline=False,
+        )
+        embed.add_field(
+            name="Время ответа игрока",
+            value=f"<t:{int(msg_created_at.timestamp())}:f> ({user_msg.author.mention})",
+            inline=False,
+        )
+
+        if msg_created_at <= ends_at:
+            diff = ends_at - msg_created_at
+            formatted_diff = format_timedelta(diff)
+            embed.add_field(
+                name="Результат",
+                value=f"<:verify:1522329028420173976> **Игрок успел!** Написал до окончания (за {formatted_diff}).",
+                inline=False,
+            )
+        else:
+            diff = msg_created_at - ends_at
+            formatted_diff = format_timedelta(diff)
+            embed.add_field(
+                name="Результат",
+                value=f"<a:alert:1544047350345891851> **Игрок опоздал!** Опоздание составило: **{formatted_diff}**.",
+                inline=False,
+            )
+
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
