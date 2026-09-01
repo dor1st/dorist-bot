@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 
 import config
-from database import giveaways_col, invites_col, get_next_sequence_value
+from database import giveaways_col, invites_col, messages_col, get_next_sequence_value
 from utils import (
     check_access_decorator,
     make_error_embed,
@@ -76,7 +76,7 @@ class GiveawayLogsView(discord.ui.View):
             else:
                 time_str = "—"
 
-            link_str = f"\n**Ссылка:** [Перейти к сообщению]({doc.get('message_url')})" if doc.get("message_url") else ""
+            link_str = f"\n**Ссылка:** {doc.get('message_url')})" if doc.get("message_url") else ""
 
             description_lines.append(
                 f"**Розыгрыш №{index}** (Лог №{doc.get('_id')})\n"
@@ -210,6 +210,81 @@ class PlayerLogsCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.guild:
+            return
+        
+        messages_col.update_one(
+            {"user_id": message.author.id},
+            {"$inc": {"count": 1}},
+            upsert=True
+        )
+
+    @commands.command(name="messages", aliases=["m"])
+    @check_access_decorator("messages")
+    async def messages_cmd(self, ctx: commands.Context, target: discord.User = None):
+        target = target or ctx.author
+        doc = messages_col.find_one({"user_id": target.id})
+        count = doc.get("count", 0) if doc else 0
+
+        embed = make_status_embed(
+            "Статистика сообщений",
+            f"Пользователь {target.mention} отправил сообщений: **{count}**",
+            "info",
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(name="leaderboard", aliases=["lb"])
+    @check_access_decorator("leaderboard")
+    async def leaderboard_cmd(self, ctx: commands.Context, category: str = None):
+        if not category or category.lower() not in ["invites", "messages"]:
+            embed = discord.Embed(
+                title="Информация о команде — .leaderboard",
+                description="Просмотр таблицы лидеров.\n\n**Использование:**\n`.leaderboard [invites|messages]`",
+                color=config.EMBED_COLOR,
+            )
+            embed.set_footer(text=config.FOOTER_TEXT)
+            return await ctx.send(embed=embed)
+
+        category = category.lower()
+
+        if category == "invites":
+            pipeline = [
+                {"$group": {"_id": "$inviter_id", "count": {"$sum": 1}}},
+                {"$sort": {"count": -1}},
+                {"$limit": 10}
+            ]
+            top_users = list(invites_col.aggregate(pipeline))
+            title_text = "Лидерборд — Инвайты"
+            unit_text = "инвайтов"
+        else:
+            top_users = list(messages_col.find().sort("count", -1).limit(10))
+            title_text = "Лидерборд — Сообщения"
+            unit_text = "сообщений"
+
+        if not top_users:
+            embed = make_status_embed(
+                title_text,
+                "В базе данных пока нет данных для этого лидерборда.",
+                "info",
+            )
+            return await ctx.send(embed=embed)
+
+        lines = []
+        for index, item in enumerate(top_users, start=1):
+            user_id = item.get("user_id") if category == "messages" else item.get("_id")
+            count = item.get("count", 0)
+            lines.append(f"**{index}.** <@{user_id}> — **{count}** {unit_text}")
+
+        embed = discord.Embed(
+            title=f"<:sparkles:1522342290494849034> {title_text}",
+            description="\n".join(lines),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
 
     @commands.command(name="loggiveaway", aliases=["lg"])
     @check_access_decorator("loggiveaway")

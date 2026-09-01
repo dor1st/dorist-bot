@@ -169,6 +169,43 @@ class TicketsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command(name="ticketleaderboard", aliases=["tlb"])
+    @check_access_decorator("ticketleaderboard")
+    async def ticketleaderboard_cmd(self, ctx: commands.Context):
+        pipeline = [
+            {"$group": {"_id": "$staff_id", "tickets_count": {"$sum": 1}}},
+            {"$sort": {"tickets_count": -1}},
+            {"$limit": 10}
+        ]
+        top_staff = list(tickets_col.aggregate(pipeline))
+
+        if not top_staff:
+            embed = make_status_embed(
+                "Лидерборд тикетов",
+                "В базе данных пока нет записанных тикетов.",
+                "info",
+            )
+            return await ctx.send(embed=embed)
+
+        lines = []
+        for index, item in enumerate(top_staff, start=1):
+            staff_id = item["_id"]
+            tickets_cnt = item["tickets_count"]
+            deleted_cnt = deleted_tickets_col.count_documents({"staff_id": staff_id})
+
+            lines.append(
+                f"**{index}.** <@{staff_id}>\n"
+                f"└ Обработано тикетов: **{tickets_cnt}** | Удалений: **{deleted_cnt}**"
+            )
+
+        embed = discord.Embed(
+            title="<:ticket:1522343287816716379> Лидерборд — Тикеты",
+            description="\n\n".join(lines),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
     @commands.command(name="addticket", aliases=["t"])
     @check_access_decorator("addticket")
     async def addticket_cmd(
@@ -204,248 +241,39 @@ class TicketsCog(commands.Cog):
             return await ctx.send(embed=embed)
 
         if category not in config.VALID_CATEGORIES:
-            cats = ", ".join(f"`{c}`" for c in config.VALID_CATEGORIES)
+            cats = ", ".join([f"`{c}`" for c in config.VALID_CATEGORIES])
             embed = make_error_embed(
                 "Неверная категория",
-                f"Указана недопустимая категория!\nРазрешенные категории: {cats}",
+                f"Вы указали недействительную категорию: `{category}`.\n\n**Допустимые категории:**\n{cats}"
             )
             return await ctx.send(embed=embed)
 
         log_id = get_next_sequence_value("ticket_id")
         now = datetime.now(timezone.utc)
 
-        ticket_doc = {
+        doc = {
             "_id": log_id,
             "staff_id": staff.id,
             "author_id": ctx.author.id,
-            "transcript_url": transcript_url,
             "category": category,
+            "transcript_url": transcript_url,
             "created_at": now,
         }
-        tickets_col.insert_one(ticket_doc)
-
-        month_ago = now - timedelta(days=30)
-        month_count = tickets_col.count_documents(
-            {"staff_id": staff.id, "created_at": {"$gte": month_ago}}
-        )
+        tickets_col.insert_one(doc)
 
         embed = discord.Embed(
-            title=f"<:logs:1522340749998428160> Лог №{log_id} — {staff.name}",
+            title=f"<:ticket:1522343287816716379> Тикет №{log_id} — {staff.name}",
             color=config.EMBED_COLOR,
         )
-        embed.add_field(
-            name="Дата транскрипта",
-            value=f"<t:{int(now.timestamp())}:f>",
-            inline=False,
-        )
-        embed.add_field(
-            name="Ссылка на транскрипт", value=transcript_url, inline=False
-        )
-        embed.add_field(
-            name="Кто вёл тикет",
-            value=f"{staff.id} ({staff.mention})",
-            inline=False,
-        )
-        embed.add_field(
-            name="Внёс в базу", value=ctx.author.mention, inline=False
-        )
-        embed.add_field(
-            name="Тикетов за последний месяц",
-            value=str(month_count),
-            inline=False,
-        )
+        embed.add_field(name="Дата записи", value=f"<t:{int(now.timestamp())}:f>", inline=False)
+        embed.add_field(name="Модератор", value=f"{staff.id} ({staff.mention})", inline=False)
         embed.add_field(name="Категория", value=category, inline=False)
+        embed.add_field(name="Транскрипт", value=f"[Перейти к транскрипту]({transcript_url})", inline=False)
+        embed.add_field(name="Внёс в базу", value=ctx.author.mention, inline=False)
         embed.set_footer(text=config.FOOTER_TEXT)
 
         await ctx.send(embed=embed)
         await log_action(ctx.guild, "addticket", embed)
-
-    @commands.command(name="deleteticket", aliases=["del", "dt"])
-    @check_access_decorator("deleteticket")
-    async def deleteticket_cmd(
-        self,
-        ctx: commands.Context,
-        log_id: int = None,
-        transcript_url: str = None,
-    ):
-        if log_id is None or transcript_url is None:
-            return await ctx.send(embed=build_command_help_embed("deleteticket"))
-
-        if not transcript_url.startswith("https://discord.com/"):
-            embed = make_error_embed(
-                "Неверная ссылка",
-                "Ссылка на транскрипт должна начинаться с `https://discord.com/`!"
-            )
-            return await ctx.send(embed=embed)
-
-        if deleted_tickets_col.find_one({"transcript_url": transcript_url}):
-            embed = make_error_embed(
-                "Дубликат удаления",
-                "Этот транскрипт уже использовался для удаления тикета ранее!"
-            )
-            return await ctx.send(embed=embed)
-
-        now = datetime.now(timezone.utc)
-        deleted_id = get_next_sequence_value("deleted_ticket_id")
-
-        deleted_doc = {
-            "_id": deleted_id,
-            "original_log_id": log_id,
-            "staff_id": ctx.author.id,
-            "transcript_url": transcript_url,
-            "created_at": now,
-        }
-        deleted_tickets_col.insert_one(deleted_doc)
-
-        embed = make_status_embed(
-            "Тикет удален",
-            f"Удаление тикета по логу **№{log_id}** успешно зафиксировано!\nМодератору {ctx.author.mention} добавлено **+1** удаление тикета в казну.",
-            "delete",
-        )
-        await ctx.send(embed=embed)
-        await log_action(ctx.guild, "deleteticket", embed)
-
-    @commands.command(name="ticketlogs", aliases=["tl"])
-    @check_access_decorator("ticketlogs")
-    async def ticketlogs_cmd(
-        self, ctx: commands.Context, target: discord.User = None
-    ):
-        target = target or ctx.author
-        logs = list(tickets_col.find({"staff_id": target.id}).sort("_id", 1))
-
-        if not logs:
-            embed = make_status_embed(
-                "Тикеты",
-                f"У модератора {target.mention} нет логов тикетов.",
-                "info",
-            )
-            return await ctx.send(embed=embed)
-
-        view = TicketLogsView(target=target, logs=logs)
-        embed = view.build_page_embed()
-
-        if len(logs) <= LOGS_PER_PAGE:
-            await ctx.send(embed=embed)
-        else:
-            await ctx.send(embed=embed, view=view)
-
-    @commands.command(name="deletelogs", aliases=["dl"])
-    @check_access_decorator("deletelogs")
-    async def deletelogs_cmd(
-        self, ctx: commands.Context, target: discord.User = None
-    ):
-        target = target or ctx.author
-        logs = list(deleted_tickets_col.find({"staff_id": target.id}).sort("_id", 1))
-
-        if not logs:
-            embed = make_status_embed(
-                "Удаленные тикеты",
-                f"У модератора {target.mention} нет логов удаленных тикетов.",
-                "info",
-            )
-            return await ctx.send(embed=embed)
-
-        view = DeletedTicketLogsView(target=target, logs=logs)
-        embed = view.build_page_embed()
-
-        if len(logs) <= LOGS_PER_PAGE:
-            await ctx.send(embed=embed)
-        else:
-            await ctx.send(embed=embed, view=view)
-
-    @commands.command(name="ticketstats", aliases=["ts"])
-    @check_access_decorator("ticketstats")
-    async def ticketstats_cmd(
-        self, ctx: commands.Context, target: discord.User = None
-    ):
-        target = target or ctx.author
-        now = datetime.now(timezone.utc)
-        days_7 = now - timedelta(days=7)
-        days_30 = now - timedelta(days=30)
-
-        # 1. Обработано тикетов (staff_id)
-        t_7d = tickets_col.count_documents(
-            {"staff_id": target.id, "created_at": {"$gte": days_7}}
-        )
-        t_30d = tickets_col.count_documents(
-            {"staff_id": target.id, "created_at": {"$gte": days_30}}
-        )
-        t_all = tickets_col.count_documents({"staff_id": target.id})
-
-        # 2. Занесено транскриптов (author_id)
-        tr_7d = tickets_col.count_documents(
-            {"author_id": target.id, "created_at": {"$gte": days_7}}
-        )
-        tr_30d = tickets_col.count_documents(
-            {"author_id": target.id, "created_at": {"$gte": days_30}}
-        )
-        tr_all = tickets_col.count_documents({"author_id": target.id})
-
-        # 3. Удалено тикетов (staff_id в deleted_tickets_col)
-        del_7d = deleted_tickets_col.count_documents(
-            {"staff_id": target.id, "created_at": {"$gte": days_7}}
-        )
-        del_30d = deleted_tickets_col.count_documents(
-            {"staff_id": target.id, "created_at": {"$gte": days_30}}
-        )
-        del_all = deleted_tickets_col.count_documents({"staff_id": target.id})
-
-        embed = discord.Embed(
-            title=f"<:sparkles:1522342290494849034> Статистика — {target.name}",
-            color=config.EMBED_COLOR,
-        )
-
-        # Ряд 1: Обработано тикетов
-        embed.add_field(
-            name="<:ticket:1522343287816716379> Тикетов (7 дн.)",
-            value=f"**{t_7d}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:ticket:1522343287816716379> Тикетов (30 дн.)",
-            value=f"**{t_30d}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:ticket:1522343287816716379> Тикетов (Все время)",
-            value=f"**{t_all}**",
-            inline=True,
-        )
-
-        embed.add_field(
-            name="<:logs:1522340749998428160> Транскриптов (7 дн.)",
-            value=f"**{tr_7d}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:logs:1522340749998428160> Транскриптов (30 дн.)",
-            value=f"**{tr_30d}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:logs:1522340749998428160> Транскриптов (Все время)",
-            value=f"**{tr_all}**",
-            inline=True,
-        )
-
-        embed.add_field(
-            name="<:staff:1522338131339251823> Удалено (7 дн.)",
-            value=f"**{del_7d}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:staff:1522338131339251823> Удалено (30 дн.)",
-            value=f"**{del_30d}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="<:staff:1522338131339251823> Удалено (Все время)",
-            value=f"**{del_all}**",
-            inline=True,
-        )
-
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
 
 
 async def setup(bot):
