@@ -12,7 +12,7 @@ from utils import (
     log_action,
 )
 
-VALID_PRIZES = config.VALID_PRIZES if hasattr(config, "VALID_PRIZES") else ["Робуксы", "Коины", "Геймпасс", "Годли"]
+VALID_PRIZES = ["Робуксы", "Коины", "Геймпасс", "Годли"]
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
 
@@ -226,7 +226,6 @@ class PlayerLogsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
-        # Проверка категории приза
         matched_prize = next((p for p in VALID_PRIZES if p.lower() == prize_type.lower()), None)
         if not matched_prize:
             prizes_str = ", ".join([f"`{p}`" for p in VALID_PRIZES])
@@ -297,7 +296,6 @@ class PlayerLogsCog(commands.Cog):
         else:
             await ctx.send(embed=embed, view=view)
 
-    # 2. Запись приглашения
     @commands.command(name="loginvite", aliases=["li"])
     @check_access_decorator("loginvite")
     async def loginvite_cmd(
@@ -313,6 +311,19 @@ class PlayerLogsCog(commands.Cog):
                 "loginvite",
                 ".loginvite [ID/упоминание_пригласившего] [ID/упоминание_приглашенного] [приз] [количество]",
                 "Записать выданный приз за приглашение участника."
+            )
+            return await ctx.send(embed=embed)
+
+        existing = invites_col.find_one({"invited_id": invited.id})
+        if existing:
+            created_dt = existing.get("created_at")
+            time_str = f"<t:{int(created_dt.timestamp())}:f>" if isinstance(created_dt, datetime) else "—"
+            embed = make_error_embed(
+                "Приз уже был получен!",
+                f"За участника {invited.mention} (`{invited.id}`) уже выдовали приз ранее!\n\n"
+                f"**Кто получил приз:** <@{existing.get('inviter_id')}>\n"
+                f"**Приз:** {existing.get('prize', '—')} ({existing.get('amount', 1)} шт.)\n"
+                f"**Дата выдачи:** {time_str}"
             )
             return await ctx.send(embed=embed)
 
@@ -368,6 +379,66 @@ class PlayerLogsCog(commands.Cog):
 
         await ctx.send(embed=embed)
         await log_action(ctx.guild, "loginvite", embed)
+
+    # 3. Новая команда: Проверка валидности приза за приглашенного игрока
+    @commands.command(name="validinvite", aliases=["vi", "checkinvite"])
+    @check_access_decorator("validinvite")
+    async def validinvite_cmd(
+        self, ctx: commands.Context, target: discord.User = None
+    ):
+        if target is None:
+            embed = build_cmd_help(
+                "validinvite",
+                ".validinvite [ID/упоминание_приглашенного]",
+                "Проверить, получал ли кто-то уже приз за приглашение этого игрока."
+            )
+            return await ctx.send(embed=embed)
+
+        doc = invites_col.find_one({"invited_id": target.id})
+
+        if not doc:
+            embed = discord.Embed(
+                title="<:sparkles:1522342290494849034> Доступно к получению",
+                description=(
+                    f"За приглашение пользователя {target.mention} (`{target.id}`) **ещё никто не получал приз**.\n\n"
+                    "Вы можете зарегистрировать выдачу приза с помощью команды `.loginvite`."
+                ),
+                color=0x2ecc71,  # Зеленый цвет успеха
+            )
+            embed.set_footer(text=config.FOOTER_TEXT)
+            return await ctx.send(embed=embed)
+
+        created_dt = doc.get("created_at")
+        time_str = f"<t:{int(created_dt.timestamp())}:f>" if isinstance(created_dt, datetime) else "—"
+
+        embed = discord.Embed(
+            title="<:logs:1522340749998428160> Приз уже был получен",
+            description=f"За пользователя {target.mention} (`{target.id}`) **уже забирали награду**.",
+            color=0xe74c3c,  # Красный цвет предупреждения
+        )
+        embed.add_field(
+            name="Пригласивший (Кто забрал приз)",
+            value=f"<@{doc.get('inviter_id')}> (`{doc.get('inviter_id')}`)",
+            inline=False,
+        )
+        embed.add_field(
+            name="Полученный приз",
+            value=f"**{doc.get('prize', '—')}** ({doc.get('amount', 1)} шт.)",
+            inline=True,
+        )
+        embed.add_field(
+            name="Кто внес запись",
+            value=f"<@{doc.get('author_id')}>",
+            inline=True,
+        )
+        embed.add_field(
+            name="Дата записи",
+            value=time_str,
+            inline=False,
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+
+        await ctx.send(embed=embed)
 
     @commands.command(name="invitelogs", aliases=["il"])
     @check_access_decorator("invitelogs")

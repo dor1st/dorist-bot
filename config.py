@@ -46,7 +46,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Администрация",
         "emoji": "<:mod:1522343179205087363>",
         "roles": [1542602508252487710, 1501503300200304640],
-        "commands": ["deleteticket", "deletelogs", "invitelogs", "giveawaylogs", "loginvite", "loggiveaway"],
+        "commands": ["deleteticket", "deletelogs", "invitelogs", "giveawaylogs", "loginvite", "loggiveaway", "validinvite"],
     },
     "owner": {
         "name": "Владелец",
@@ -70,6 +70,7 @@ COMMAND_USAGE_HELP = {
     "userinfo": "`.userinfo [ID / упоминание]` — Посмотреть профиль и роли участника.",
     "inviter": "`.inviter [ID / упоминание]` — Узнать, кто пригласил участника.",
     "invites": "`.invites [ID / упоминание]` — Узнать кол-во приглашенных участников.",
+    "validinvite": "`.validinvite [ID / упоминание]` — Проверить, получали ли за пользователя приз.",
 }
 
 CONFIG = {
