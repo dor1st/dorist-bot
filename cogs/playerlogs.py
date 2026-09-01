@@ -208,7 +208,6 @@ class PlayerLogsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # 1. Запись розыгрыша
     @commands.command(name="loggiveaway", aliases=["lg"])
     @check_access_decorator("loggiveaway")
     async def loggiveaway_cmd(
@@ -216,12 +215,13 @@ class PlayerLogsCog(commands.Cog):
         ctx: commands.Context,
         host: discord.User = None,
         prize_type: str = None,
-        amount: int = 1,
+        amount: int = None,
+        link: str = None,
     ):
-        if host is None or prize_type is None:
+        if host is None or prize_type is None or amount is None or link is None:
             embed = build_cmd_help(
                 "loggiveaway",
-                ".loggiveaway [ID/упоминание_хостера] [приз] [количество]",
+                ".loggiveaway [ID/упоминание_хостера] [приз] [количество] [ссылка_на_сообщение]",
                 "Внести новый проведенный розыгрыш в базу данных."
             )
             return await ctx.send(embed=embed)
@@ -244,6 +244,7 @@ class PlayerLogsCog(commands.Cog):
             "author_id": ctx.author.id,
             "prize_type": matched_prize,
             "amount": amount,
+            "message_url": link,
             "created_at": now,
         }
         giveaways_col.insert_one(doc)
@@ -264,6 +265,7 @@ class PlayerLogsCog(commands.Cog):
         )
         embed.add_field(name="Тип приза", value=matched_prize, inline=False)
         embed.add_field(name="Количество", value=str(amount), inline=False)
+        embed.add_field(name="Ссылка на розыгрыш", value=f"[Перейти к сообщению]({link})", inline=False)
         embed.add_field(
             name="Внёс в базу", value=ctx.author.mention, inline=False
         )
