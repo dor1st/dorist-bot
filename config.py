@@ -26,7 +26,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Поддержка",
         "emoji": "<:ticket:1522343287816716379>",
         "roles": [1501507449860001853, 1322962344040464424],
-        "commands": ["help", "ticketstats", "leaderboard", "sum"],
+        "commands": ["help", "ticketstats", "leaderboard", "sum", "invites", "userinfo", "inviter"],
     },
     "transcript": {
         "name": "Транскрипты",
@@ -38,7 +38,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Администрация",
         "emoji": "<:mod:1522343179205087363>",
         "roles": [1542602508252487710, 1501503300200304640],
-        "commands": ["deleteticket", "deletelogs"],
+        "commands": ["deleteticket", "deletelogs", "invitelogs", "giveawaylogs", "loginvite", "loggiveaway"],
     },
     "owner": {
         "name": "Владелец",
