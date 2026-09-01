@@ -20,6 +20,12 @@ GIVEAWAY_IMAGE_URL = getattr(
     "https://cdn.discordapp.com/attachments/1521823293169205258/1544354921002831892/13afec33f77f8f2d.png?ex=6a983419&is=6a96e299&hm=6bc1383a8045076895f92158d8f03440c90e5c6c30cc668f76d3a7f26370d57c" 
 )
 
+MAIN_EMBED_IMAGE_URL = getattr(
+    config, 
+    "MAIN_EMBED_IMAGE_URL", 
+    "https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a97f90a&is=6a96a78a&hm=be23c7b3f0de14e97367f613af682c692f712e99ea24b9c190efbf6414b57f72"
+)
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -100,7 +106,7 @@ def build_giveaway_embeds(
     host: discord.Member | discord.User,
     ends_at: datetime,
     winners_count: int,
-    participant_count: int,
+    participant_count: int = 0,  # параметр можно оставить для совместимости
     role_mode: str | None,
     required_roles: list[int],
     min_messages: int,
@@ -110,16 +116,18 @@ def build_giveaway_embeds(
     ended: bool = False,
     winner_ids: list[int] | None = None,
 ) -> tuple[discord.Embed, discord.Embed]:
-    # 1. Первый эмбед — только с картинкой-шапкой
+    
     banner_embed = discord.Embed(color=config.EMBED_COLOR)
     if GIVEAWAY_IMAGE_URL and GIVEAWAY_IMAGE_URL != "https://example.com/banner.png":
         banner_embed.set_image(url=GIVEAWAY_IMAGE_URL)
 
-    # 2. Второй эмбед — вся информация о розыгрыше
     main_embed = discord.Embed(
         title=prize,
         color=config.EMBED_COLOR,
     )
+    
+    if MAIN_EMBED_IMAGE_URL and MAIN_EMBED_IMAGE_URL != "https://example.com/main_giveaway_image.png":
+        main_embed.set_image(url=MAIN_EMBED_IMAGE_URL)
 
     formatted_claim = format_claim_time(claim_time)
 
@@ -127,7 +135,6 @@ def build_giveaway_embeds(
         f"• **Розыгрыш от:** {host.mention}",
         f"• **Завершение:** <t:{int(ends_at.timestamp())}:f> (<t:{int(ends_at.timestamp())}:R>)",
         f"• **Победителей:** **{winners_count}**",
-        f"• **Участников:** **{participant_count}**",
     ]
 
     if formatted_claim and formatted_claim != "—":
@@ -155,7 +162,7 @@ def build_giveaway_embeds(
         for role_id, entries in bonus_roles.items():
             role = host.guild.get_role(int(role_id))
             role_name = role.mention if role else f"`{role_id}`"
-            lines.append(f"• {role_name} • **+{entries} доп. шансов**")
+            lines.append(f"• {role_name}: **+{entries} доп. шансов**")
 
     if ended:
         lines.append("")
@@ -323,7 +330,7 @@ class GiveawaySetupView(discord.ui.View):
 
     @discord.ui.button(
         label="Пинги",
-        emoji="🔔",
+        emoji="<:roles:1522341200542044351>",
         style=discord.ButtonStyle.secondary,
         row=0,
     )
