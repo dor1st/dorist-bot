@@ -11,7 +11,7 @@ if not MONGO_URL:
 mongo_client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
 
 try:
-    mongo_client.admin.command("ping")
+    mongo_client.admin.command('ping')
     print("Успешное подключение к MongoDB Atlas!")
 except Exception as e:
     print(f"Ошибка подключения к MongoDB: {e}")
@@ -30,7 +30,6 @@ invites_col = db["invites"]
 tickets_col.create_index("transcript_url", unique=True, sparse=True)
 deleted_tickets_col.create_index("transcript_url", unique=True, sparse=True)
 message_stats_col.create_index([("channel_id", 1), ("day", 1), ("user_id", 1)])
-message_stats_col.create_index("user_id")
 bump_stats_col.create_index([("channel_id", 1), ("day", 1), ("user_id", 1)])
 
 
@@ -39,6 +38,6 @@ def get_next_sequence_value(sequence_name: str) -> int:
         {"_id": sequence_name},
         {"$inc": {"sequence_value": 1}},
         upsert=True,
-        return_document=True,
+        return_document=True
     )
     return seq["sequence_value"]

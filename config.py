@@ -17,12 +17,9 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "ticketlogs": False,
     "ticketstats": False,
     "leaderboard": False,
-    "messages": False,
     "loggiveaway": True,
-    "deletegiveaway": True,
     "giveawaylogs": False,
     "loginvite": True,
-    "deleteinvite": True,
     "invitelogs": False,
     "userinfo": True,
     "inviter": True,
@@ -30,7 +27,6 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "sum": False,
     "help": False,
     "config": False,
-    "validinvite": False,
 }
 
 PERMISSION_GROUPS_DEFAULT = {
@@ -38,16 +34,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Поддержка",
         "emoji": "<:ticket:1522343287816716379>",
         "roles": [1501507449860001853, 1322962344040464424],
-        "commands": [
-            "help",
-            "ticketstats",
-            "leaderboard",
-            "messages",
-            "sum",
-            "invites",
-            "userinfo",
-            "inviter",
-        ],
+        "commands": ["help", "ticketstats", "leaderboard", "sum", "invites", "userinfo", "inviter"],
     },
     "transcript": {
         "name": "Транскрипты",
@@ -59,17 +46,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Администрация",
         "emoji": "<:mod:1522343179205087363>",
         "roles": [1542602508252487710, 1501503300200304640],
-        "commands": [
-            "deleteticket",
-            "deletelogs",
-            "invitelogs",
-            "giveawaylogs",
-            "loginvite",
-            "loggiveaway",
-            "deletegiveaway",
-            "deleteinvite",
-            "validinvite",
-        ],
+        "commands": ["deleteticket", "deletelogs", "invitelogs", "giveawaylogs", "loginvite", "loggiveaway", "validinvite"],
     },
     "owner": {
         "name": "Владелец",
@@ -100,10 +77,6 @@ COMMAND_USAGE_HELP = {
     "inviter": "`.inviter [ID / упоминание]` — Узнать, кто пригласил указанного пользователя и получил за него приз.",
     "invites": "`.invites [ID / упоминание]` — Посмотреть общее количество засчитанных приглашений пользователя.",
     "validinvite": "`.validinvite [ID / упоминание]` (алиасы: `.vi`, `.checkinvite`) — Проверить, забирал ли кто-то уже награду за данного пользователя.",
-    
-    # Статистика и Активность
-    "messages": "`.messages [ID / упоминание]` (алиас: `.m`) — Посмотреть количество отправленных сообщений пользователя.",
-    "leaderboard": "`.leaderboard [invites|messages|tickets]` (алиас: `.lb`) — Посмотреть топ пользователей по выбранной категории.",
     
     # Общие команды
     "userinfo": "`.userinfo [ID / упоминание]` (алиасы: `.ui`, `.user`) — Показать подробную информацию об аккаунте и ролях пользователя.",
