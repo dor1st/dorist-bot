@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 
 import config
-from database import giveaways_col, invites_col, get_next_sequence_value
+from database import giveaways_col, invites_col, users_col, get_next_sequence_value
 from utils import (
     check_access_decorator,
     make_error_embed,
@@ -210,6 +210,31 @@ class PlayerLogsCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+        async def on_message(self, message: discord.Message):
+            if message.author.bot or not message.guild:
+                return
+    
+            users_col.update_one(
+                {"_id": message.author.id},
+                {"$inc": {"messages_count": 1}},
+                upsert=True
+            )
+    
+    @commands.command(name="messages", aliases=["msg", "msgs"])
+            @check_access_decorator("messages")
+            async def messages_cmd(self, ctx: commands.Context, target: discord.User = None):
+                target = target or ctx.author
+                user_doc = users_col.find_one({"_id": target.id})
+                count = user_doc.get("messages_count", 0) if user_doc else 0
+        
+                embed = make_status_embed(
+                    "Статистика сообщений",
+                    f"Пользователь {target.mention} отправил сообщений: **{count}**",
+                    "info",
+                )
+                await ctx.send(embed=embed)
 
     @commands.command(name="loggiveaway", aliases=["lg"])
     @check_access_decorator("loggiveaway")
@@ -536,27 +561,30 @@ class PlayerLogsCog(commands.Cog):
 
     @commands.command(name="userinfo", aliases=["ui", "user"])
     @check_access_decorator("userinfo")
-    async def userinfo_cmd(
-        self, ctx: commands.Context, target: discord.User = None
-    ):
+    async def userinfo_cmd(self, ctx: commands.Context, target: discord.User = None):
         target = target or ctx.author
-
         member = ctx.guild.get_member(target.id) if ctx.guild else None
-
         created_timestamp = int(target.created_at.timestamp())
+
+        # Статистика из БД
+        user_doc = users_col.find_one({"_id": target.id})
+        msg_count = user_doc.get("messages_count", 0) if user_doc else 0
+        invites_count = invites_col.count_documents({"inviter_id": target.id})
 
         embed = discord.Embed(
             title=f"<:staff:1522338131339251823> Информация — {target.name}",
             color=config.EMBED_COLOR,
         )
         embed.set_thumbnail(url=target.display_avatar.url)
-        embed.add_field(
-            name="Имя пользователя", value=f"`{target.name}`", inline=True
-        )
-        embed.add_field(
-            name="Отображаемое имя", value=f"**{target.display_name}**", inline=True
-        )
+        embed.add_field(name="Имя пользователя", value=f"`{target.name}`", inline=True)
+        embed.add_field(name="Отображаемое имя", value=f"**{target.display_name}**", inline=True)
         embed.add_field(name="ID", value=f"`{target.id}`", inline=True)
+
+        embed.add_field(
+            name="Статистика активности",
+            value=f"💬 Сообщений: **{msg_count}**\n📩 Приглашений: **{invites_count}**",
+            inline=False,
+        )
 
         embed.add_field(
             name="Создание аккаунта",
@@ -573,13 +601,9 @@ class PlayerLogsCog(commands.Cog):
                     inline=False,
                 )
 
-            roles = [
-                role.mention for role in reversed(member.roles) if not role.is_default()
-            ]
+            roles = [role.mention for role in reversed(member.roles) if not role.is_default()]
             roles_str = ", ".join(roles) if roles else "Нет ролей"
-            embed.add_field(
-                name=f"Роли [{len(roles)}]", value=roles_str, inline=False
-            )
+            embed.add_field(name=f"Роли [{len(roles)}]", value=roles_str, inline=False)
 
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)

@@ -26,6 +26,7 @@ message_stats_col = db["message_stats"]
 bump_stats_col = db["bump_stats"]
 giveaways_col = db["giveaways"]
 invites_col = db["invites"]
+users_col = db["users"]
 
 tickets_col.create_index("transcript_url", unique=True, sparse=True)
 deleted_tickets_col.create_index("transcript_url", unique=True, sparse=True)
