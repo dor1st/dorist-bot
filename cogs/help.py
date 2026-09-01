@@ -13,35 +13,66 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
         embed.add_field(
             name="<:sparkles:1522342290494849034> Общие команды",
             value="`.help` — *Показать меню команд.*\n"
-            "`.config` — *Открыть меню настроек бота (цвет, footer, доступ).*\n",
+                  "`.config` — *Открыть меню настроек бота (цвет, footer, доступ).*\n",
             inline=False
         )
         embed.add_field(
             name="<:info:1522329987514892398> Доступные категории",
-            value="<:ticket:1522343287816716379> **Тикеты** — Полный список команд для работы с тикетами и транскриптами.",
+            value="<:ticket:1522343287816716379> **Тикеты** — Команды для работы с тикетами, логами и статистикой.\n"
+                  "<:logs:1522340749998428160> **Логи** — Команды для регистрации розыгрышей и инвайтов.\n"
+                  "<:staff:1522338131339251823> **Другое** — Информация о пользователях и итоговая статистика.",
             inline=False
         )
+
     elif category == "tickets":
         embed.title = "<:ticket:1522343287816716379> Категория: Тикеты"
-        embed.description = "Используй префикс `.` или слэш-команды `/`\n"
+        embed.description = "Используйте префикс `.` перед вызовом команды\n"
 
         embed.add_field(
-            name="<:ticket:1522343287816716379> Группа Поддержка",
-            value="`.ticketstats [ID / упоминание]`\n> *Посмотреть статистику тикетов, транскриптов и удалений.*\n\n"
-                  "`.leaderboard`\n> *Посмотреть топ модераторов по тикетам, транскриптам и удалениям.*",
+            name="<:ticket:1522343287816716379> Статистика и логи тикетов",
+            value="`.ticketstats [ID / упоминание]`\n> *Посмотреть статистику тикетов модератора.*\n\n"
+                  "`.addticket [ID модератора] [ссылка] [категория]`\n> *Записать новый обработанный тикет в базу данных.*\n\n"
+                  "`.ticketlogs [ID / упоминание]`\n> *Просмотреть логи тикетов пользователя.*",
             inline=False
         )
         embed.add_field(
-            name="<:logs:1522340749998428160> Группа Транскрипт",
-            value="`.addticket [ID модератора] [ссылка] [категория]`\n> *Записать новый обработанный тикет в базу данных.*\n\n"
-                  "`.ticketlogs [ID / упоминание]`\n> *Посмотреть логи тикетов модератора (с кнопками листания).*\n\n"
-                  "`.deleteticket [номер лога] [ссылка на транскрипт]`\n> *Записать удаление тикета (канала) и добавить +1 удалённый тикет модератору.*",
+            name="<:mod:1522343179205087363> Управление и удаление",
+            value="`.deleteticket [номер лога] [ссылка на транскрипт]`\n> *Записать удаление тикета.*\n\n"
+                  "`.deletelog [ID лога]`\n> *Удалить конкретный лог тикета.*\n\n"
+                  "`.resetlogs [ID / упоминание]`\n> *Очистить абсолютно все логи модератора.*",
+            inline=False
+        )
+
+    elif category == "logs":
+        embed.title = "<:logs:1522340749998428160> Категория: Логи"
+        embed.description = "Используйте префикс `.` перед вызовом команды\n"
+
+        embed.add_field(
+            name="<:sparkles:1522342290494849034> Розыгрыши",
+            value="`.loggiveaway [ID хостера] [приз] [кол-во] [ссылка]`\n> *Записать проведенный розыгрыш в базу.*\n\n"
+                  "`.deletegiveaway [ID лога]`\n> *Удалить лог розыгрыша из базы.*\n\n"
+                  "`.giveawaylogs [ID / упоминание]`\n> *Просмотреть логи розыгрышей пользователя.*",
             inline=False
         )
         embed.add_field(
-            name="<:mod:1522343179205087363> Группа Администрация",
-            value="`.deletelog [ID лога]`\n> *Удалить конкретный лог тикета по ID.*\n\n"
-                  "`.resetlogs [ID / упоминание]`\n> *Очистить абсолютно все логи модератора (тикеты, транскрипты, удаления).*",
+            name="<:logs:1522340749998428160> Приглашения (Инвайты)",
+            value="`.loginvite [ID пригласившего] [ID приглашенного] [приз] [кол-во]`\n> *Записать выданный приз за приглашение.*\n\n"
+                  "`.deleteinvite [ID лога]`\n> *Удалить лог приглашения из базы.*\n\n"
+                  "`.invitelogs [ID / упоминание]`\n> *Посмотреть логи приглашений пользователя.*\n\n"
+                  "`.inviter [ID / упоминание]`\n> *Узнать, кто пригласил участника и получил приз.*\n\n"
+                  "`.invites [ID / упоминание]`\n> *Узнать количество приглашенных участников.*\n\n"
+                  "`.validinvite [ID / упоминание]`\n> *Проверить, забирали ли уже приз за пользователя.*",
+            inline=False
+        )
+
+    elif category == "other":
+        embed.title = "<:staff:1522338131339251823> Категория: Другое"
+        embed.description = "Используйте префикс `.` перед вызовом команды\n"
+
+        embed.add_field(
+            name="<:info:1522329987514892398> Общие и информационные команды",
+            value="`.userinfo [ID / упоминание]`\n> *Посмотреть профиль, даты и роли участника.*\n\n"
+                  "`.summaries`\n> *Просмотреть общие итоги и сводку.*",
             inline=False
         )
 
@@ -66,18 +97,57 @@ class HelpView(discord.ui.View):
 
     def show_main_buttons(self):
         self.clear_items()
-        tickets_btn = discord.ui.Button(label="Тикеты", emoji="<:ticket:1522343287816716379>", style=discord.ButtonStyle.gray, custom_id="help_tickets")
+        
+        tickets_btn = discord.ui.Button(
+            label="Тикеты", 
+            emoji="<:ticket:1522343287816716379>", 
+            style=discord.ButtonStyle.gray, 
+            custom_id="help_tickets"
+        )
         tickets_btn.callback = self.tickets_callback
         self.add_item(tickets_btn)
 
+        logs_btn = discord.ui.Button(
+            label="Логи", 
+            emoji="<:logs:1522340749998428160>", 
+            style=discord.ButtonStyle.gray, 
+            custom_id="help_logs"
+        )
+        logs_btn.callback = self.logs_callback
+        self.add_item(logs_btn)
+
+        other_btn = discord.ui.Button(
+            label="Другое", 
+            emoji="<:staff:1522338131339251823>", 
+            style=discord.ButtonStyle.gray, 
+            custom_id="help_other"
+        )
+        other_btn.callback = self.other_callback
+        self.add_item(other_btn)
+
     def show_back_button(self):
         self.clear_items()
-        back_btn = discord.ui.Button(label="Назад", emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary, custom_id="help_back")
+        back_btn = discord.ui.Button(
+            label="Назад", 
+            emoji="<:darkleft:1543989641751957565>", 
+            style=discord.ButtonStyle.secondary, 
+            custom_id="help_back"
+        )
         back_btn.callback = self.back_callback
         self.add_item(back_btn)
 
     async def tickets_callback(self, interaction: discord.Interaction):
         embed = build_help_embed("tickets", self.user)
+        self.show_back_button()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def logs_callback(self, interaction: discord.Interaction):
+        embed = build_help_embed("logs", self.user)
+        self.show_back_button()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def other_callback(self, interaction: discord.Interaction):
+        embed = build_help_embed("other", self.user)
         self.show_back_button()
         await interaction.response.edit_message(embed=embed, view=self)
 

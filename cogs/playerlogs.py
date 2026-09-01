@@ -76,12 +76,15 @@ class GiveawayLogsView(discord.ui.View):
             else:
                 time_str = "—"
 
+            link_str = f"\n**Ссылка:** [Перейти к сообщению]({doc.get('message_url')})" if doc.get("message_url") else ""
+
             description_lines.append(
                 f"**Розыгрыш №{index}** (Лог №{doc.get('_id')})\n"
                 f"**Хостер:** {self.target.name} ({self.target.mention})\n"
                 f"**Приз:** {doc.get('prize_type', '—')}\n"
                 f"**Количество:** {doc.get('amount', 1)}\n"
-                f"**Внёс в базу:** <@{doc.get('author_id')}>\n"
+                f"**Внёс в базу:** <@{doc.get('author_id')}>"
+                f"{link_str}\n"
                 f"{time_str}\n"
             )
 
@@ -274,6 +277,39 @@ class PlayerLogsCog(commands.Cog):
         await ctx.send(embed=embed)
         await log_action(ctx.guild, "loggiveaway", embed)
 
+    @commands.command(name="deletegiveaway", aliases=["delgiveaway", "dlg"])
+    @check_access_decorator("deletegiveaway")
+    async def deletegiveaway_cmd(self, ctx: commands.Context, log_id: int = None):
+        if log_id is None:
+            embed = discord.Embed(
+                title="Информация о команде — .deletegiveaway",
+                description="Удалить лог розыгрыша из базы данных по его номеру.\n\n**Использование:**\n`.deletegiveaway [ID_лога]`",
+                color=config.EMBED_COLOR,
+            )
+            embed.set_footer(text=config.FOOTER_TEXT)
+            return await ctx.send(embed=embed)
+
+        doc = giveaways_col.find_one_and_delete({"_id": log_id})
+        if not doc:
+            embed = make_error_embed(
+                "Лог не найден",
+                f"Розыгрыш с номером лога `{log_id}` не найден в базе данных."
+            )
+            return await ctx.send(embed=embed)
+
+        embed = discord.Embed(
+            title="Удаление розыгрыша",
+            description=f"Лог розыгрыша **№{log_id}** успешно удалён из базы данных.",
+            color=0xe74c3c,
+        )
+        embed.add_field(name="Хостер", value=f"<@{doc.get('host_id')}> (`{doc.get('host_id')}`)", inline=False)
+        embed.add_field(name="Приз", value=f"{doc.get('prize_type', '—')} ({doc.get('amount', 1)} шт.)", inline=True)
+        embed.add_field(name="Удалил", value=ctx.author.mention, inline=True)
+        embed.set_footer(text=config.FOOTER_TEXT)
+
+        await ctx.send(embed=embed)
+        await log_action(ctx.guild, "deletegiveaway", embed)
+
     @commands.command(name="giveawaylogs", aliases=["gl"])
     @check_access_decorator("giveawaylogs")
     async def giveawaylogs_cmd(
@@ -329,7 +365,6 @@ class PlayerLogsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
-        # Проверка категории приза
         matched_prize = next((p for p in VALID_PRIZES if p.lower() == prize.lower()), None)
         if not matched_prize:
             prizes_str = ", ".join([f"`{p}`" for p in VALID_PRIZES])
@@ -382,7 +417,40 @@ class PlayerLogsCog(commands.Cog):
         await ctx.send(embed=embed)
         await log_action(ctx.guild, "loginvite", embed)
 
-    # 3. Новая команда: Проверка валидности приза за приглашенного игрока
+    @commands.command(name="deleteinvite", aliases=["delinvite", "dli"])
+    @check_access_decorator("deleteinvite")
+    async def deleteinvite_cmd(self, ctx: commands.Context, log_id: int = None):
+        if log_id is None:
+            embed = discord.Embed(
+                title="Информация о команде — .deleteinvite",
+                description="Удалить лог приглашения из базы данных по его номеру.\n\n**Использование:**\n`.deleteinvite [ID_лога]`",
+                color=config.EMBED_COLOR,
+            )
+            embed.set_footer(text=config.FOOTER_TEXT)
+            return await ctx.send(embed=embed)
+
+        doc = invites_col.find_one_and_delete({"_id": log_id})
+        if not doc:
+            embed = make_error_embed(
+                "Лог не найден",
+                f"Лог приглашения с номером `{log_id}` не найден в базе данных."
+            )
+            return await ctx.send(embed=embed)
+
+        embed = discord.Embed(
+            title="Удаление приглашения",
+            description=f"Лог приглашения **№{log_id}** успешно удалён из базы данных.",
+            color=0xe74c3c,
+        )
+        embed.add_field(name="Пригласил", value=f"<@{doc.get('inviter_id')}> (`{doc.get('inviter_id')}`)", inline=False)
+        embed.add_field(name="Приглашённый", value=f"<@{doc.get('invited_id')}> (`{doc.get('invited_id')}`)", inline=False)
+        embed.add_field(name="Приз", value=f"{doc.get('prize', '—')} ({doc.get('amount', 1)} шт.)", inline=True)
+        embed.add_field(name="Удалил", value=ctx.author.mention, inline=True)
+        embed.set_footer(text=config.FOOTER_TEXT)
+
+        await ctx.send(embed=embed)
+        await log_action(ctx.guild, "deleteinvite", embed)
+
     @commands.command(name="validinvite", aliases=["vi", "checkinvite"])
     @check_access_decorator("validinvite")
     async def validinvite_cmd(
@@ -405,7 +473,7 @@ class PlayerLogsCog(commands.Cog):
                     f"За приглашение пользователя {target.mention} (`{target.id}`) **ещё никто не получал приз**.\n\n"
                     "Вы можете зарегистрировать выдачу приза с помощью команды `.loginvite`."
                 ),
-                color=0x2ecc71,  # Зеленый цвет успеха
+                color=0x2ecc71,
             )
             embed.set_footer(text=config.FOOTER_TEXT)
             return await ctx.send(embed=embed)
@@ -416,7 +484,7 @@ class PlayerLogsCog(commands.Cog):
         embed = discord.Embed(
             title="<:logs:1522340749998428160> Приз уже был получен",
             description=f"За пользователя {target.mention} (`{target.id}`) **уже забирали награду**.",
-            color=0xe74c3c,  # Красный цвет предупреждения
+            color=0xe74c3c,
         )
         embed.add_field(
             name="Пригласивший (Кто забрал приз)",
