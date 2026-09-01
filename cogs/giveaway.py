@@ -1173,26 +1173,14 @@ class GiveawayCog(commands.Cog):
         ctx: commands.Context,
     ):
         embed = discord.Embed(
-            title="🎉 Розыгрыши",
+            title="📋 Меню розыгрышей",
             description=(
-                "Доступные команды:\n\n"
-                "• `.giveaway create [приз] [длительность] "
-                "[победители] [время на получение]` "
-                "— создать розыгрыш\n"
-                "• `.giveaway end [ID сообщения]` "
-                "— закончить розыгрыш досрочно\n"
-                "• `.giveaway delete [ID сообщения]` "
-                "— удалить розыгрыш"
+                "Укажите категорию розыгрыша:\n\n"
+                "• `.giveaway create` — Создать новый розыгрыш\n"
+                "• `.giveaway delete` — Удалить существующий розыгрыш\n"
+                "• `.giveaway end` — Досрочно завершить розыгрыш"
             ),
             color=config.EMBED_COLOR,
-        )
-
-        embed.add_field(
-            name="Пример",
-            value=(
-                "`.giveaway create 1000 Robux 7d 1 24h`"
-            ),
-            inline=False,
         )
 
         embed.set_footer(

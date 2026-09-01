@@ -21,6 +21,7 @@ INITIAL_EXTENSIONS = [
     "cogs.admin",
     "cogs.help",
     "cogs.playerlogs",
+    "cogs.giveaway",
 ]
 
 @bot.event
