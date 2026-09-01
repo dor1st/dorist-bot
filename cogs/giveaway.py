@@ -94,7 +94,7 @@ def role_mentions(guild: discord.Guild, role_ids: list[int]) -> str:
     return ", ".join(roles) if roles else "Не установлено"
 
 
-def build_giveaway_embed(
+def build_giveaway_embeds(
     *,
     prize: str,
     host: discord.Member | discord.User,
@@ -109,8 +109,14 @@ def build_giveaway_embed(
     claim_time: str = "—",
     ended: bool = False,
     winner_ids: list[int] | None = None,
-) -> discord.Embed:
-    embed = discord.Embed(
+) -> tuple[discord.Embed, discord.Embed]:
+    # 1. Первый эмбед — только с картинкой-шапкой
+    banner_embed = discord.Embed(color=config.EMBED_COLOR)
+    if GIVEAWAY_IMAGE_URL and GIVEAWAY_IMAGE_URL != "https://example.com/banner.png":
+        banner_embed.set_image(url=GIVEAWAY_IMAGE_URL)
+
+    # 2. Второй эмбед — вся информация о розыгрыше
+    main_embed = discord.Embed(
         title=prize,
         color=config.EMBED_COLOR,
     )
@@ -159,11 +165,10 @@ def build_giveaway_embed(
         else:
             lines.append("**Победители:** Подходящих участников не найдено.")
 
-    embed.description = "\n".join(lines)
-    if GIVEAWAY_IMAGE_URL and GIVEAWAY_IMAGE_URL != "https://example.com/banner.png":
-        embed.set_image(url=GIVEAWAY_IMAGE_URL)
-    embed.set_footer(text=config.FOOTER_TEXT)
-    return embed
+    main_embed.description = "\n".join(lines)
+    main_embed.set_footer(text=config.FOOTER_TEXT)
+
+    return banner_embed, main_embed
 
 
 class GiveawaySetupView(discord.ui.View):
@@ -389,7 +394,7 @@ class GiveawaySetupView(discord.ui.View):
 
         ends_at = utcnow() + self.duration
 
-        embed = build_giveaway_embed(
+        embeds = build_giveaway_embeds(
             prize=self.prize,
             host=self.ctx.author,
             ends_at=ends_at,
@@ -408,7 +413,10 @@ class GiveawaySetupView(discord.ui.View):
             content_ping = " ".join(f"<@&{rid}>" for rid in self.ping_roles)
 
         try:
-            message = await channel.send(content=content_ping if content_ping else None, embed=embed)
+            message = await channel.send(
+                content=content_ping if content_ping else None, 
+                embeds=list(embeds)
+            )
             await message.add_reaction(GIVEAWAY_EMOJI)
         except discord.HTTPException:
             await interaction.followup.send(
@@ -841,7 +849,7 @@ class GiveawayCog(commands.Cog):
 
         host = guild.get_member(int(doc["host_id"])) or self.bot.user
 
-        embed = build_giveaway_embed(
+        embeds = build_giveaway_embeds(
             prize=doc["prize"],
             host=host,
             ends_at=doc["ends_at"],
@@ -858,7 +866,7 @@ class GiveawayCog(commands.Cog):
         )
 
         try:
-            await message.edit(embed=embed)
+            await message.edit(embeds=list(embeds))
         except discord.HTTPException:
             pass
 
@@ -970,7 +978,7 @@ class GiveawayCog(commands.Cog):
         winner_ids = [member.id for member in winners]
         host = guild.get_member(int(doc["host_id"])) or self.bot.user
 
-        ended_embed = build_giveaway_embed(
+        ended_embeds = build_giveaway_embeds(
             prize=doc["prize"],
             host=host,
             ends_at=doc["ends_at"],
@@ -989,7 +997,7 @@ class GiveawayCog(commands.Cog):
         )
 
         try:
-            await message.edit(embed=ended_embed)
+            await message.edit(embeds=list(ended_embeds))
         except discord.HTTPException:
             pass
 
@@ -1051,10 +1059,10 @@ class GiveawayCog(commands.Cog):
             title="<:giveaway:1522331215976206446> Меню розыгрышей",
             description=(
                 "Укажите команду для управления розыгрышами:\n\n"
-                "• `.gw cr` — Создать новый розыгрыш\n"
-                "• `.gw end [ID]` — Завершить розыгрыш\n"
-                "• `.gw rr [ID]` — Перевыбрать победителя (реролл)\n"
-                "• `.gw del [ID]` — Удалить розыгрыш"
+                "• `.giveaway create` — Создать новый розыгрыш\n"
+                "• `.giveaway end [ID]` — Завершить розыгрыш\n"
+                "• `.giveaway reroll [ID]` — Перевыбрать победителя (реролл)\n"
+                "• `.giveaway delete [ID]` — Удалить розыгрыш"
             ),
             color=config.EMBED_COLOR,
         )
