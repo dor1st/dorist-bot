@@ -226,7 +226,7 @@ class PlayerLogsCog(commands.Cog):
                 pass
 
     # ==========================================
-    # EVENT LISTENERS FOR INVITES
+    # EVENT LISTENERS FOR INVITES & MESSAGES
     # ==========================================
 
     @commands.Cog.listener()
@@ -299,8 +299,24 @@ class PlayerLogsCog(commands.Cog):
         )
 
     # ==========================================
-    # UPDATED COMMANDS
+    # COMMANDS
     # ==========================================
+
+    @commands.command(name="messages", aliases=["msg", "msgs", "message"])
+    @check_access_decorator("messages")
+    async def messages_cmd(self, ctx: commands.Context, target: discord.User = None):
+        """Просмотреть количество текстовых сообщений пользователя."""
+        target = target or ctx.author
+        
+        user_doc = users_col.find_one({"_id": target.id}) or {}
+        messages_count = user_doc.get("messages_count", 0)
+
+        embed = make_status_embed(
+            "Статистика сообщений",
+            f"Пользователь {target.mention} отправил сообщений: **{messages_count}**",
+            "info",
+        )
+        await ctx.send(embed=embed)
 
     @commands.command(name="invites", aliases=["inv"])
     @check_access_decorator("invites")
