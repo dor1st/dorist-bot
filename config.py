@@ -1,11 +1,17 @@
 import discord
+from datetime import timedelta
 
 OWNER_ID = 851443344718430210
 DISBOARD_BOT_ID = 302050872383242240
 ALLOWED_CHANNEL_IDS = [1543958477485908048]
 SETUP_CHANNEL_ID = 1543982091707093143
+
 VALID_CATEGORIES = ["Помощь по серверу", "Получение призов", "Получение роли", "Покупка рекламы"]
 VALID_PRIZES = ["Робуксы", "Коины", "Геймпасс", "Годли"]
+
+GIVEAWAY_EMOJI = "🎉"
+MAX_DURATION = timedelta(days=31)
+SETUP_TIMEOUT = 900
 
 LOGS_PER_PAGE = 3
 
@@ -31,6 +37,7 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "sum": False,
     "help": False,
     "config": False,
+    "giveaway": False,
 }
 
 PERMISSION_GROUPS_DEFAULT = {
@@ -51,14 +58,15 @@ PERMISSION_GROUPS_DEFAULT = {
         "emoji": "<:mod:1522343179205087363>",
         "roles": [1542602508252487710, 1501503300200304640],
         "commands": [
-            "deleteticket", 
-            "deletegiveaway", 
-            "deleteinvite", 
-            "invitelogs", 
-            "giveawaylogs", 
-            "loginvite", 
-            "loggiveaway", 
-            "validinvite"
+            "deleteticket",
+            "deletegiveaway",
+            "deleteinvite",
+            "invitelogs",
+            "giveawaylogs",
+            "loginvite",
+            "loggiveaway",
+            "validinvite",
+            "giveaway",
         ],
     },
     "owner": {
