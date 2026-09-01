@@ -9,13 +9,20 @@ VALID_CATEGORIES = ["Помощь по серверу", "Получение пр
 LOGS_PER_PAGE = 3
 
 LOGGABLE_COMMANDS_DEFAULT = {
-    "addticket": True,
-    "deleteticket": True,
+    "addticket": False,
+    "deleteticket": False,
     "deletelog": True,
     "resetlogs": True,
-    "ticketlogs": True,
-    "ticketstats": True,
-    "leaderboard": True,
+    "ticketlogs": False,
+    "ticketstats": False,
+    "leaderboard": False,
+    "loggiveaway": True,
+    "giveawaylogs": False,
+    "loginvite": True,
+    "invitelogs": False,
+    "userinfo": True,
+    "inviter": True,
+    "invites": False,
     "sum": False,
     "help": False,
     "config": False,
@@ -92,4 +99,7 @@ def update_config(patch: dict):
 
 
 def load_config():
+    global CONFIG
+    CONFIG["permission_groups"] = {k: dict(v) for k, v in PERMISSION_GROUPS_DEFAULT.items()}
+    CONFIG["log_toggles"] = {**LOGGABLE_COMMANDS_DEFAULT, **CONFIG.get("log_toggles", {})}
     apply_config_globals()

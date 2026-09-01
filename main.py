@@ -11,6 +11,7 @@ load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True  # ВКЛЮЧЕНО: нужно для работы userinfo и получения ролей/участников
 
 bot = commands.Bot(command_prefix=".", intents=intents, help_command=None)
 
@@ -19,7 +20,7 @@ INITIAL_EXTENSIONS = [
     "cogs.stats",
     "cogs.admin",
     "cogs.help",
-
+    "cogs.playerlogs",
 ]
 
 @bot.event
@@ -47,8 +48,8 @@ async def on_ready():
     embed.set_footer(text=config.FOOTER_TEXT)
 
     channel = bot.get_channel(config.SETUP_CHANNEL_ID)
-    await channel.send(embed=embed)
-            
+    if channel:
+        await channel.send(embed=embed)
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error: Exception):
@@ -56,7 +57,8 @@ async def on_command_error(ctx: commands.Context, error: Exception):
         return
 
     if isinstance(error, commands.MissingRequiredArgument):
-        cmd_help = config.COMMAND_USAGE_HELP.get(ctx.command.name, f"`.{ctx.command.name}`")
+        cmd_name = ctx.command.name if ctx.command else "команда"
+        cmd_help = config.COMMAND_USAGE_HELP.get(cmd_name, f"`.{cmd_name}`")
         embed = make_error_embed(
             "Недостаточно аргументов",
             f"Вы указали неправильный аргумент **{error.param.name}**!\n\n**Использование команды:**\n{cmd_help}"
@@ -65,7 +67,8 @@ async def on_command_error(ctx: commands.Context, error: Exception):
         return
 
     if isinstance(error, commands.BadArgument):
-        cmd_help = config.COMMAND_USAGE_HELP.get(ctx.command.name, f"`.{ctx.command.name}`")
+        cmd_name = ctx.command.name if ctx.command else "команда"
+        cmd_help = config.COMMAND_USAGE_HELP.get(cmd_name, f"`.{cmd_name}`")
         embed = make_error_embed(
             "Неверный аргумент",
             f"Один из переданных аргументов указан неверно.\n\n**Использование:**\n{cmd_help}"
