@@ -18,12 +18,16 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "ticketstats": False,
     "leaderboard": False,
     "loggiveaway": True,
+    "deletegiveaway": True,
     "giveawaylogs": False,
     "loginvite": True,
+    "deleteinvite": True,
     "invitelogs": False,
+    "validinvite": False,
     "userinfo": True,
     "inviter": True,
     "invites": False,
+    "messages": False,
     "sum": False,
     "help": False,
     "config": False,
@@ -34,7 +38,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Поддержка",
         "emoji": "<:ticket:1522343287816716379>",
         "roles": [1501507449860001853, 1322962344040464424],
-        "commands": ["help", "ticketstats", "leaderboard", "sum", "invites", "userinfo", "inviter"],
+        "commands": ["help", "ticketstats", "leaderboard", "sum", "invites", "messages", "userinfo", "inviter"],
     },
     "transcript": {
         "name": "Транскрипты",
@@ -46,7 +50,16 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Администрация",
         "emoji": "<:mod:1522343179205087363>",
         "roles": [1542602508252487710, 1501503300200304640],
-        "commands": ["deleteticket", "deletelogs", "invitelogs", "giveawaylogs", "loginvite", "loggiveaway", "validinvite"],
+        "commands": [
+            "deleteticket", 
+            "deletegiveaway", 
+            "deleteinvite", 
+            "invitelogs", 
+            "giveawaylogs", 
+            "loginvite", 
+            "loggiveaway", 
+            "validinvite"
+        ],
     },
     "owner": {
         "name": "Владелец",
@@ -58,28 +71,29 @@ PERMISSION_GROUPS_DEFAULT = {
 
 COMMAND_USAGE_HELP = {
     # Тикеты
-    "addticket": "`.addticket [ID_модератора] [ссылка] [категория]` (алиас: `.at`) — Внести новый обработанный тикет в базу.",
-    "deleteticket": "`.deleteticket [ID_лога] [ссылка_на_транскрипт]` (алиас: `.dt`) — Записать удаление тикета.",
-    "ticketlogs": "`.ticketlogs [ID / упоминание]` (алиас: `.tl`) — Просмотреть логи тикетов пользователя.",
-    "ticketstats": "`.ticketstats [ID / упоминание]` (алиас: `.ts`) — Просмотреть статистику тикетов пользователя.",
-    "deletelog": "`.deletelog [ID_лога]` (алиас: `.dl`) — Удалить конкретный лог тикета.",
-    "resetlogs": "`.resetlogs [ID / упоминание]` (алиас: `.rl`) — Очистить все логи модератора.",
+    "addticket": "`.addticket [ID_модератора] [ссылка] [категория]` — Внести новый обработанный тикет в базу.",
+    "deleteticket": "`.deleteticket [ID_лога] [ссылка_на_транскрипт]` — Записать удаление тикета.",
+    "ticketlogs": "`.ticketlogs [ID / упоминание]` — Просмотреть логи тикетов пользователя.",
+    "ticketstats": "`.ticketstats [ID / упоминание]` — Просмотреть статистику тикетов пользователя.",
+    "deletelog": "`.deletelog [ID_лога]` — Удалить конкретный лог тикета.",
+    "resetlogs": "`.resetlogs [ID / упоминание]` — Очистить все логи модератора.",
     
     # Розыгрыши
-    "loggiveaway": "`.loggiveaway [ID_хостера] [приз] [количество] [ссылка]` (алиас: `.lg`) — Внести новый проведенный розыгрыш в базу данных.",
-    "deletegiveaway": "`.deletegiveaway [ID_лога]` (алиасы: `.delgiveaway`, `.dlg`) — Удалить запись о розыгрыше из базы данных по её ID.",
-    "giveawaylogs": "`.giveawaylogs [ID / упоминание]` (алиас: `.gl`) — Просмотреть список логов розыгрышей указанного пользователя.",
+    "loggiveaway": "`.loggiveaway [ID_хостера] [приз] [количество] [ссылка]` — Внести новый проведенный розыгрыш в базу данных.",
+    "deletegiveaway": "`.deletegiveaway [ID_лога]` — Удалить запись о розыгрыше из базы данных по её ID.",
+    "giveawaylogs": "`.giveawaylogs [ID / упоминание]` — Просмотреть список логов розыгрышей указанного пользователя.",
     
     # Приглашения
-    "loginvite": "`.loginvite [ID_пригласившего] [ID_приглашенного] [приз] [количество]` (алиас: `.li`) — Записать выданную награду за приглашение игрока.",
-    "deleteinvite": "`.deleteinvite [ID_лога]` (алиасы: `.delinvite`, `.dli`) — Удалить запись об инвайте из базы данных по её ID.",
-    "invitelogs": "`.invitelogs [ID / упоминание]` (алиас: `.il`) — Посмотреть логи приглашений конкретного пользователя.",
+    "loginvite": "`.loginvite [ID_пригласившего] [ID_приглашенного] [приз] [количество]` — Записать выданную награду за приглашение игрока.",
+    "deleteinvite": "`.deleteinvite [ID_лога]` — Удалить запись об инвайте из базы данных по её ID.",
+    "invitelogs": "`.invitelogs [ID / упоминание]` — Посмотреть логи приглашений конкретного пользователя.",
     "inviter": "`.inviter [ID / упоминание]` — Узнать, кто пригласил указанного пользователя и получил за него приз.",
     "invites": "`.invites [ID / упоминание]` — Посмотреть общее количество засчитанных приглашений пользователя.",
-    "validinvite": "`.validinvite [ID / упоминание]` (алиасы: `.vi`, `.checkinvite`) — Проверить, забирал ли кто-то уже награду за данного пользователя.",
+    "validinvite": "`.validinvite [ID / упоминание]` — Проверить, забирал ли кто-то уже награду за данного пользователя.",
     
-    # Общие команды
-    "userinfo": "`.userinfo [ID / упоминание]` (алиасы: `.ui`, `.user`) — Показать подробную информацию об аккаунте и ролях пользователя.",
+    # Общие команды и статистика
+    "messages": "`.messages [ID / упоминание]` — Просмотреть количество текстовых сообщений пользователя.",
+    "userinfo": "`.userinfo [ID / упоминание]` — Показать подробную информацию об аккаунте и ролях пользователя.",
 }
 
 CONFIG = {

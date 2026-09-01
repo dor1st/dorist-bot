@@ -99,7 +99,7 @@ class StatsCog(commands.Cog):
                 return "— *Нет данных*"
             return "\n".join(f"`{i}.` <@{uid}> — **{count}**" for i, (uid, count) in enumerate(rows, 1))
 
-        embed = discord.Embed(title="<:info:1522329987514892398> Подсчет", color=config.EMBED_COLOR)
+        embed = discord.Embed(title="<:leaderboard:1544301200894070844> Подсчет", color=config.EMBED_COLOR)
 
         embed.add_field(name="🧮 Сообщения — 7 дней", value=fmt(top_stats(message_stats_col, d7, config.CONFIG.get("counting_channel_id"))), inline=True)
         embed.add_field(name="<:bump:1522334649580392518> Bump — 7 дней", value=fmt(top_stats(bump_stats_col, d7, config.CONFIG.get("bump_channel_id"))), inline=True)
@@ -126,28 +126,27 @@ class StatsCog(commands.Cog):
     # ==========================================
     @commands.group(name="leaderboard", aliases=["lb"], invoke_without_command=True)
     async def leaderboard_group(self, ctx: commands.Context, category: str = None):
-        if category in ["messages", "msg", "msgs", "сообщения"]:
+        if category in ["messages", "m", "msgs", "сообщения"]:
             return await ctx.invoke(self.lb_messages)
-        elif category in ["invites", "inv", "приглашения"]:
+        elif category in ["invites", "i", "приглашения"]:
             return await ctx.invoke(self.lb_invites)
-        elif category in ["tickets", "tix", "тикеты"]:
+        elif category in ["tickets", "t", "тикеты"]:
             return await ctx.invoke(self.lb_tickets)
 
         embed = discord.Embed(
             title="<:trophy:1522340749998428160> Меню таблиц лидеров",
             description=(
                 "Укажите категорию лидерборда:\n\n"
-                "• `.lb messages` (`msg`) — Топ 5 по сообщениям\n"
-                "• `.lb invites` (`inv`) — Топ 5 по приглашениям\n"
-                "• `.lb tickets` (`tix`) — Лидерборд тикетов и транскриптов"
+                "• `.lb messages` — Топ 5 по сообщениям\n"
+                "• `.lb invites` — Топ 5 по приглашениям\n"
+                "• `.lb tickets` — Лидерборд тикетов, транскриптов и удалений"
             ),
             color=config.EMBED_COLOR,
         )
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
-    # 1. Подкоманда messages (Топ 5 по сообщениям)
-    @leaderboard_group.command(name="messages", aliases=["msg", "msgs"])
+    @leaderboard_group.command(name="messages", aliases=["m"])
     @check_access_decorator("leaderboard")
     async def lb_messages(self, ctx: commands.Context):
         pipeline = [
@@ -159,7 +158,7 @@ class StatsCog(commands.Cog):
         top_data = list(users_col.aggregate(pipeline))
 
         embed = discord.Embed(
-            title="<:trophy:1522340749998428160> Топ 5 по сообщениям",
+            title="<:leaderboard:1544301200894070844> Топ 5 по сообщениям",
             color=config.EMBED_COLOR
         )
 
@@ -175,19 +174,30 @@ class StatsCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
-    # 2. Подкоманда invites (Топ 5 по приглашениям)
-    @leaderboard_group.command(name="invites", aliases=["inv"])
+    @leaderboard_group.command(name="invites", aliases=["i"])
     @check_access_decorator("leaderboard")
     async def lb_invites(self, ctx: commands.Context):
-        pipeline = [
-            {"$group": {"_id": "$inviter_id", "count": {"$sum": 1}}},
-            {"$sort": {"count": -1}},
-            {"$limit": 5}
-        ]
-        top_data = list(invites_col.aggregate(pipeline))
+        query = {
+            "$or": [
+                {"real_invites": {"$gt": 0}},
+                {"bonus_invites": {"$gt": 0}}
+            ]
+        }
+        users = list(users_col.find(query))
+
+        leaderboard_data = []
+        for user in users:
+            real = user.get("real_invites", 0)
+            bonus = user.get("bonus_invites", 0)
+            total = real + bonus
+            if total > 0:
+                leaderboard_data.append({"_id": user["_id"], "count": total})
+
+        leaderboard_data.sort(key=lambda x: x["count"], reverse=True)
+        top_data = leaderboard_data[:5]
 
         embed = discord.Embed(
-            title="<:trophy:1522340749998428160> Топ 5 по приглашениям",
+            title="<:leaderboard:1544301200894070844> Топ 5 по приглашениям",
             color=config.EMBED_COLOR
         )
 
@@ -203,8 +213,7 @@ class StatsCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
-    # 3. Подкоманда tickets (Тикеты, транскрипты, удаления)
-    @leaderboard_group.command(name="tickets", aliases=["tix"])
+    @leaderboard_group.command(name="tickets", aliases=["t"])
     @check_access_decorator("leaderboard")
     async def lb_tickets(self, ctx: commands.Context):
         now = datetime.now(timezone.utc)
@@ -225,13 +234,13 @@ class StatsCog(commands.Cog):
             pipeline.extend([
                 {"$group": {"_id": f"${field}", "cnt": {"$sum": 1}}},
                 {"$sort": {"cnt": -1}},
-                {"$limit": 5}  # Обновлено до 5 элементов
+                {"$limit": 3}
             ])
             return [(doc["_id"], doc["cnt"]) for doc in collection.aggregate(pipeline)]
 
-        def format_top_with_dashes(top_list, unit_label="ткетов"):
+        def format_top_with_dashes(top_list, unit_label="тикетов"):
             lines = []
-            for i in range(1, 6):  # Топ 5 вывода
+            for i in range(1, 4):
                 if i <= len(top_list):
                     u_id, count = top_list[i - 1]
                     lines.append(f"`{i}.` <@{u_id}> — **{count}** {unit_label}")
@@ -239,7 +248,7 @@ class StatsCog(commands.Cog):
                     lines.append(f"`{i}.` —")
             return "\n".join(lines)
 
-        embed = discord.Embed(title="<:sparkles:1522342290494849034> Лидерборд тикетов и транскриптов", color=config.EMBED_COLOR)
+        embed = discord.Embed(title="<:leaderboard:1544301200894070844> Лидерборд тикетов и транскриптов", color=config.EMBED_COLOR)
 
         embed.add_field(name="<:ticket:1522343287816716379> Тикетов (7 дн.)", value=format_top_with_dashes(get_top(tickets_col, "staff_id", d7)), inline=True)
         embed.add_field(name="<:ticket:1522343287816716379> Тикетов (30 дн.)", value=format_top_with_dashes(get_top(tickets_col, "staff_id", d30)), inline=True)
