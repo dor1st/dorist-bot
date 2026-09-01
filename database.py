@@ -24,8 +24,9 @@ deleted_tickets_col = db["deleted_tickets"]
 settings_col = db["settings"]
 message_stats_col = db["message_stats"]
 bump_stats_col = db["bump_stats"]
+giveaways_col = db["giveaways"]
+invites_col = db["invites"]
 
-# Индексы
 tickets_col.create_index("transcript_url", unique=True, sparse=True)
 deleted_tickets_col.create_index("transcript_url", unique=True, sparse=True)
 message_stats_col.create_index([("channel_id", 1), ("day", 1), ("user_id", 1)])
