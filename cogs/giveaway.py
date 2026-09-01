@@ -10,9 +10,15 @@ from database import giveaways_col, users_col
 from utils import check_access_decorator, make_error_embed, make_status_embed
 
 
-GIVEAWAY_EMOJI = config.GIVEAWAY_EMOJI
-MAX_DURATION = config.MAX_DURATION
-SETUP_TIMEOUT = config.SETUP_TIMEOUT
+GIVEAWAY_EMOJI = getattr(config, "GIVEAWAY_EMOJI", "🎉")
+MAX_DURATION = getattr(config, "MAX_DURATION", timedelta(days=31))
+SETUP_TIMEOUT = getattr(config, "SETUP_TIMEOUT", 300)
+
+GIVEAWAY_IMAGE_URL = getattr(
+    config, 
+    "GIVEAWAY_IMAGE_URL", 
+    "https://cdn.discordapp.com/attachments/1521823293169205258/1544354921002831892/13afec33f77f8f2d.png?ex=6a983419&is=6a96e299&hm=6bc1383a8045076895f92158d8f03440c90e5c6c30cc668f76d3a7f26370d57c" 
+)
 
 
 def utcnow() -> datetime:
@@ -20,6 +26,8 @@ def utcnow() -> datetime:
 
 
 def parse_duration(value: str) -> timedelta | None:
+    if not value or value == "—":
+        return None
     value = value.strip().lower().replace(" ", "")
     match = re.fullmatch(
         r"(\d+(?:\.\d+)?)(s|m|h|d|w|mo|month|months)",
@@ -51,6 +59,9 @@ def parse_duration(value: str) -> timedelta | None:
 
 def format_timedelta(td: timedelta) -> str:
     total_seconds = int(td.total_seconds())
+    if total_seconds <= 0:
+        return "0 сек."
+        
     days, remainder = divmod(total_seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -66,6 +77,13 @@ def format_timedelta(td: timedelta) -> str:
         parts.append(f"{seconds} сек.")
 
     return " ".join(parts)
+
+
+def format_claim_time(claim_time_raw: str) -> str:
+    td = parse_duration(claim_time_raw)
+    if td:
+        return format_timedelta(td)
+    return claim_time_raw
 
 
 def role_mentions(guild: discord.Guild, role_ids: list[int]) -> str:
@@ -97,6 +115,8 @@ def build_giveaway_embed(
         color=config.EMBED_COLOR,
     )
 
+    formatted_claim = format_claim_time(claim_time)
+
     lines = [
         f"• **Розыгрыш от:** {host.mention}",
         f"• **Завершение:** <t:{int(ends_at.timestamp())}:f> (<t:{int(ends_at.timestamp())}:R>)",
@@ -104,8 +124,8 @@ def build_giveaway_embed(
         f"• **Участников:** **{participant_count}**",
     ]
 
-    if claim_time and claim_time != "—":
-        lines.append(f"• **Время на получение:** **{claim_time}**")
+    if formatted_claim and formatted_claim != "—":
+        lines.append(f"• **Время на получение:** **{formatted_claim}**")
 
     requirements = []
     if min_messages > 0:
@@ -140,6 +160,8 @@ def build_giveaway_embed(
             lines.append("**Победители:** Подходящих участников не найдено.")
 
     embed.description = "\n".join(lines)
+    if GIVEAWAY_IMAGE_URL and GIVEAWAY_IMAGE_URL != "https://example.com/banner.png":
+        embed.set_image(url=GIVEAWAY_IMAGE_URL)
     embed.set_footer(text=config.FOOTER_TEXT)
     return embed
 
@@ -171,6 +193,7 @@ class GiveawaySetupView(discord.ui.View):
 
         self.role_mode = "all"
         self.required_roles: list[int] = []
+        self.ping_roles: list[int] = []
         self.min_messages = 0
         self.min_invites = 0
         self.bonus_roles: dict[int, int] = {}
@@ -212,14 +235,14 @@ class GiveawaySetupView(discord.ui.View):
                 f"**Приз:** {self.prize}\n"
                 f"**Длительность:** {self.duration_text}\n"
                 f"**Количество победителей:** {self.winners_count}\n"
-                f"**Время на получение:** {self.claim_time}\n"
+                f"**Время на получение:** {format_claim_time(self.claim_time)}\n"
                 f"**Канал:** {self.target_channel.mention}"
             ),
             color=config.EMBED_COLOR,
         )
 
         embed.add_field(
-            name="1. Роли",
+            name="1. Роли (Требования)",
             value=(
                 f"**Режим:** {role_mode_text}\n"
                 f"**Роли:** {role_mentions(self.guild, self.required_roles)}"
@@ -228,7 +251,13 @@ class GiveawaySetupView(discord.ui.View):
         )
 
         embed.add_field(
-            name="2. Требования",
+            name="2. Пинги",
+            value=f"**Роли для упоминания:** {role_mentions(self.guild, self.ping_roles)}",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="3. Требования",
             value=(
                 f"• Минимум сообщений: **{self.min_messages}**\n"
                 f"• Минимум приглашений: **{self.min_invites}**"
@@ -245,7 +274,7 @@ class GiveawaySetupView(discord.ui.View):
             bonus_text = "Не установлены"
 
         embed.add_field(
-            name="3. Дополнительные шансы",
+            name="4. Дополнительные шансы",
             value=bonus_text,
             inline=False,
         )
@@ -288,6 +317,23 @@ class GiveawaySetupView(discord.ui.View):
         )
 
     @discord.ui.button(
+        label="Пинги",
+        emoji="🔔",
+        style=discord.ButtonStyle.secondary,
+        row=0,
+    )
+    async def pings_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_message(
+            "Выберите роли, которые нужно пингануть при публикации:",
+            view=PingRoleSetupView(self),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
         label="Требования",
         emoji="<:logs:1522340749998428160>",
         style=discord.ButtonStyle.secondary,
@@ -304,7 +350,7 @@ class GiveawaySetupView(discord.ui.View):
         label="Доп. шансы",
         emoji="<:sparkles:1522342290494849034>",
         style=discord.ButtonStyle.secondary,
-        row=0,
+        row=1,
     )
     async def bonus_button(
         self,
@@ -357,8 +403,12 @@ class GiveawaySetupView(discord.ui.View):
             claim_time=self.claim_time,
         )
 
+        content_ping = ""
+        if self.ping_roles:
+            content_ping = " ".join(f"<@&{rid}>" for rid in self.ping_roles)
+
         try:
-            message = await channel.send(embed=embed)
+            message = await channel.send(content=content_ping if content_ping else None, embed=embed)
             await message.add_reaction(GIVEAWAY_EMOJI)
         except discord.HTTPException:
             await interaction.followup.send(
@@ -458,6 +508,44 @@ class ChannelSelect(discord.ui.ChannelSelect):
         await interaction.response.edit_message(
             content=f"Канал установлен: {self.setup.target_channel.mention}",
             view=None,
+        )
+
+
+class PingRoleSetupView(discord.ui.View):
+    def __init__(self, setup: GiveawaySetupView):
+        super().__init__(timeout=300)
+        self.setup = setup
+        self.add_item(PingRoleSelect(setup))
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        if interaction.user.id != self.setup.ctx.author.id:
+            await interaction.response.send_message(
+                "Только автор создания розыгрыша может менять его настройки.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+
+class PingRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, setup: GiveawaySetupView):
+        self.setup = setup
+        super().__init__(
+            placeholder="Выберите роли для упоминания",
+            min_values=0,
+            max_values=25,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        self.setup.ping_roles = [role.id for role in self.values]
+        await self.setup.refresh_setup_message()
+        await interaction.response.edit_message(
+            content="Роли для упоминания обновлены.",
+            view=self.view,
         )
 
 
@@ -802,7 +890,6 @@ class GiveawayCog(commands.Cog):
         if not member or member.bot:
             return
 
-        # Если розыгрыш уже завершён, снимаем реакцию и игнорируем пользователя
         if doc.get("status") != "active":
             message = await self._get_giveaway_message(doc)
             if message:
@@ -812,7 +899,6 @@ class GiveawayCog(commands.Cog):
                     pass
             return
 
-        # Проверка соответствия требованиям
         if not self._is_eligible(member, doc):
             message = await self._get_giveaway_message(doc)
             if message:
@@ -1275,10 +1361,14 @@ class GiveawayCog(commands.Cog):
             )
             return
 
-        ends_at = doc["ends_at"]
+        ends_at = doc.get("ended_at") or doc["ends_at"]
         if ends_at.tzinfo is None:
             ends_at = ends_at.replace(tzinfo=timezone.utc)
 
+        claim_time_str = doc.get("claim_time", "—")
+        claim_td = parse_duration(claim_time_str) or timedelta(0)
+
+        deadline = ends_at + claim_td
         msg_created_at = user_msg.created_at
 
         embed = discord.Embed(
@@ -1287,8 +1377,18 @@ class GiveawayCog(commands.Cog):
         )
 
         embed.add_field(
-            name="Время конца розыгрыша",
+            name="Время завершения розыгрыша",
             value=f"<t:{int(ends_at.timestamp())}:f>",
+            inline=False,
+        )
+        embed.add_field(
+            name="Драйвер времени на получение",
+            value=format_claim_time(claim_time_str),
+            inline=False,
+        )
+        embed.add_field(
+            name="Крайний срок ответа",
+            value=f"<t:{int(deadline.timestamp())}:f>",
             inline=False,
         )
         embed.add_field(
@@ -1297,16 +1397,16 @@ class GiveawayCog(commands.Cog):
             inline=False,
         )
 
-        if msg_created_at <= ends_at:
-            diff = ends_at - msg_created_at
+        if msg_created_at <= deadline:
+            diff = deadline - msg_created_at
             formatted_diff = format_timedelta(diff)
             embed.add_field(
                 name="Результат",
-                value=f"<:verify:1522329028420173976> **Игрок успел!** Написал до окончания (за {formatted_diff}).",
+                value=f"<:verify:1522329028420173976> **Игрок успел!** Ответил до дедлайна (запас {formatted_diff}).",
                 inline=False,
             )
         else:
-            diff = msg_created_at - ends_at
+            diff = msg_created_at - deadline
             formatted_diff = format_timedelta(diff)
             embed.add_field(
                 name="Результат",
