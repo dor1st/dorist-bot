@@ -10,10 +10,27 @@ from utils import (
     make_error_embed,
     make_status_embed,
     log_action,
-    build_command_help_embed,
 )
 
+VALID_PRIZES = config.VALID_PRIZES if hasattr(config, "VALID_PRIZES") else ["Робуксы", "Коины", "Геймпасс", "Годли"]
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
+
+
+def build_cmd_help(command_name: str, usage: str, description: str) -> discord.Embed:
+    """Генератор полноценного эмбеда с подсказкой по использованию команды."""
+    embed = discord.Embed(
+        title=f"Информация о команде — .{command_name}",
+        description=f"{description}\n\n**Использование:**\n`{usage}`",
+        color=config.EMBED_COLOR,
+    )
+    prizes_str = ", ".join([f"`{p}`" for p in VALID_PRIZES])
+    embed.add_field(
+        name="Допустимые категории призов",
+        value=prizes_str,
+        inline=False
+    )
+    embed.set_footer(text=config.FOOTER_TEXT)
+    return embed
 
 
 # ==========================================
@@ -202,7 +219,22 @@ class PlayerLogsCog(commands.Cog):
         amount: int = 1,
     ):
         if host is None or prize_type is None:
-            return await ctx.send(embed=build_command_help_embed("loggiveaway"))
+            embed = build_cmd_help(
+                "loggiveaway",
+                ".loggiveaway [ID/упоминание_хостера] [приз] [количество]",
+                "Внести новый проведенный розыгрыш в базу данных."
+            )
+            return await ctx.send(embed=embed)
+
+        # Проверка категории приза
+        matched_prize = next((p for p in VALID_PRIZES if p.lower() == prize_type.lower()), None)
+        if not matched_prize:
+            prizes_str = ", ".join([f"`{p}`" for p in VALID_PRIZES])
+            embed = make_error_embed(
+                "Неверная категория приза",
+                f"Вы указали недействительную категорию приза: `{prize_type}`.\n\n**Допустимые категории:**\n{prizes_str}"
+            )
+            return await ctx.send(embed=embed)
 
         log_id = get_next_sequence_value("giveaway_id")
         now = datetime.now(timezone.utc)
@@ -211,7 +243,7 @@ class PlayerLogsCog(commands.Cog):
             "_id": log_id,
             "host_id": host.id,
             "author_id": ctx.author.id,
-            "prize_type": prize_type,
+            "prize_type": matched_prize,
             "amount": amount,
             "created_at": now,
         }
@@ -231,7 +263,7 @@ class PlayerLogsCog(commands.Cog):
             value=f"{host.id} ({host.mention})",
             inline=False,
         )
-        embed.add_field(name="Тип приза", value=prize_type, inline=False)
+        embed.add_field(name="Тип приза", value=matched_prize, inline=False)
         embed.add_field(name="Количество", value=str(amount), inline=False)
         embed.add_field(
             name="Внёс в базу", value=ctx.author.mention, inline=False
@@ -265,6 +297,7 @@ class PlayerLogsCog(commands.Cog):
         else:
             await ctx.send(embed=embed, view=view)
 
+    # 2. Запись приглашения
     @commands.command(name="loginvite", aliases=["li"])
     @check_access_decorator("loginvite")
     async def loginvite_cmd(
@@ -276,7 +309,22 @@ class PlayerLogsCog(commands.Cog):
         amount: int = 1,
     ):
         if inviter is None or invited is None or prize is None:
-            return await ctx.send(embed=build_command_help_embed("loginvite"))
+            embed = build_cmd_help(
+                "loginvite",
+                ".loginvite [ID/упоминание_пригласившего] [ID/упоминание_приглашенного] [приз] [количество]",
+                "Записать выданный приз за приглашение участника."
+            )
+            return await ctx.send(embed=embed)
+
+        # Проверка категории приза
+        matched_prize = next((p for p in VALID_PRIZES if p.lower() == prize.lower()), None)
+        if not matched_prize:
+            prizes_str = ", ".join([f"`{p}`" for p in VALID_PRIZES])
+            embed = make_error_embed(
+                "Неверная категория приза",
+                f"Вы указали недействительную категорию приза: `{prize}`.\n\n**Допустимые категории:**\n{prizes_str}"
+            )
+            return await ctx.send(embed=embed)
 
         log_id = get_next_sequence_value("invite_id")
         now = datetime.now(timezone.utc)
@@ -286,7 +334,7 @@ class PlayerLogsCog(commands.Cog):
             "inviter_id": inviter.id,
             "invited_id": invited.id,
             "author_id": ctx.author.id,
-            "prize": prize,
+            "prize": matched_prize,
             "amount": amount,
             "created_at": now,
         }
@@ -311,7 +359,7 @@ class PlayerLogsCog(commands.Cog):
             value=f"{invited.id} ({invited.mention})",
             inline=False,
         )
-        embed.add_field(name="Приз", value=prize, inline=False)
+        embed.add_field(name="Приз", value=matched_prize, inline=False)
         embed.add_field(name="Количество", value=str(amount), inline=False)
         embed.add_field(
             name="Внёс в базу", value=ctx.author.mention, inline=False
@@ -348,19 +396,13 @@ class PlayerLogsCog(commands.Cog):
     @commands.command(name="userinfo", aliases=["ui", "user"])
     @check_access_decorator("userinfo")
     async def userinfo_cmd(
-        self, ctx: commands.Context, target: discord.Member = None
+        self, ctx: commands.Context, target: discord.User = None
     ):
         target = target or ctx.author
 
-        created_timestamp = int(target.created_at.timestamp())
-        joined_timestamp = (
-            int(target.joined_at.timestamp()) if target.joined_at else None
-        )
+        member = ctx.guild.get_member(target.id) if ctx.guild else None
 
-        roles = [
-            role.mention for role in reversed(target.roles) if not role.is_default()
-        ]
-        roles_str = ", ".join(roles) if roles else "Нет ролей"
+        created_timestamp = int(target.created_at.timestamp())
 
         embed = discord.Embed(
             title=f"<:staff:1522338131339251823> Информация — {target.name}",
@@ -380,21 +422,27 @@ class PlayerLogsCog(commands.Cog):
             value=f"<t:{created_timestamp}:R> (<t:{created_timestamp}:f>)",
             inline=False,
         )
-        if joined_timestamp:
+
+        if member:
+            if member.joined_at:
+                joined_timestamp = int(member.joined_at.timestamp())
+                embed.add_field(
+                    name="Вход на сервер",
+                    value=f"<t:{joined_timestamp}:R> (<t:{joined_timestamp}:f>)",
+                    inline=False,
+                )
+
+            roles = [
+                role.mention for role in reversed(member.roles) if not role.is_default()
+            ]
+            roles_str = ", ".join(roles) if roles else "Нет ролей"
             embed.add_field(
-                name="Вход на сервер",
-                value=f"<t:{joined_timestamp}:R> (<t:{joined_timestamp}:f>)",
-                inline=False,
+                name=f"Роли [{len(roles)}]", value=roles_str, inline=False
             )
 
-        embed.add_field(
-            name=f"Роли [{len(roles)}]", value=roles_str, inline=False
-        )
         embed.set_footer(text=config.FOOTER_TEXT)
-
         await ctx.send(embed=embed)
 
-    # 6. Кто пригласил пользователя
     @commands.command(name="inviter")
     @check_access_decorator("inviter")
     async def inviter_cmd(

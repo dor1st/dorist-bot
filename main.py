@@ -11,7 +11,7 @@ load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  # ВКЛЮЧЕНО: нужно для работы userinfo и получения ролей/участников
+intents.members = True
 
 bot = commands.Bot(command_prefix=".", intents=intents, help_command=None)
 
