@@ -99,9 +99,14 @@ class StatsCog(commands.Cog):
             return [(doc["_id"], doc["count"]) for doc in collection.aggregate(pipeline)]
 
         def fmt(rows):
-            if not rows:
-                return "— *Нет данных*"
-            return "\n".join(f"`{i}.` <@{uid}> — **{count}**" for i, (uid, count) in enumerate(rows, 1))
+            lines = []
+            for i in range(1, limit + 1):
+                if i <= len(rows):
+                    uid, count = rows[i - 1]
+                    lines.append(f"`{i}.` <@{uid}> — **{count}**")
+                else:
+                    lines.append(f"`{i}.` —")
+            return "\n".join(lines)
 
         embed_title = "<:leaderboard:1544301200894070844> Подсчет (Расширенный топ-10)" if limit == 10 else "<:leaderboard:1544301200894070844> Подсчет"
         embed = discord.Embed(title=embed_title, color=config.EMBED_COLOR)
