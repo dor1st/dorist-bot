@@ -26,49 +26,51 @@ class StatsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if message.author.bot or not message.guild:
+        if not message.guild:
             return
 
-        users_col.update_one(
-            {"_id": message.author.id},
-            {"$inc": {"messages_count": 1}},
-            upsert=True
-        )
-
-        counting_channel_id = config.CONFIG.get("counting_channel_id")
-        if counting_channel_id and message.channel.id == counting_channel_id:
-            message_stats_col.update_one(
-                {"channel_id": counting_channel_id, "user_id": message.author.id, "day": utc_day()},
-                {"$inc": {"count": 1}},
-                upsert=True,
+        if not message.author.bot:
+            users_col.update_one(
+                {"_id": message.author.id},
+                {"$inc": {"messages_count": 1}},
+                upsert=True
             )
+
+            counting_channel_id = config.CONFIG.get("counting_channel_id")
+            if counting_channel_id and message.channel.id == counting_channel_id:
+                message_stats_col.update_one(
+                    {"channel_id": counting_channel_id, "user_id": message.author.id, "day": utc_day()},
+                    {"$inc": {"count": 1}},
+                    upsert=True,
+                )
 
         bump_channel_id = config.CONFIG.get("bump_channel_id")
         if bump_channel_id and message.channel.id == bump_channel_id:
+           
             if message.author.id != config.DISBOARD_BOT_ID:
                 return
 
-            interaction_meta = getattr(message, "interaction_metadata", None)
-            interaction_old = getattr(message, "interaction", None)
-
-            user = getattr(interaction_meta, "user", None) or getattr(interaction_old, "user", None)
-            command_name = getattr(interaction_old, "name", None) or ""
+            user = None
+            if hasattr(message, "interaction_metadata") and message.interaction_metadata:
+                user = message.interaction_metadata.user
+            elif hasattr(message, "interaction") and message.interaction:
+                user = message.interaction.user
 
             if not user or user.bot:
                 return
 
-            if command_name and "bump" not in command_name.lower():
-                return
+            bump_success = False
+            for embed in message.embeds:
+                text_to_check = f"{embed.title or ''} {embed.description or ''}".lower()
+                
+                if "bump done" in text_to_check or "успешно" in text_to_check or "bumped" in text_to_check:
+                    bump_success = True
+                    break
 
-            bump_success = any(
-                "bump done" in (embed.description or "").lower()
-                or "bump done" in (embed.title or "").lower()
-                for embed in message.embeds
-            )
             if bump_success:
                 bump_stats_col.update_one(
                     {"channel_id": bump_channel_id, "user_id": user.id, "day": utc_day()},
-                    {"$inc": {"count": 1}, "$set": {"last_command": command_name or "bump"}},
+                    {"$inc": {"count": 1}, "$set": {"last_command": "bump"}},
                     upsert=True,
                 )
 
