@@ -76,7 +76,9 @@ class StatsCog(commands.Cog):
 
     @commands.command(name="summaries", aliases=["sum"])
     @check_access_decorator("sum")
-    async def summaries_cmd(self, ctx: commands.Context):
+    async def summaries_cmd(self, ctx: commands.Context, mode: str = None):
+        limit = 10 if mode and mode.lower() in ["ex", "extended"] else 3
+
         now = datetime.now(timezone.utc)
         d7 = (now - timedelta(days=7)).date().isoformat()
         d30 = (now - timedelta(days=30)).date().isoformat()
@@ -92,7 +94,7 @@ class StatsCog(commands.Cog):
             pipeline.extend([
                 {"$group": {"_id": "$user_id", "count": {"$sum": "$count"}}},
                 {"$sort": {"count": -1}},
-                {"$limit": 3},
+                {"$limit": limit},
             ])
             return [(doc["_id"], doc["count"]) for doc in collection.aggregate(pipeline)]
 
@@ -101,7 +103,8 @@ class StatsCog(commands.Cog):
                 return "— *Нет данных*"
             return "\n".join(f"`{i}.` <@{uid}> — **{count}**" for i, (uid, count) in enumerate(rows, 1))
 
-        embed = discord.Embed(title="<:leaderboard:1544301200894070844> Подсчет", color=config.EMBED_COLOR)
+        embed_title = "<:leaderboard:1544301200894070844> Подсчет (Расширенный топ-10)" if limit == 10 else "<:leaderboard:1544301200894070844> Подсчет"
+        embed = discord.Embed(title=embed_title, color=config.EMBED_COLOR)
 
         embed.add_field(name="🧮 Сообщения — 7 дней", value=fmt(top_stats(message_stats_col, d7, config.CONFIG.get("counting_channel_id"))), inline=True)
         embed.add_field(name="<:bump:1522334649580392518> Bump — 7 дней", value=fmt(top_stats(bump_stats_col, d7, config.CONFIG.get("bump_channel_id"))), inline=True)
