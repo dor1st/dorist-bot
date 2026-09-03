@@ -10,7 +10,7 @@ from database import giveaways_col, users_col
 from utils import check_access_decorator, make_error_embed, make_status_embed
 
 
-GIVEAWAY_EMOJI = getattr(config, "GIVEAWAY_EMOJI", "🎉")
+GIVEAWAY_EMOJI = getattr(config, "GIVEAWAY_EMOJI", "<:giveaway:1522331215976206446>")
 MAX_DURATION = getattr(config, "MAX_DURATION", timedelta(days=31))
 SETUP_TIMEOUT = getattr(config, "SETUP_TIMEOUT", 300)
 
@@ -112,19 +112,18 @@ def build_giveaway_embeds(
 
     formatted_claim = format_claim_time(claim_time)
 
-    # Декоративная плашка автора/сервера в стиле bleed
     main_embed.set_author(
-        name="․ ˚ тусовка дориста ⊹ social `icons` `gws`",
+        name="тусовка дориста",
         icon_url=host.guild.icon.url if host.guild and host.guild.icon else None
     )
 
     lines = []
 
     if ended:
-        lines.append("Реакция `🎉` больше не принимает участников.")
+        lines.append(f"Реакция {GIVEAWAY_EMOJI} больше не принимает участников.")
         lines.append(f"**Завершён:** <t:{int(ends_at.timestamp())}:R> (<t:{int(ends_at.timestamp())}:f>)")
     else:
-        lines.append("Нажмите на `🎉` для участия в розыгрыше.")
+        lines.append(f"Нажмите на {GIVEAWAY_EMOJI} для участия в розыгрыше.")
         lines.append(f"**Завершение:** <t:{int(ends_at.timestamp())}:R> (<t:{int(ends_at.timestamp())}:f>)")
 
     lines.append(f"**Участников:** {participant_count}")
@@ -135,13 +134,13 @@ def build_giveaway_embeds(
 
     requirements = []
     if min_messages > 0:
-        requirements.append(f"• Сообщений: **{min_messages}**")
+        requirements.append(f"<a:gifwhitearrow:1545145508191014973> Сообщений: **{min_messages}**+")
     if min_invites > 0:
-        requirements.append(f"• Приглашений: **{min_invites}**")
+        requirements.append(f"<a:gifwhitearrow:1545145508191014973> Приглашений: **{min_invites}**+")
     if required_roles:
         mode_text = "все" if role_mode == "all" else "одна из"
         requirements.append(
-            f"• Роли ({mode_text}): {role_mentions(host.guild, required_roles)}"
+            f"<a:gifwhitearrow:1545145508191014973> Роли ({mode_text}): {role_mentions(host.guild, required_roles)}"
         )
 
     if requirements:
@@ -155,7 +154,7 @@ def build_giveaway_embeds(
         for role_id, entries in bonus_roles.items():
             role = host.guild.get_role(int(role_id))
             role_name = role.mention if role else f"`{role_id}`"
-            lines.append(f"• {role_name}: **+{entries}**")
+            lines.append(f"<a:gifwhitearrow:1545145508191014973> {role_name}: **+{entries} доп. шансов**")
 
     if ended:
         lines.append("")
