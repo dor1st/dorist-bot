@@ -134,13 +134,13 @@ def build_giveaway_embeds(
 
     requirements = []
     if min_messages > 0:
-        requirements.append(f"<a:gifwhitearrow:1545145508191014973> Сообщений: **{min_messages}**+")
+        requirements.append(f"<a:gifblackarrow:1545145649954291753> Сообщений: **{min_messages}**+")
     if min_invites > 0:
-        requirements.append(f"<a:gifwhitearrow:1545145508191014973> Приглашений: **{min_invites}**+")
+        requirements.append(f"<a:gifblackarrow:1545145649954291753> Приглашений: **{min_invites}**+")
     if required_roles:
         mode_text = "все" if role_mode == "all" else "одна из"
         requirements.append(
-            f"<a:gifwhitearrow:1545145508191014973> Роли ({mode_text}): {role_mentions(host.guild, required_roles)}"
+            f"<a:gifblackarrow:1545145649954291753> Роли ({mode_text}): {role_mentions(host.guild, required_roles)}"
         )
 
     if requirements:
@@ -154,7 +154,7 @@ def build_giveaway_embeds(
         for role_id, entries in bonus_roles.items():
             role = host.guild.get_role(int(role_id))
             role_name = role.mention if role else f"`{role_id}`"
-            lines.append(f"<a:gifwhitearrow:1545145508191014973> {role_name}: **+{entries} доп. шансов**")
+            lines.append(f"<a:gifblackarrow:1545145649954291753> {role_name}: **+{entries} доп. шансов**")
 
     if ended:
         lines.append("")
@@ -163,7 +163,7 @@ def build_giveaway_embeds(
             mentions = "\n".join(f"│ <@{uid}>" for uid in winner_ids)
             lines.append(mentions)
         else:
-            lines.append("│ Подходящих участников не найдено.")
+            lines.append("<a:alert:1544047350345891851> Подходящих участников не найдено.")
 
     main_embed.description = "\n".join(lines)
 

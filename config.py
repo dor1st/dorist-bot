@@ -9,7 +9,7 @@ SETUP_CHANNEL_ID = 1543982091707093143
 VALID_CATEGORIES = ["Помощь по серверу", "Получение призов", "Получение роли", "Покупка рекламы"]
 VALID_PRIZES = ["Робуксы", "Коины", "Геймпасс", "Годли"]
 
-GIVEAWAY_EMOJI = "🎉"
+GIVEAWAY_EMOJI = "<:giveaway:1522331215976206446>"
 MAX_DURATION = timedelta(days=31)
 SETUP_TIMEOUT = 900
 
