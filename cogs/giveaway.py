@@ -173,6 +173,578 @@ def build_giveaway_embeds(
     return (main_embed,)
 
 
+class GiveawaySetupView(discord.ui.View):
+    def __init__(
+        self,
+        bot,
+        ctx: commands.Context,
+        prize: str,
+        duration_text: str,
+        duration: timedelta,
+        winners_count: int,
+        claim_time: str,
+    ):
+        super().__init__(timeout=SETUP_TIMEOUT)
+
+        self.bot = bot
+        self.ctx = ctx
+        self.guild = ctx.guild
+
+        self.prize = prize
+        self.duration_text = duration_text
+        self.duration = duration
+        self.winners_count = winners_count
+        self.claim_time = claim_time
+
+        self.target_channel = ctx.channel
+
+        self.role_mode = "all"
+        self.required_roles: list[int] = []
+        self.ping_roles: list[int] = []
+        self.min_messages = 0
+        self.min_invites = 0
+        self.bonus_roles: dict[int, int] = {}
+
+        self.setup_message: discord.Message | None = None
+
+    async def refresh_setup_message(self):
+        if self.setup_message:
+            try:
+                await self.setup_message.edit(
+                    embed=self.setup_embed(),
+                    view=self,
+                )
+            except discord.HTTPException:
+                pass
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message(
+                "Только автор создания розыгрыша может менять его настройки.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    def setup_embed(self) -> discord.Embed:
+        role_mode_text = (
+            "Все из списка" if self.role_mode == "all" else "Одна из"
+        )
+
+        embed = discord.Embed(
+            title="<:giveaway:1522331215976206446> Настройка розыгрыша",
+            description=(
+                "Заполните дополнительные параметры, "
+                "после чего нажмите **«Создать розыгрыш»**.\n\n"
+                f"**Приз:** {self.prize}\n"
+                f"**Длительность:** {self.duration_text}\n"
+                f"**Количество победителей:** {self.winners_count}\n"
+                f"**Время на получение:** {format_claim_time(self.claim_time)}\n"
+                f"**Канал:** {self.target_channel.mention}"
+            ),
+            color=config.EMBED_COLOR,
+        )
+
+        embed.add_field(
+            name="1. Роли (Требования)",
+            value=(
+                f"**Режим:** {role_mode_text}\n"
+                f"**Роли:** {role_mentions(self.guild, self.required_roles)}"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="2. Пинги",
+            value=f"**Роли для упоминания:** {role_mentions(self.guild, self.ping_roles)}",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="3. Требования",
+            value=(
+                f"• Минимум сообщений: **{self.min_messages}**\n"
+                f"• Минимум приглашений: **{self.min_invites}**"
+            ),
+            inline=False,
+        )
+
+        if self.bonus_roles:
+            bonus_text = "\n".join(
+                f"• {role_mentions(self.guild, [role_id])} — **+{entries}**"
+                for role_id, entries in self.bonus_roles.items()
+            )
+        else:
+            bonus_text = "Не установлены"
+
+        embed.add_field(
+            name="4. Дополнительные шансы",
+            value=bonus_text,
+            inline=False,
+        )
+
+        embed.set_footer(text=config.FOOTER_TEXT)
+        return embed
+
+    @discord.ui.button(
+        label="Канал",
+        emoji="<:textchat:1522331990517616752>",
+        style=discord.ButtonStyle.secondary,
+        row=0,
+    )
+    async def channel_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_message(
+            "Выберите канал для проведения розыгрыша:",
+            view=ChannelSetupView(self),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
+        label="Роли",
+        emoji="<:roles:1522341200542044351>",
+        style=discord.ButtonStyle.secondary,
+        row=0,
+    )
+    async def roles_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_message(
+            "Выберите режим проверки ролей и роли из списка.",
+            view=RoleSetupView(self),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
+        label="Пинги",
+        emoji="<:roles:1522341200542044351>",
+        style=discord.ButtonStyle.secondary,
+        row=0,
+    )
+    async def pings_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_message(
+            "Выберите роли, которые нужно пингануть при публикации:",
+            view=PingRoleSetupView(self),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
+        label="Требования",
+        emoji="<:logs:1522340749998428160>",
+        style=discord.ButtonStyle.secondary,
+        row=0,
+    )
+    async def requirements_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_modal(RequirementsModal(self))
+
+    @discord.ui.button(
+        label="Доп. шансы",
+        emoji="<:sparkles:1522342290494849034>",
+        style=discord.ButtonStyle.secondary,
+        row=1,
+    )
+    async def bonus_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.send_message(
+            "Выберите роль и укажите количество дополнительных шансов.",
+            view=BonusRoleView(self),
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
+        label="Создать розыгрыш",
+        emoji="<:verify:1522329028420173976>",
+        style=discord.ButtonStyle.success,
+        row=1,
+    )
+    async def create_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        await interaction.response.defer(ephemeral=True)
+
+        channel = self.target_channel
+        if not hasattr(channel, "send"):
+            channel = self.guild.get_channel(channel.id)
+
+        if not channel or not hasattr(channel, "send"):
+            await interaction.followup.send(
+                "Не удалось найти выбранный текстовый канал. Попробуйте выбрать его заново.",
+                ephemeral=True,
+            )
+            return
+
+        ends_at = utcnow() + self.duration
+
+        embeds = build_giveaway_embeds(
+            prize=self.prize,
+            host=self.ctx.author,
+            ends_at=ends_at,
+            winners_count=self.winners_count,
+            participant_count=0,
+            role_mode=self.role_mode,
+            required_roles=self.required_roles,
+            min_messages=self.min_messages,
+            min_invites=self.min_invites,
+            bonus_roles=self.bonus_roles,
+            claim_time=self.claim_time,
+        )
+
+        content_ping = ""
+        if self.ping_roles:
+            content_ping = " ".join(f"<@&{rid}>" for rid in self.ping_roles)
+
+        try:
+            message = await channel.send(
+                content=content_ping if content_ping else None, 
+                embeds=list(embeds)
+            )
+            await message.add_reaction(GIVEAWAY_EMOJI)
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Не удалось создать розыгрыш. "
+                "Проверьте права бота на отправку сообщений и добавление реакций в указанном канале.",
+                ephemeral=True,
+            )
+            return
+
+        doc = {
+            "type": "giveaway",
+            "status": "active",
+            "guild_id": self.guild.id,
+            "channel_id": self.target_channel.id,
+            "message_id": message.id,
+            "message_url": message.jump_url,
+            "host_id": self.ctx.author.id,
+            "prize": self.prize,
+            "duration": self.duration_text,
+            "winners_count": self.winners_count,
+            "claim_time": self.claim_time,
+            "ends_at": ends_at,
+            "participant_count": 0,
+            "role_mode": self.role_mode,
+            "required_roles": [int(r) for r in self.required_roles],
+            "min_messages": self.min_messages,
+            "min_invites": self.min_invites,
+            "bonus_roles": {
+                str(role_id): entries
+                for role_id, entries in self.bonus_roles.items()
+            },
+            "eligible_user_ids": [],
+        }
+
+        result = giveaways_col.insert_one(doc)
+        giveaways_col.update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"giveaway_id": str(result.inserted_id)}},
+        )
+
+        for child in self.children:
+            child.disabled = True
+
+        try:
+            await interaction.message.edit(view=self)
+        except discord.HTTPException:
+            pass
+
+        await interaction.followup.send(
+            f"🎉 **Розыгрыш успешно создан!**\nКанал: {self.target_channel.mention}\nСсылка: {message.jump_url}",
+            ephemeral=True,
+        )
+
+        self.stop()
+
+
+class ChannelSetupView(discord.ui.View):
+    def __init__(self, setup: GiveawaySetupView):
+        super().__init__(timeout=300)
+        self.setup = setup
+        self.add_item(ChannelSelect(setup))
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        if interaction.user.id != self.setup.ctx.author.id:
+            await interaction.response.send_message(
+                "Только автор создания розыгрыша может менять его настройки.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+
+class ChannelSelect(discord.ui.ChannelSelect):
+    def __init__(self, setup: GiveawaySetupView):
+        self.setup = setup
+        super().__init__(
+            placeholder="Выберите текстовый канал",
+            channel_types=[discord.ChannelType.text],
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_channel = self.values[0]
+        full_channel = interaction.guild.get_channel(selected_channel.id)
+
+        if full_channel is None:
+            try:
+                full_channel = await interaction.guild.fetch_channel(selected_channel.id)
+            except discord.HTTPException:
+                full_channel = selected_channel
+
+        self.setup.target_channel = full_channel
+        await self.setup.refresh_setup_message()
+        await interaction.response.edit_message(
+            content=f"Канал установлен: {self.setup.target_channel.mention}",
+            view=None,
+        )
+
+
+class PingRoleSetupView(discord.ui.View):
+    def __init__(self, setup: GiveawaySetupView):
+        super().__init__(timeout=300)
+        self.setup = setup
+        self.add_item(PingRoleSelect(setup))
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        if interaction.user.id != self.setup.ctx.author.id:
+            await interaction.response.send_message(
+                "Только автор создания розыгрыша может менять его настройки.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+
+class PingRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, setup: GiveawaySetupView):
+        self.setup = setup
+        super().__init__(
+            placeholder="Выберите роли для упоминания",
+            min_values=0,
+            max_values=25,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        self.setup.ping_roles = [role.id for role in self.values]
+        await self.setup.refresh_setup_message()
+        await interaction.response.edit_message(
+            content="Роли для упоминания обновлены.",
+            view=self.view,
+        )
+
+
+class RoleSetupView(discord.ui.View):
+    def __init__(self, setup: GiveawaySetupView):
+        super().__init__(timeout=300)
+        self.setup = setup
+        self.add_item(RoleModeSelect(setup))
+        self.add_item(RequiredRoleSelect(setup))
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        if interaction.user.id != self.setup.ctx.author.id:
+            await interaction.response.send_message(
+                "Только автор создания розыгрыша может менять его настройки.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+
+class RoleModeSelect(discord.ui.Select):
+    def __init__(self, setup: GiveawaySetupView):
+        self.setup = setup
+        super().__init__(
+            placeholder="Режим проверки ролей",
+            options=[
+                discord.SelectOption(
+                    label="Все из списка",
+                    value="all",
+                    description="Участник должен иметь все выбранные роли.",
+                ),
+                discord.SelectOption(
+                    label="Одна из",
+                    value="one",
+                    description="Участнику достаточно иметь одну выбранную роль.",
+                ),
+            ],
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        self.setup.role_mode = self.values[0]
+        await self.setup.refresh_setup_message()
+        await interaction.response.edit_message(
+            content="Режим ролей обновлён. Теперь выберите роли ниже.",
+            view=self.view,
+        )
+
+
+class RequiredRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, setup: GiveawaySetupView):
+        self.setup = setup
+        super().__init__(
+            placeholder="Выберите обязательные роли",
+            min_values=0,
+            max_values=25,
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        self.setup.required_roles = [role.id for role in self.values]
+        await self.setup.refresh_setup_message()
+        await interaction.response.edit_message(
+            content="Обязательные роли обновлены.",
+            view=self.view,
+        )
+
+
+class RequirementsModal(
+    discord.ui.Modal,
+    title="Требования розыгрыша",
+):
+    min_messages = discord.ui.TextInput(
+        label="Минимальное количество сообщений",
+        placeholder="0",
+        required=True,
+        max_length=10,
+    )
+
+    min_invites = discord.ui.TextInput(
+        label="Минимальное количество приглашений",
+        placeholder="0",
+        required=True,
+        max_length=10,
+    )
+
+    def __init__(self, setup: GiveawaySetupView):
+        super().__init__()
+        self.setup = setup
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            messages = int(str(self.min_messages.value).strip())
+            invites = int(str(self.min_invites.value).strip())
+            if messages < 0 or invites < 0:
+                raise ValueError
+        except ValueError:
+            await interaction.response.send_message(
+                "Оба значения должны быть целыми числами от 0.",
+                ephemeral=True,
+            )
+            return
+
+        self.setup.min_messages = messages
+        self.setup.min_invites = invites
+        await self.setup.refresh_setup_message()
+        await interaction.response.send_message(
+            "Требования сохранены.",
+            ephemeral=True,
+        )
+
+
+class BonusRoleView(discord.ui.View):
+    def __init__(self, setup: GiveawaySetupView):
+        super().__init__(timeout=300)
+        self.setup = setup
+        self.add_item(BonusRoleSelect(setup))
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        if interaction.user.id != self.setup.ctx.author.id:
+            await interaction.response.send_message(
+                "Только автор создания розыгрыша может менять его настройки.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+
+class BonusRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, setup: GiveawaySetupView):
+        self.setup = setup
+        super().__init__(
+            placeholder="Выберите роль для дополнительного шанса",
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        role = self.values[0]
+        await interaction.response.send_modal(
+            BonusEntriesModal(self.setup, role.id)
+        )
+
+
+class BonusEntriesModal(
+    discord.ui.Modal,
+    title="Дополнительный шанс",
+):
+    entries = discord.ui.TextInput(
+        label="Сколько дополнительных шансов?",
+        placeholder="Например: 5",
+        required=True,
+        max_length=5,
+    )
+
+    def __init__(self, setup: GiveawaySetupView, role_id: int):
+        super().__init__()
+        self.setup = setup
+        self.role_id = role_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            value = int(str(self.entries.value).strip())
+            if value < 1:
+                raise ValueError
+        except ValueError:
+            await interaction.response.send_message(
+                "Количество дополнительных шансов должно быть целым числом больше 0.",
+                ephemeral=True,
+            )
+            return
+
+        self.setup.bonus_roles[self.role_id] = value
+        await self.setup.refresh_setup_message()
+        await interaction.response.send_message(
+            f"Для роли <@&{self.role_id}> установлено **+{value}** шансов.",
+            ephemeral=True,
+        )
+
+
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -215,7 +787,6 @@ class GiveawayCog(commands.Cog):
         if total_invites < doc.get("min_invites", 0):
             return False
 
-        # Приводим роли к int для корректного сравнения
         required_roles = [int(role_id) for role_id in doc.get("required_roles", [])]
         if required_roles:
             member_roles = {role.id for role in member.roles}
@@ -231,7 +802,6 @@ class GiveawayCog(commands.Cog):
     def _weight(self, member: discord.Member, doc: dict) -> int:
         member_roles = {role.id for role in member.roles}
         bonus = 0
-        # Преобразуем ключи из MongoDB (которые сохраняются как str) в int
         for role_id, entries in doc.get("bonus_roles", {}).items():
             if int(role_id) in member_roles:
                 bonus += int(entries)
@@ -243,7 +813,9 @@ class GiveawayCog(commands.Cog):
         delta: int,
     ):
         bot_user = self.bot.user
-        if payload.emoji.name != GIVEAWAY_EMOJI or (bot_user and payload.user_id == bot_user.id):
+        if str(payload.emoji) != GIVEAWAY_EMOJI and payload.emoji.name != GIVEAWAY_EMOJI:
+            return
+        if bot_user and payload.user_id == bot_user.id:
             return
 
         doc = giveaways_col.find_one(
