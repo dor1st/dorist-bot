@@ -112,20 +112,32 @@ def build_giveaway_embeds(
 
     formatted_claim = format_claim_time(claim_time)
 
-    lines = [
-        f"• **Розыгрыш от:** {host.mention}",
-        f"• **Завершение:** <t:{int(ends_at.timestamp())}:f> (<t:{int(ends_at.timestamp())}:R>)",
-        f"• **Победителей:** **{winners_count}**",
-    ]
+    # Декоративная плашка автора/сервера в стиле bleed
+    main_embed.set_author(
+        name="․ ˚ тусовка дориста ⊹ social `icons` `gws`",
+        icon_url=host.guild.icon.url if host.guild and host.guild.icon else None
+    )
+
+    lines = []
+
+    if ended:
+        lines.append("Реакция `🎉` больше не принимает участников.")
+        lines.append(f"**Завершён:** <t:{int(ends_at.timestamp())}:R> (<t:{int(ends_at.timestamp())}:f>)")
+    else:
+        lines.append("Нажмите на `🎉` для участия в розыгрыше.")
+        lines.append(f"**Завершение:** <t:{int(ends_at.timestamp())}:R> (<t:{int(ends_at.timestamp())}:f>)")
+
+    lines.append(f"**Участников:** {participant_count}")
+    lines.append(f"**Организатор:** {host.mention}")
 
     if formatted_claim and formatted_claim != "—":
-        lines.append(f"• **Время на получение:** **{formatted_claim}**")
+        lines.append(f"**Время на получение:** {formatted_claim}")
 
     requirements = []
     if min_messages > 0:
-        requirements.append(f"• Сообщений требуется: **{min_messages}**")
+        requirements.append(f"• Сообщений: **{min_messages}**")
     if min_invites > 0:
-        requirements.append(f"• Приглашений требуется: **{min_invites}**")
+        requirements.append(f"• Приглашений: **{min_invites}**")
     if required_roles:
         mode_text = "все" if role_mode == "all" else "одна из"
         requirements.append(
@@ -139,22 +151,22 @@ def build_giveaway_embeds(
 
     if bonus_roles:
         lines.append("")
-        lines.append("**Роли с дополнительными шансами:**")
+        lines.append("**Дополнительные шансы:**")
         for role_id, entries in bonus_roles.items():
             role = host.guild.get_role(int(role_id))
             role_name = role.mention if role else f"`{role_id}`"
-            lines.append(f"• {role_name}: **+{entries} доп. шансов**")
+            lines.append(f"• {role_name}: **+{entries}**")
 
     if ended:
         lines.append("")
+        lines.append("**Победители**")
         if winner_ids:
-            mentions = ", ".join(f"<@{uid}>" for uid in winner_ids)
-            lines.append(f"**Победители:** {mentions}")
+            mentions = "\n".join(f"│ <@{uid}>" for uid in winner_ids)
+            lines.append(mentions)
         else:
-            lines.append("**Победители:** Подходящих участников не найдено.")
+            lines.append("│ Подходящих участников не найдено.")
 
     main_embed.description = "\n".join(lines)
-    main_embed.set_footer(text=config.FOOTER_TEXT)
 
     return (main_embed,)
 
@@ -1007,7 +1019,13 @@ class GiveawayCog(commands.Cog):
 
         if winners:
             mentions = ", ".join(member.mention for member in winners)
-            await message.channel.send(f"<:giveaway:1522331215976206446> **Розыгрыш завершён!** Победители: {mentions}")
+            formatted_claim = format_claim_time(doc.get("claim_time", "—"))
+            
+            await message.channel.send(
+                f"<a:kitty:1543707159748157561> **Розыгрыш завершен!** Поздравляю {mentions}, у вас есть **{formatted_claim}**, "
+                f"чтобы создать тикет в <#123456789012345678>!\n"
+                f"       **<:arrow:1537827656043728956> Роль <@&123456789012345678> даёт +3 дополнительных часа на получение**"
+            )
         else:
             await message.channel.send("<:giveaway:1522331215976206446> **Розыгрыш завершён!** Подходящих участников не найдено.")
 
@@ -1257,8 +1275,12 @@ class GiveawayCog(commands.Cog):
         message = await self._get_giveaway_message(doc)
         target_channel = message.channel if message else ctx.channel
 
+        formatted_claim = format_claim_time(doc.get("claim_time", "—"))
+
         await target_channel.send(
-            f"<:giveaway:1522331215976206446> Новый победитель розыгрыша **{doc['prize']}**: {new_winner.mention}!"
+            f"<a:kitty:1543707159748157561> Выбрано нового победителя - {new_winner.mention}! "
+            f"Поздравляю, у вас есть **{formatted_claim}**, чтобы создать тикет в <#1323038793200177225>!\n"
+            f"       **<:arrow:1537827656043728956> Роль @Подписчик даёт +3 дополнительных часов на получение.**"
         )
 
     @giveaway_group.command(name="delete", aliases=["del"])
