@@ -16,9 +16,7 @@ MAX_DURATION = getattr(config, "MAX_DURATION", timedelta(days=31))
 SETUP_TIMEOUT = getattr(config, "SETUP_TIMEOUT", 300)
 PARTICIPANTS_PER_PAGE = 10
 
-# Канал для создания тикетов и роль для доп. времени (можно вынести в config.py)
-TICKETS_CHANNEL_ID = getattr(config, "TICKETS_CHANNEL_ID", 1323038793200177225)
-BONUS_TIME_ROLE_ID = getattr(config, "BONUS_TIME_ROLE_ID", 123456789012345678)
+BONUS_TIME_ROLE_ID = getattr(config, "BONUS_TIME_ROLE_ID", 1545156954807337011)
 
 
 def utcnow() -> datetime:
@@ -101,12 +99,12 @@ def check_user_eligibility(member: discord.Member, doc: dict) -> tuple[bool, lis
     msg_count = user_doc.get("messages_count", 0)
     min_msg = doc.get("min_messages", 0)
     if msg_count < min_msg:
-        missing_reqs.append(f"• Недостаточно сообщений: **{msg_count} / {min_msg}**")
+        missing_reqs.append(f"<a:alert:1544047350345891851> Недостаточно сообщений: **{msg_count} / {min_msg}**")
 
     total_invites = user_doc.get("real_invites", 0) + user_doc.get("bonus_invites", 0)
     min_invites = doc.get("min_invites", 0)
     if total_invites < min_invites:
-        missing_reqs.append(f"• Недостаточно приглашений: **{total_invites} / {min_invites}**")
+        missing_reqs.append(f"<a:alert:1544047350345891851> Недостаточно приглашений: **{total_invites} / {min_invites}**")
 
     required_roles = [int(r) for r in doc.get("required_roles", [])]
     if required_roles:
@@ -117,11 +115,11 @@ def check_user_eligibility(member: discord.Member, doc: dict) -> tuple[bool, lis
             missing_roles = [rid for rid in required_roles if rid not in member_role_ids]
             if missing_roles:
                 role_str = role_mentions(member.guild, missing_roles)
-                missing_reqs.append(f"• Отсутствуют обязательные роли: {role_str}")
+                missing_reqs.append(f"<a:alert:1544047350345891851> Отсутствуют обязательные роли: {role_str}")
         else:
             if not any(rid in member_role_ids for rid in required_roles):
                 role_str = role_mentions(member.guild, required_roles)
-                missing_reqs.append(f"• Вам нужна хотя бы одна из ролей: {role_str}")
+                missing_reqs.append(f"<a:alert:1544047350345891851> Вам нужна хотя бы одна из ролей: {role_str}")
 
     return len(missing_reqs) == 0, missing_reqs
 
@@ -158,7 +156,7 @@ def build_giveaway_embeds(
     lines = []
 
     if ended:
-        lines.append("Розыгрыш завершен и больше не принимает участников.")
+        lines.append("<:buildercap:1541377896189534238> Розыгрыш завершен и больше не принимает участников.")
         lines.append(f"**Завершён:** <t:{int(ends_at.timestamp())}:R> (<t:{int(ends_at.timestamp())}:f>)")
     else:
         lines.append("Нажмите на кнопку ниже для участия в розыгрыше.")
@@ -172,31 +170,31 @@ def build_giveaway_embeds(
 
     requirements = []
     if min_messages > 0:
-        requirements.append(f"<:pinkheart:1545147631028670606> Сообщений: **{min_messages}**+")
+        requirements.append(f"- Сообщений: **{min_messages}**+")
     if min_invites > 0:
-        requirements.append(f"<:pinkheart:1545147631028670606> Приглашений: **{min_invites}**+")
+        requirements.append(f"- Приглашений: **{min_invites}**+")
     if required_roles:
         mode_text = "все" if role_mode == "all" else "одна из"
         guild = getattr(host, "guild", None)
         role_str = role_mentions(guild, required_roles) if guild else ", ".join(str(r) for r in required_roles)
-        requirements.append(f"<:pinkheart:1545147631028670606> Роли ({mode_text}): {role_str}")
+        requirements.append(f"- Роли ({mode_text}): {role_str}")
 
     if requirements:
         lines.append("")
-        lines.append("**Требования:**")
+        lines.append("<:buildercap:1541377896189534238> **Требования:**")
         lines.extend(requirements)
 
     if bonus_roles:
         lines.append("")
-        lines.append("**Дополнительные шансы:**")
+        lines.append("<:buildercap:1541377896189534238> **Дополнительные шансы:**")
         guild = getattr(host, "guild", None)
         for role_id, entries in bonus_roles.items():
             role_name = guild.get_role(int(role_id)).mention if guild and guild.get_role(int(role_id)) else f"`{role_id}`"
-            lines.append(f"<:pinkheart:1545147631028670606> {role_name}: **+{entries} доп. шансов**")
+            lines.append(f"- {role_name}: **+{entries} доп. шансов**")
 
     if ended:
         lines.append("")
-        lines.append("**Победители**")
+        lines.append("<:leaderboard:1544301200894070844> **Победители**")
         if winner_ids:
             mentions = "\n".join(f"│ <@{uid}>" for uid in winner_ids)
             lines.append(mentions)
@@ -221,7 +219,7 @@ class ParticipantsPaginatedView(discord.ui.View):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="Giveaway Participants",
+            title="Участники розыгрыша",
             description="Список участников данного розыгрыша:",
             color=discord.Color.blue(),
         )
@@ -243,30 +241,16 @@ class ParticipantsPaginatedView(discord.ui.View):
         )
         return embed
 
-    @discord.ui.button(emoji="⏮️", style=discord.ButtonStyle.secondary)
-    async def first_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.current_page = 0
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
-
-    @discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary)
     async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page > 0:
             self.current_page -= 1
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
-    @discord.ui.button(emoji="⏹️", style=discord.ButtonStyle.secondary)
-    async def stop_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.edit_message(view=None)
-
-    @discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(emoji="<:darkright:1543990036129783948>", style=discord.ButtonStyle.secondary)
     async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page < self.max_pages - 1:
             self.current_page += 1
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
-
-    @discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary)
-    async def last_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.current_page = self.max_pages - 1
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
 
@@ -278,7 +262,7 @@ class GiveawayPublicView(discord.ui.View):
     @discord.ui.button(
         label="Участвовать",
         emoji=GIVEAWAY_EMOJI,
-        style=discord.ButtonStyle.success,
+        style=discord.ButtonStyle.secondary,
         custom_id="giveaway_entry_button",
     )
     async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -293,7 +277,7 @@ class GiveawayPublicView(discord.ui.View):
         if not is_eligible:
             reasons_str = "\n".join(missing_reasons)
             await interaction.response.send_message(
-                f"❌ **Вы не можете участвовать в розыгрыше!**\n\nПричины:\n{reasons_str}",
+                f"<a:alert:1544047350345891851> **Вы не можете участвовать в розыгрыше!**\n\nПричины:\n{reasons_str}",
                 ephemeral=True,
             )
             return
@@ -304,7 +288,7 @@ class GiveawayPublicView(discord.ui.View):
                 {"$pull": {"participants": interaction.user.id}, "$inc": {"participant_count": -1}},
             )
             await interaction.response.send_message(
-                "❌ Вы успешно вышли из розыгрыша.",
+                "<a:alert:1544047350345891851> Вы успешно вышли из розыгрыша.",
                 ephemeral=True,
             )
         else:
@@ -313,7 +297,7 @@ class GiveawayPublicView(discord.ui.View):
                 {"$addToSet": {"participants": interaction.user.id}, "$inc": {"participant_count": 1}},
             )
             await interaction.response.send_message(
-                "🎉 Вы успешно приняли участие в розыгрыше! Чтобы выйти, нажмите кнопку ещё раз.",
+                "<:giveaway:1522331215976206446> Вы успешно приняли участие в розыгрыше! Чтобы выйти, нажмите кнопку ещё раз.",
                 ephemeral=True,
             )
 
@@ -624,7 +608,7 @@ class GiveawaySetupView(discord.ui.View):
             pass
 
         await interaction.followup.send(
-            f"🎉 **Розыгрыш успешно создан!**\nКанал: {self.target_channel.mention}\nСсылка: {message.jump_url}",
+            f"<:giveaway:1522331215976206446> **Розыгрыш успешно создан!**\nКанал: {self.target_channel.mention}\nСсылка: {message.jump_url}",
             ephemeral=True,
         )
 
@@ -1006,8 +990,7 @@ class GiveawayCog(commands.Cog):
             formatted_claim = format_claim_time(doc.get("claim_time", "—"))
 
             await message.channel.send(
-                f"<a:kitty:1543707159748157561> **Розыгрыш завершен!** Поздравляю {mentions}, у вас есть **{formatted_claim}**, "
-                f"чтобы создать тикет в <#{TICKETS_CHANNEL_ID}>!\n"
+                f"<a:kitty:1543707159748157561> **Розыгрыш завершен!** Поздравляю {mentions}, у вас есть **{formatted_claim}** на получение приза!\n"
                 f"       **<:arrow:1537827656043728956> Роль <@&{BONUS_TIME_ROLE_ID}> даёт +3 дополнительных часа на получение**"
             )
         else:
@@ -1251,7 +1234,7 @@ class GiveawayCog(commands.Cog):
 
         await target_channel.send(
             f"<a:kitty:1543707159748157561> Выбрано нового победителя - {new_winner.mention}! "
-            f"Поздравляю, у вас есть **{formatted_claim}**, чтобы создать тикет в <#{TICKETS_CHANNEL_ID}>!\n"
+            f"Поздравляю, у вас есть **{formatted_claim}** на получение приза!\n"
             f"       **<:arrow:1537827656043728956> Роль <@&{BONUS_TIME_ROLE_ID}> даёт +3 дополнительных часа на получение.**"
         )
 
@@ -1354,7 +1337,7 @@ class GiveawayCog(commands.Cog):
         claim_time_str = doc.get("claim_time", "—")
         claim_td = parse_duration(claim_time_str) or timedelta(0)
 
-        # Проверка роли участника на получение +3 часов к дедлайну
+        # Проверка наличия роли с бонусом к времени ответа
         extra_time = timedelta(0)
         if isinstance(user_msg.author, discord.Member):
             if any(role.id == BONUS_TIME_ROLE_ID for role in user_msg.author.roles):
@@ -1381,7 +1364,7 @@ class GiveawayCog(commands.Cog):
         if extra_time > timedelta(0):
             embed.add_field(
                 name="Дополнительное время ролей",
-                value="+3 часа (<@&" + str(BONUS_TIME_ROLE_ID) + ">)",
+                value=f"+3 часа (<@&{BONUS_TIME_ROLE_ID}>)",
                 inline=False,
             )
         embed.add_field(
