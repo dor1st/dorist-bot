@@ -14,18 +14,6 @@ GIVEAWAY_EMOJI = getattr(config, "GIVEAWAY_EMOJI", "🎉")
 MAX_DURATION = getattr(config, "MAX_DURATION", timedelta(days=31))
 SETUP_TIMEOUT = getattr(config, "SETUP_TIMEOUT", 300)
 
-GIVEAWAY_IMAGE_URL = getattr(
-    config, 
-    "GIVEAWAY_IMAGE_URL", 
-    "https://cdn.discordapp.com/attachments/1521823293169205258/1544354921002831892/13afec33f77f8f2d.png?ex=6a983419&is=6a96e299&hm=6bc1383a8045076895f92158d8f03440c90e5c6c30cc668f76d3a7f26370d57c" 
-)
-
-MAIN_EMBED_IMAGE_URL = getattr(
-    config, 
-    "MAIN_EMBED_IMAGE_URL", 
-    "https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a97f90a&is=6a96a78a&hm=be23c7b3f0de14e97367f613af682c692f712e99ea24b9c190efbf6414b57f72"
-)
-
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -106,7 +94,7 @@ def build_giveaway_embeds(
     host: discord.Member | discord.User,
     ends_at: datetime,
     winners_count: int,
-    participant_count: int = 0,  # параметр можно оставить для совместимости
+    participant_count: int = 0,
     role_mode: str | None,
     required_roles: list[int],
     min_messages: int,
@@ -115,19 +103,12 @@ def build_giveaway_embeds(
     claim_time: str = "—",
     ended: bool = False,
     winner_ids: list[int] | None = None,
-) -> tuple[discord.Embed, discord.Embed]:
-    
-    banner_embed = discord.Embed(color=config.EMBED_COLOR)
-    if GIVEAWAY_IMAGE_URL and GIVEAWAY_IMAGE_URL != "https://example.com/banner.png":
-        banner_embed.set_image(url=GIVEAWAY_IMAGE_URL)
+) -> tuple[discord.Embed]:
 
     main_embed = discord.Embed(
         title=prize,
         color=config.EMBED_COLOR,
     )
-    
-    if MAIN_EMBED_IMAGE_URL and MAIN_EMBED_IMAGE_URL != "https://example.com/main_giveaway_image.png":
-        main_embed.set_image(url=MAIN_EMBED_IMAGE_URL)
 
     formatted_claim = format_claim_time(claim_time)
 
@@ -175,7 +156,7 @@ def build_giveaway_embeds(
     main_embed.description = "\n".join(lines)
     main_embed.set_footer(text=config.FOOTER_TEXT)
 
-    return banner_embed, main_embed
+    return (main_embed,)
 
 
 class GiveawaySetupView(discord.ui.View):
@@ -512,11 +493,13 @@ class ChannelSelect(discord.ui.ChannelSelect):
 
     async def callback(self, interaction: discord.Interaction):
         selected_channel = self.values[0]
-
         full_channel = interaction.guild.get_channel(selected_channel.id)
 
         if full_channel is None:
-            full_channel = await interaction.guild.fetch_channel(selected_channel.id)
+            try:
+                full_channel = await interaction.guild.fetch_channel(selected_channel.id)
+            except discord.HTTPException:
+                full_channel = selected_channel
 
         self.setup.target_channel = full_channel
         await self.setup.refresh_setup_message()

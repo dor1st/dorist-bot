@@ -111,16 +111,16 @@ class StatsCog(commands.Cog):
         embed_title = "<:leaderboard:1544301200894070844> Подсчет (Расширенный топ-10)" if limit == 10 else "<:leaderboard:1544301200894070844> Подсчет"
         embed = discord.Embed(title=embed_title, color=config.EMBED_COLOR)
 
-        embed.add_field(name="🧮 Сообщения — 7 дней", value=fmt(top_stats(message_stats_col, d7, config.CONFIG.get("counting_channel_id"))), inline=True)
-        embed.add_field(name="<:bump:1522334649580392518> Bump — 7 дней", value=fmt(top_stats(bump_stats_col, d7, config.CONFIG.get("bump_channel_id"))), inline=True)
+        embed.add_field(name="🧮 Считалка: 7 дней", value=fmt(top_stats(message_stats_col, d7, config.CONFIG.get("counting_channel_id"))), inline=True)
+        embed.add_field(name="<:bump:1522334649580392518> Bump: 7 дней", value=fmt(top_stats(bump_stats_col, d7, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
-        embed.add_field(name="🧮 Сообщения — 30 дней", value=fmt(top_stats(message_stats_col, d30, config.CONFIG.get("counting_channel_id"))), inline=True)
-        embed.add_field(name="<:bump:1522334649580392518> Bump — 30 дней", value=fmt(top_stats(bump_stats_col, d30, config.CONFIG.get("bump_channel_id"))), inline=True)
+        embed.add_field(name="🧮 Считалка: 30 дней", value=fmt(top_stats(message_stats_col, d30, config.CONFIG.get("counting_channel_id"))), inline=True)
+        embed.add_field(name="<:bump:1522334649580392518> Bump: 30 дней", value=fmt(top_stats(bump_stats_col, d30, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
-        embed.add_field(name="🧮 Сообщения — Все время", value=fmt(top_stats(message_stats_col, None, config.CONFIG.get("counting_channel_id"))), inline=True)
-        embed.add_field(name="<:bump:1522334649580392518> Bump — Все время", value=fmt(top_stats(bump_stats_col, None, config.CONFIG.get("bump_channel_id"))), inline=True)
+        embed.add_field(name="🧮 Считалка: Все время", value=fmt(top_stats(message_stats_col, None, config.CONFIG.get("counting_channel_id"))), inline=True)
+        embed.add_field(name="<:bump:1522334649580392518> Bump: Все время", value=fmt(top_stats(bump_stats_col, None, config.CONFIG.get("bump_channel_id"))), inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         count_channel = config.CONFIG.get("counting_channel_id")
