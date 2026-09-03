@@ -159,7 +159,7 @@ def build_giveaway_embeds(
         lines.append("<:buildercap:1541377896189534238> Розыгрыш завершен и больше не принимает участников.")
         lines.append(f"**Завершён:** <t:{int(ends_at.timestamp())}:R> (<t:{int(ends_at.timestamp())}:f>)")
     else:
-        lines.append("Нажмите на кнопку ниже для участия в розыгрыше.")
+        lines.append("<:buildercap:1541377896189534238> Нажмите на кнопку ниже для участия в розыгрыше.")
         lines.append(f"**Завершение:** <t:{int(ends_at.timestamp())}:R> (<t:{int(ends_at.timestamp())}:f>)")
 
     lines.append(f"**Участников:** {participant_count}")
@@ -325,7 +325,7 @@ class GiveawayPublicView(discord.ui.View):
 
     @discord.ui.button(
         label="Участники",
-        style=discord.ButtonStyle.secondary,
+        style=discord.ButtonStyle.link,
         custom_id="giveaway_participants_button",
     )
     async def participants_button(self, interaction: discord.Interaction, button: discord.ui.Button):
