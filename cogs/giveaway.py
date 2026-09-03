@@ -134,15 +134,15 @@ def build_giveaway_embeds(
 
     requirements = []
     if min_messages > 0:
-        requirements.append(f"<a:gifblackarrow:1545145649954291753> Сообщений: **{min_messages}**+")
+        requirements.append(f"<:pinkheart:1545147631028670606> Сообщений: **{min_messages}**+")
     if min_invites > 0:
-        requirements.append(f"<a:gifblackarrow:1545145649954291753> Приглашений: **{min_invites}**+")
+        requirements.append(f"<:pinkheart:1545147631028670606> Приглашений: **{min_invites}**+")
     if required_roles:
         mode_text = "все" if role_mode == "all" else "одна из"
         guild = getattr(host, "guild", None)
         req_str = role_mentions(guild, required_roles) if guild else ", ".join(f"`{r}`" for r in required_roles)
         requirements.append(
-            f"<a:gifblackarrow:1545145649954291753> Роли ({mode_text}): {req_str}"
+            f"<:pinkheart:1545147631028670606> Роли ({mode_text}): {req_str}"
         )
 
     if requirements:
@@ -157,7 +157,7 @@ def build_giveaway_embeds(
             guild = getattr(host, "guild", None)
             role = guild.get_role(int(role_id)) if guild else None
             role_name = role.mention if role else f"`{role_id}`"
-            lines.append(f"<a:gifblackarrow:1545145649954291753> {role_name}: **+{entries} доп. шансов**")
+            lines.append(f"<:pinkheart:1545147631028670606> {role_name}: **+{entries} доп. шансов**")
 
     if ended:
         lines.append("")
@@ -166,7 +166,7 @@ def build_giveaway_embeds(
             mentions = "\n".join(f"│ <@{uid}>" for uid in winner_ids)
             lines.append(mentions)
         else:
-            lines.append("<a:alert:1544047350345891851> Подходящих участников не найдено.")
+            lines.append("<:alert:1544047350345891851> Подходящих участников не найдено.")
 
     main_embed.description = "\n".join(lines)
 
@@ -767,170 +767,14 @@ class GiveawayCog(commands.Cog):
             return None
 
     async def _get_reaction_users(self, message: discord.Message) -> list[discord.User]:
-        reaction = discord.utils.get(message.reactions, emoji=GIVEAWAY_EMOJI)
-        if reaction is None:
-            return []
-
         users = []
-        async for user in reaction.users(limit=None):
-            if not user.bot:
-                users.append(user)
+        for reaction in message.reactions:
+            if str(reaction.emoji) == GIVEAWAY_EMOJI or getattr(reaction.emoji, "name", None) == GIVEAWAY_EMOJI:
+                async for user in reaction.users(limit=None):
+                    if not user.bot:
+                        users.append(user)
+                break
         return users
-
-    def _is_eligible(self, member: discord.Member, doc: dict) -> bool:
-        user_doc = users_col.find_one({"_id": member.id}) or {}
-
-        if user_doc.get("messages_count", 0) < doc.get("min_messages", 0):
-            return False
-
-        total_invites = user_doc.get("real_invites", 0) + user_doc.get("bonus_invites", 0)
-        if total_invites < doc.get("min_invites", 0):
-            return False
-
-        required_roles = [int(role_id) for role_id in doc.get("required_roles", [])]
-        if required_roles:
-            member_roles = {role.id for role in member.roles}
-            if doc.get("role_mode", "all") == "all":
-                if not all(role_id in member_roles for role_id in required_roles):
-                    return False
-            else:
-                if not any(role_id in member_roles for role_id in required_roles):
-                    return False
-
-        return True
-
-    def _weight(self, member: discord.Member, doc: dict) -> int:
-        member_roles = {role.id for role in member.roles}
-        bonus = 0
-        for role_id, entries in doc.get("bonus_roles", {}).items():
-            if int(role_id) in member_roles:
-                bonus += int(entries)
-        return 1 + bonus
-
-    async def _update_participant_count(
-        self,
-        payload: discord.RawReactionActionEvent,
-        delta: int,
-    ):
-        bot_user = self.bot.user
-        if str(payload.emoji) != GIVEAWAY_EMOJI and payload.emoji.name != GIVEAWAY_EMOJI:
-            return
-        if bot_user and payload.user_id == bot_user.id:
-            return
-
-        doc = giveaways_col.find_one(
-            {
-                "type": "giveaway",
-                "guild_id": payload.guild_id,
-                "message_id": payload.message_id,
-                "status": "active",
-            }
-        )
-
-        if not doc:
-            return
-
-        giveaways_col.update_one(
-            {"_id": doc["_id"]},
-            {"$inc": {"participant_count": delta}},
-        )
-
-        giveaways_col.update_one(
-            {"_id": doc["_id"], "participant_count": {"$lt": 0}},
-            {"$set": {"participant_count": 0}},
-        )
-
-        doc = giveaways_col.find_one({"_id": doc["_id"]})
-        if not doc:
-            return
-
-        message = await self._get_giveaway_message(doc)
-        if not message:
-            return
-
-        guild = self.bot.get_guild(int(doc["guild_id"]))
-        if not guild:
-            return
-
-        host = guild.get_member(int(doc["host_id"])) or self.bot.user
-
-        embeds = build_giveaway_embeds(
-            prize=doc["prize"],
-            host=host,
-            ends_at=doc["ends_at"],
-            winners_count=doc["winners_count"],
-            participant_count=max(0, doc.get("participant_count", 0)),
-            role_mode=doc.get("role_mode"),
-            required_roles=doc.get("required_roles", []),
-            min_messages=doc.get("min_messages", 0),
-            min_invites=doc.get("min_invites", 0),
-            bonus_roles={
-                int(key): int(value) for key, value in doc.get("bonus_roles", {}).items()
-            },
-            claim_time=doc.get("claim_time", "—"),
-        )
-
-        try:
-            await message.edit(embeds=list(embeds))
-        except discord.HTTPException:
-            pass
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(
-        self,
-        payload: discord.RawReactionActionEvent,
-    ):
-        bot_user = self.bot.user
-        if str(payload.emoji) != GIVEAWAY_EMOJI and payload.emoji.name != GIVEAWAY_EMOJI:
-            return
-        if bot_user and payload.user_id == bot_user.id:
-            return
-
-        doc = giveaways_col.find_one(
-            {
-                "type": "giveaway",
-                "guild_id": payload.guild_id,
-                "message_id": payload.message_id,
-            }
-        )
-
-        if not doc:
-            return
-
-        guild = self.bot.get_guild(payload.guild_id)
-        if not guild:
-            return
-
-        member = payload.member or guild.get_member(payload.user_id)
-        if not member or member.bot:
-            return
-
-        if doc.get("status") != "active":
-            message = await self._get_giveaway_message(doc)
-            if message:
-                try:
-                    await message.remove_reaction(payload.emoji, member)
-                except discord.HTTPException:
-                    pass
-            return
-
-        if not self._is_eligible(member, doc):
-            message = await self._get_giveaway_message(doc)
-            if message:
-                try:
-                    await message.remove_reaction(payload.emoji, member)
-                except discord.HTTPException:
-                    pass
-            return
-
-        await self._update_participant_count(payload, +1)
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_remove(
-        self,
-        payload: discord.RawReactionActionEvent,
-    ):
-        await self._update_participant_count(payload, -1)
 
     async def finish_giveaway(
         self,
@@ -956,10 +800,12 @@ class GiveawayCog(commands.Cog):
         eligible_user_ids = []
 
         for user in users:
-            member = guild.get_member(user.id)
-            if member and self._is_eligible(member, doc):
-                eligible.append((member, self._weight(member, doc)))
-                eligible_user_ids.append(member.id)
+            member = guild.get_member(user.id) or await guild.fetch_member(user.id)
+            if member and not member.bot:
+                # Если хотите, чтобы роли/сообщения строго проверялись при подведении итогов:
+                if self._is_eligible(member, doc):
+                    eligible.append((member, self._weight(member, doc)))
+                    eligible_user_ids.append(member.id)
 
         winner_count = min(doc.get("winners_count", 1), len(eligible))
         winners = []
