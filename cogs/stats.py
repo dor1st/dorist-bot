@@ -56,8 +56,8 @@ class EconomyPaginationView(discord.ui.View):
         self.update_buttons()
 
     def update_buttons(self):
-        self.previous_page.disabled = self.current_page == 0
-        self.next_page.disabled = self.current_page == len(self.pages) - 1
+        self.children[0].disabled = self.current_page == 0
+        self.children[1].disabled = self.current_page == len(self.pages) - 1
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
@@ -76,14 +76,14 @@ class EconomyPaginationView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
-    @discord.ui.button(emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.primary)
-    async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary)
+    async def previous_page(self, interaction: discord.Interaction):
         self.current_page -= 1
         self.update_buttons()
         await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
 
-    @discord.ui.button(emoji="<:darkright:1543990036129783948>", style=discord.ButtonStyle.primary)
-    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(emoji="<:darkright:1543990036129783948>", style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction):
         self.current_page += 1
         self.update_buttons()
         await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
