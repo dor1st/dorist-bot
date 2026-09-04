@@ -148,7 +148,6 @@ class StatsCog(commands.Cog):
     async def userinfo_cmd(self, ctx: commands.Context, member: discord.Member = None):
         member = member or ctx.author
         
-        # Получаем данные пользователя из БД (сообщения, инвайты, экономика)
         user_doc = users_col.find_one({"_id": member.id}) or {}
         
         messages_count = user_doc.get("messages_count", 0)
@@ -160,7 +159,6 @@ class StatsCog(commands.Cog):
         cash = user_doc.get("cash", 0)
         bank = user_doc.get("bank", 0)
 
-        # Форматирование дат (аккаунт и присоединение к серверу)
         created_at_discord = discord.utils.format_dt(member.created_at, "R")
         created_at_full = discord.utils.format_dt(member.created_at, "F")
         
@@ -173,7 +171,7 @@ class StatsCog(commands.Cog):
             roles_str = "Слишком много ролей для отображения"
 
         embed = discord.Embed(
-            title=f"Информация — {member.name}",
+            title=f"<:info:1522329987514892398> Информация: {member.mention}",
             color=member.color if member.color.value != 0 else config.EMBED_COLOR
         )
         
@@ -200,12 +198,12 @@ class StatsCog(commands.Cog):
 
         embed.add_field(
             name=f"Роли [{len(roles)}]",
-            value=f"{roles_str}\n{ctx.guild.name}",
+            value=f"{roles_str}",
             inline=False
         )
 
         embed.add_field(
-            name="📊 Статистика и Экономика",
+            name="<:pin:1522341130019143880> Статистика и Экономика",
             value=(
                 f"• Сообщений: **{messages_count:,}**\n"
                 f"• Инвайтов: **{total_invites}**\n"
