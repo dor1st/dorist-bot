@@ -152,7 +152,7 @@ class EconomyCog(commands.Cog):
     @commands.command(name="withdraw", aliases=["with"])
     @check_access_decorator("withdraw")
     async def withdraw(self, ctx: commands.Context, amount: str = None):
-        if not amount:
+        if amount is None:
             return await ctx.send(embed=build_command_help_embed("withdraw"))
 
         cash, bank = get_user_balance(ctx.author.id)
@@ -191,7 +191,7 @@ class EconomyCog(commands.Cog):
     @commands.command(name="deposit", aliases=["dep"])
     @check_access_decorator("deposit")
     async def deposit(self, ctx: commands.Context, amount: str = None):
-        if not amount:
+        if amount is None:
             return await ctx.send(embed=build_command_help_embed("deposit"))
 
         cash, bank = get_user_balance(ctx.author.id)
@@ -230,7 +230,7 @@ class EconomyCog(commands.Cog):
     @commands.command(name="givemoney", aliases=["give"])
     @check_access_decorator("givemoney")
     async def givemoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
-        if not target or amount is None:
+        if amount is None or target is None:
             return await ctx.send(embed=build_command_help_embed("givemoney"))
 
         if target.id == ctx.author.id:
@@ -348,7 +348,8 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 86400, commands.BucketType.user)  # 1 день (86400 сек)
     @check_access_decorator("rob")
     async def rob(self, ctx: commands.Context, target: discord.Member | discord.User = None):
-        if not target:
+
+        if target is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("rob"))
 
@@ -406,11 +407,7 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)  # 3 секунды
     @check_access_decorator("slotmachine")
     async def slotmachine(self, ctx: commands.Context, amount: int = None):
-        if amount is None:
-            ctx.command.reset_cooldown(ctx)
-            return await ctx.send(embed=build_command_help_embed("slotmachine"))
-
-        if amount <= 0:
+        if amount is None or amount <= 0:
             ctx.command.reset_cooldown(ctx)
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
             return
@@ -450,16 +447,12 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)  # 3 секунды
     @check_access_decorator("roll")
     async def roll(self, ctx: commands.Context, amount: int = None, number: int = None):
-        if amount is None or number is None:
-            ctx.command.reset_cooldown(ctx)
-            return await ctx.send(embed=build_command_help_embed("roll"))
-
-        if amount <= 0:
+        if amount is None or amount <= 0:
             ctx.command.reset_cooldown(ctx)
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
             return
 
-        if number < 1 or number > 6:
+        if number is None or number < 1 or number > 6:
             ctx.command.reset_cooldown(ctx)
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите число от 1 до 6."))
             return
@@ -513,7 +506,7 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
             return
 
-        if not target or amount is None:
+        if amount is None or target is None:
             return await ctx.send(embed=build_command_help_embed("addmoney"))
 
         if amount <= 0:
@@ -539,7 +532,7 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
             return
 
-        if not target or amount is None:
+        if amount is None or target is None:
             return await ctx.send(embed=build_command_help_embed("removemoney"))
 
         if amount <= 0:
