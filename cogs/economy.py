@@ -10,6 +10,30 @@ from utils import check_access_decorator, is_owner_user, make_error_embed, make_
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 
 # -------------------------------------------------------------
+# НАСТРОЙКИ ЭКОНОМИКИ И ШАНСОВ
+# -------------------------------------------------------------
+WORK_MIN_REWARD = 100
+WORK_MAX_REWARD = 300
+WORK_SUCCESS_CHANCE = 0.8  # 80% шанс успеха
+
+CRIME_MIN_REWARD = 200
+CRIME_MAX_REWARD = 500
+CRIME_SUCCESS_CHANCE = 0.5  # 50% шанс успеха
+
+ROB_SUCCESS_CHANCE = 0.3  # 30% шанс успеха
+ROB_STEEL_MIN_PERCENT = 30
+ROB_STEEL_MAX_PERCENT = 70
+ROB_FINE_PERCENT = 0.15  # 15% от наличных при провале
+
+SLOT_WIN_CHANCE = 0.5  # 50/50 шанс
+SLOT_WEIGHTS = [30, 25, 20, 15, 10]
+SLOT_MULTIPLIERS = [1.2, 1.4, 1.6, 1.8, 2.0]
+
+ROLL_WIN_CHANCE = 0.5  # 50/50 шанс
+ROLL_WEIGHTS = [30, 25, 20, 15, 10]
+ROLL_MULTIPLIERS = [1.2, 1.4, 1.6, 1.8, 2.0]
+
+# -------------------------------------------------------------
 # КАНАЛЫ БЕЗ НАЧИСЛЕНИЯ ДОХОДА ЗА СООБЩЕНИЯ
 # -------------------------------------------------------------
 DISABLED_CHANNELS_INCOME = [
@@ -24,6 +48,12 @@ ROLE_INCOME_TABLE = {
     1437096779693686886: 15,
     1323358508900417627: 20,
     1309460485082714144: 70,
+    1501508956961509436: 70,
+    1323359090243670088: 40,
+    1484517179780104243: 30,
+    1467961492275200296: 30,
+    1537847767433617448: 25,
+    1475808795757252609: 25,
 }
 
 # -------------------------------------------------------------
@@ -31,26 +61,45 @@ ROLE_INCOME_TABLE = {
 # -------------------------------------------------------------
 WORK_SUCCESS_PHRASES = [
     "Вы успешно выполнили работу и заработали **+{amount}** коинов!",
+    "Вы стали работником месяца и получили премию размером {amount} коинов!",
+    "Отличная смена! Начальник выписал вам бонус, и ваш кошелек пополнился на **+{amount}** коинов.",
+    "Вы ударно потрудились сверхурочно и заработали **+{amount}** коинов.",
+    "Клиент остался в восторге от вашей работы и перевел чаевые в размере **+{amount}** коинов!",
 ]
 
 WORK_FAILURE_PHRASES = [
     "Произошла ошибка на работе, вы потеряли **-{amount}** коинов.",
+    "Вы случайно испортили дорогое оборудование на рабочем месте и выплатили компенсацию в **-{amount}** коинов.",
+    "На работе случился форс-мажор, из-за которого вы лишились **-{amount}** коинов.",
+    "Ваш рабочий день не задался, и за допущенные ошибки с вас удержали **-{amount}** коинов.",
 ]
 
 CRIME_SUCCESS_PHRASES = [
     "Вам удалось совершить преступление и уйти с **+{amount}** коинов!",
+    "План сработал идеально! Вы провернули темное дело и обогатились на **+{amount}** коинов.",
+    "Никто ничего не заметил. Вы тихо унесли с места преступления **+{amount}** коинов!",
+    "Риск стоил того — ваша афера принесла вам **+{amount}** коинов.",
 ]
 
 CRIME_FAILURE_PHRASES = [
     "Вас поймали при попытке совершить преступление! Штраф: **-{amount}** коинов.",
+    "Ваша афера провалилась, а местная полиция/банда отобрала у вас **-{amount}** коинов.",
+    "Все пошло не по плану, и вы оставили на месте преступления **-{amount}** коинов.",
+    "Вас вычислили! Пришлось срочно откупаться на **-{amount}** коинов.",
 ]
 
 ROB_SUCCESS_PHRASES = [
     "Вы успешно ограбили {target} и забрали **+{amount}** коинов!",
+    "Операция прошла как по маслу: вы обокрали {target} на **+{amount}** коинов!",
+    "Вы застали {target} врасплох и увели прямо из-под носа **+{amount}** коинов.",
+    "Ловкость рук — и карман {target} опустел на **+{amount}** коинов, которые теперь ваши!",
 ]
 
 ROB_FAILURE_PHRASES = [
     "Попытка ограбления {target} не удалась! Вы потеряли **-{amount}** коинов.",
+    "{target} вовремя заметил неладное и дал вам отпор. Вы потеряли **-{amount}** коинов.",
+    "Попытка ограбить {target} провалилась: вас заставили заплатить за дерзость **-{amount}** коинов.",
+    "{target} оказался крепким орешком и отобрал у вас **-{amount}** коинов при попытке нападения.",
 ]
 
 
@@ -314,8 +363,8 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 5400, commands.BucketType.user)  # 1.5 часа (5400 сек)
     @check_access_decorator("work")
     async def work(self, ctx: commands.Context):
-        amount = random.randint(100, 300)
-        is_success = random.random() < 0.7  # 70% шанс успеха
+        amount = random.randint(WORK_MIN_REWARD, WORK_MAX_REWARD)
+        is_success = random.random() < WORK_SUCCESS_CHANCE
 
         if is_success:
             update_user_balance_delta(ctx.author.id, cash_delta=amount)
@@ -333,8 +382,8 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 43200, commands.BucketType.user)  # 12 часов (43200 сек)
     @check_access_decorator("crime")
     async def crime(self, ctx: commands.Context):
-        amount = random.randint(200, 500)
-        is_success = random.random() < 0.4  # 40% шанс успеха
+        amount = random.randint(CRIME_MIN_REWARD, CRIME_MAX_REWARD)
+        is_success = random.random() < CRIME_SUCCESS_CHANCE
 
         if is_success:
             update_user_balance_delta(ctx.author.id, cash_delta=amount)
@@ -417,10 +466,10 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_status_embed("Ограбление не удалось", phrase, "error"))
             return
 
-        is_success = random.random() < 0.3  # 30% шанс успеха
+        is_success = random.random() < ROB_SUCCESS_CHANCE
 
         if is_success:
-            percent = random.randint(30, 70)
+            percent = random.randint(ROB_STEEL_MIN_PERCENT, ROB_STEEL_MAX_PERCENT)
             stolen_amount = int(target_cash * (percent / 100))
             if stolen_amount <= 0:
                 stolen_amount = 1
@@ -434,7 +483,8 @@ class EconomyCog(commands.Cog):
             )
             embed = make_status_embed("Ограбление успешно", phrase, "success")
         else:
-            fine = int(target_cash * 0.15)
+            author_cash, _ = get_user_balance(ctx.author.id)
+            fine = int(author_cash * ROB_FINE_PERCENT)
             if fine <= 0:
                 fine = random.randint(50, 150)
 
@@ -461,19 +511,18 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно **наличных** средств для этой ставки."))
             return
 
-        is_win = random.random() < 0.5  # 50/50 шанс
+        is_win = random.random() < SLOT_WIN_CHANCE
 
         if is_win:
-            weights = [30, 25, 20, 15, 10]
-            multipliers = [1.2, 1.4, 1.6, 1.8, 2.0]
-            mult = random.choices(multipliers, weights=weights, k=1)[0]
+            mult = random.choices(SLOT_MULTIPLIERS, weights=SLOT_WEIGHTS, k=1)[0]
 
-            winnings = int(amount * mult) - amount
+            total_payout = int(amount * mult)
+            winnings = total_payout - amount
             update_user_balance_delta(ctx.author.id, cash_delta=winnings)
 
             embed = make_status_embed(
                 "Слот-машина",
-                f"🎰 Вы выиграли! Множитель: **x{mult}**.\nВыигрыш: **+{winnings:,}** коинов.",
+                f"🎰 Вы выиграли! Множитель: **x{mult}**.\nСтавка: **{amount:,}** | Выигрыш: **+{total_payout:,}** коинов.",
                 "success"
             )
         else:
@@ -506,21 +555,20 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно **наличных** средств для этой ставки."))
             return
 
-        is_win = random.random() < 0.5  # 50/50 шанс
+        is_win = random.random() < ROLL_WIN_CHANCE
 
         if is_win:
             dice_result = number
-            weights = [30, 25, 20, 15, 10]
-            multipliers = [1.2, 1.4, 1.6, 1.8, 2.0]
-            mult = random.choices(multipliers, weights=weights, k=1)[0]
+            mult = random.choices(ROLL_MULTIPLIERS, weights=ROLL_WEIGHTS, k=1)[0]
 
-            winnings = int(amount * mult) - amount
+            total_payout = int(amount * mult)
+            winnings = total_payout - amount
             update_user_balance_delta(ctx.author.id, cash_delta=winnings)
 
             embed = make_status_embed(
                 "Кости",
                 f"🎲 Выпало число **{dice_result}**! Вы угадали!\n"
-                f"Множитель: **x{mult}**. Выигрыш: **+{winnings:,}** коинов.",
+                f"Множитель: **x{mult}**. Ставка: **{amount:,}** | Выигрыш: **+{total_payout:,}** коинов.",
                 "success"
             )
         else:
