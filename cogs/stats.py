@@ -46,6 +46,48 @@ def is_allowed_channel():
         return False
     return commands.check(predicate)
 
+class EconomyPaginationView(discord.ui.View):
+    def __init__(self, pages: list[discord.Embed], author: discord.User, timeout: float = 180.0):
+        super().__init__(timeout=timeout)
+        self.pages = pages
+        self.author = author
+        self.current_page = 0
+        self.message = None
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.previous_page.disabled = self.current_page == 0
+        self.next_page.disabled = self.current_page == len(self.pages) - 1
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message(
+                "Вы не можете использовать эти кнопки.", ephemeral=True
+            )
+            return False
+        return True
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except discord.HTTPException:
+                pass
+
+    @discord.ui.button(emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.primary)
+    async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page -= 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
+
+    @discord.ui.button(emoji="<:darkright:1543990036129783948>", style=discord.ButtonStyle.primary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page += 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
+
 class StatsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -332,27 +374,56 @@ class StatsCog(commands.Cog):
                 }
             },
             {"$match": {"total": {"$gt": 0}}},
-            {"$sort": {"total": -1}},
-            {"$limit": 10}
+            {"$sort": {"total": -1}}
         ]
         top_data = list(users_col.aggregate(pipeline))
 
-        embed = discord.Embed(
-            title="<:leaderboard:1544301200894070844> Топ 10 по балансу",
-            color=config.EMBED_COLOR
-        )
+        if not top_data:
+            embed = discord.Embed(
+                title="<:leaderboard:1544301200894070844> Топ 10 по балансу",
+                description="Нет данных для отображения.",
+                color=config.EMBED_COLOR
+            )
+            embed.set_footer(text=config.FOOTER_TEXT)
+            return await ctx.send(embed=embed)
 
-        lines = []
-        for i in range(1, 11):
-            if i <= len(top_data):
-                doc = top_data[i - 1]
-                lines.append(f"`{i}.` <@{doc['_id']}> — **{doc['total']:,}** коинов")
-            else:
-                lines.append(f"`{i}.` —")
+        PER_PAGE = 10
+        total_pages = math.ceil(len(top_data) / PER_PAGE)
+        pages = []
 
-        embed.description = "\n".join(lines)
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
+        for page in range(total_pages):
+            start_idx = page * PER_PAGE
+            end_idx = start_idx + PER_PAGE
+            page_data = top_data[start_idx:end_idx]
+
+            lines = []
+            for i in range(1, PER_PAGE + 1):
+                global_rank = start_idx + i
+                if i - 1 < len(page_data):
+                    doc = page_data[i - 1]
+                    lines.append(f"`{global_rank}.` <@{doc['_id']}> — **{doc['total']:,}** коинов")
+                else:
+                    lines.append(f"`{global_rank}.` —")
+
+            embed = discord.Embed(
+                title="<:leaderboard:1544301200894070844> Топ 10 по балансу",
+                description="\n".join(lines),
+                color=config.EMBED_COLOR
+            )
+            
+            footer_text = f"Страница {page + 1} из {total_pages}"
+            if config.FOOTER_TEXT:
+                footer_text += f" • {config.FOOTER_TEXT}"
+            embed.set_footer(text=footer_text)
+            
+            pages.append(embed)
+
+        if len(pages) == 1:
+            await ctx.send(embed=pages[0])
+        else:
+            view = EconomyPaginationView(pages=pages, author=ctx.author)
+            msg = await ctx.send(embed=pages[0], view=view)
+            view.message = msg
 
 
 async def setup(bot):
