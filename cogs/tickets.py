@@ -9,6 +9,19 @@ from utils import check_access_decorator, make_error_embed, make_status_embed, l
 
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
+def is_allowed_channel():
+    async def predicate(ctx: commands.Context) -> bool:
+        allowed = getattr(config, "ALLOWED_CHANNELS", [])
+        if not allowed or ctx.channel.id in allowed:
+            return True
+        await ctx.send(
+            embed=make_error_embed(
+                "Ошибка доступа",
+                "Эта команда недоступна в данном канале.",
+            )
+        )
+        return False
+    return commands.check(predicate)
 
 class TicketLogsView(discord.ui.View):
     """Пагинация для обычных логов тикетов."""
@@ -171,6 +184,7 @@ class TicketsCog(commands.Cog):
 
     @commands.command(name="addticket", aliases=["t"])
     @check_access_decorator("addticket")
+    @is_allowed_channel()
     async def addticket_cmd(
         self,
         ctx: commands.Context,
@@ -262,6 +276,7 @@ class TicketsCog(commands.Cog):
 
     @commands.command(name="deleteticket", aliases=["del", "dt"])
     @check_access_decorator("deleteticket")
+    @is_allowed_channel()
     async def deleteticket_cmd(
         self,
         ctx: commands.Context,
@@ -307,6 +322,7 @@ class TicketsCog(commands.Cog):
 
     @commands.command(name="ticketlogs", aliases=["tl"])
     @check_access_decorator("ticketlogs")
+    @is_allowed_channel()
     async def ticketlogs_cmd(
         self, ctx: commands.Context, target: discord.User = None
     ):
@@ -331,6 +347,7 @@ class TicketsCog(commands.Cog):
 
     @commands.command(name="deletelogs", aliases=["dl"])
     @check_access_decorator("deletelogs")
+    @is_allowed_channel()
     async def deletelogs_cmd(
         self, ctx: commands.Context, target: discord.User = None
     ):
@@ -355,6 +372,7 @@ class TicketsCog(commands.Cog):
 
     @commands.command(name="ticketstats", aliases=["ts"])
     @check_access_decorator("ticketstats")
+    @is_allowed_channel()
     async def ticketstats_cmd(
         self, ctx: commands.Context, target: discord.User = None
     ):

@@ -13,7 +13,7 @@ from database import (
     tickets_col,
     users_col,
 )
-from utils import check_access_decorator, make_status_embed
+from utils import check_access_decorator, make_error_embed, make_status_embed
 
 BUMP_REMINDER_MESSAGE = "**<a:gifclock:1544347190984441858> <@&1501943871960125461> Пришло время бампа! (/bump)**"
 
@@ -22,6 +22,19 @@ def utc_day(dt=None):
     dt = dt or datetime.now(timezone.utc)
     return dt.date().isoformat()
 
+def is_allowed_channel():
+    async def predicate(ctx: commands.Context) -> bool:
+        allowed = getattr(config, "ALLOWED_CHANNELS", [])
+        if not allowed or ctx.channel.id in allowed:
+            return True
+        await ctx.send(
+            embed=make_error_embed(
+                "Ошибка доступа",
+                "Эта команда недоступна в данном канале.",
+            )
+        )
+        return False
+    return commands.check(predicate)
 
 class StatsCog(commands.Cog):
     def __init__(self, bot):
@@ -89,6 +102,7 @@ class StatsCog(commands.Cog):
 
     @commands.command(name="summaries", aliases=["sum"])
     @check_access_decorator("sum")
+    @is_allowed_channel()
     async def summaries_cmd(self, ctx: commands.Context, mode: str = None):
         limit = 10 if mode and mode.lower() in ["ex", "extended"] else 3
 
@@ -148,6 +162,7 @@ class StatsCog(commands.Cog):
     # ГРУППА КОМАНД LEADERBOARD / LB
     # ==========================================
     @commands.group(name="leaderboard", aliases=["lb"], invoke_without_command=True)
+    @is_allowed_channel()
     async def leaderboard_group(self, ctx: commands.Context, category: str = None):
         if category in ["messages", "m", "msgs", "сообщения"]:
             return await ctx.invoke(self.lb_messages)
@@ -240,7 +255,7 @@ class StatsCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @leaderboard_group.command(name="tickets", aliases=["t"])
-    @check_access_decorator("leaderboard")
+    @check_access_decorator("поддержка")
     async def lb_tickets(self, ctx: commands.Context):
         now = datetime.now(timezone.utc)
         d7 = now - timedelta(days=7)

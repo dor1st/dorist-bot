@@ -22,6 +22,20 @@ BONUS_TIME_ROLE_ID = getattr(config, "BONUS_TIME_ROLE_ID", 1545156954807337011)
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
+def is_allowed_channel():
+    async def predicate(ctx: commands.Context) -> bool:
+        allowed = getattr(config, "ALLOWED_CHANNELS", [])
+        if not allowed or ctx.channel.id in allowed:
+            return True
+        await ctx.send(
+            embed=make_error_embed(
+                "Ошибка доступа",
+                "Эта команда недоступна в данном канале.",
+            )
+        )
+        return False
+    return commands.check(predicate)
+
 
 def parse_duration(value: str) -> timedelta | None:
     if not value or value == "—":
@@ -1031,6 +1045,7 @@ class GiveawayCog(commands.Cog):
         aliases=["giveaways", "gw", "gws"],
         invoke_without_command=True,
     )
+    @is_allowed_channel()
     async def giveaway_group(self, ctx: commands.Context):
         embed = discord.Embed(
             title="<:giveaway:1522331215976206446> Меню розыгрышей",
@@ -1289,6 +1304,7 @@ class GiveawayCog(commands.Cog):
 
     @commands.command(name="checktime", aliases=["ct"])
     @check_access_decorator("giveaway")
+    @is_allowed_channel()
     async def check_time(
         self,
         ctx: commands.Context,

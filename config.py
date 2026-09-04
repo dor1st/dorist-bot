@@ -17,11 +17,69 @@ SETUP_TIMEOUT = 900
 
 LOGS_PER_PAGE = 3
 
-# Таблица дохода с ролей для команды .income (ID_РОЛИ: СУММА_ДОХОДА)
 ROLE_INCOME_TABLE = {
     1437096779693686886: 15,
     1323358508900417627: 20,
     1309460485082714144: 70,
+}
+
+# Все команды распределены и разрешены для использования в целевом канале
+COMMAND_ALLOWED_CHANNELS = {
+    # ----------------------------------------------------
+    # Экономика (Economy)
+    # ----------------------------------------------------
+    "balance": [1311385104374825102],
+    "withdraw": [1311385104374825102],
+    "deposit": [1311385104374825102],
+    "givemoney": [1311385104374825102],
+    "addmoney": [1311385104374825102],
+    "removemoney": [1311385104374825102],
+    "work": [1311385104374825102],
+    "crime": [1311385104374825102],
+    "income": [1311385104374825102],
+    "rob": [1311385104374825102],
+    "slotmachine": [1311385104374825102],
+    "roll": [1311385104374825102],
+
+    # ----------------------------------------------------
+    # Тикеты (Tickets)
+    # ----------------------------------------------------
+    "addticket": [1543958477485908048],
+    "deleteticket": [1543958477485908048],
+    "ticketlogs": [1543958477485908048],
+    "ticketstats": [1543958477485908048],
+    "deletelog": [1543958477485908048],
+    "resetlogs": [1543958477485908048],
+
+    # ----------------------------------------------------
+    # Розыгрыши (Giveaways)
+    # ----------------------------------------------------
+    "giveaway": [1543958477485908048],
+    "checktime": [1543958477485908048],
+    "loggiveaway": [1543958477485908048],
+    "deletegiveaway": [1543958477485908048],
+    "giveawaylogs": [1543958477485908048],
+
+    # ----------------------------------------------------
+    # Приглашения (Invites)
+    # ----------------------------------------------------
+    "loginvite": [1543958477485908048],
+    "deleteinvite": [1543958477485908048],
+    "invitelogs": [1543958477485908048],
+    "inviter": [1543958477485908048],
+    "invites": [1543958477485908048],
+    "validinvite": [1543958477485908048],
+
+    # ----------------------------------------------------
+    # Общие команды, администрирование и статистика
+    # ----------------------------------------------------
+    "messages": [1311385104374825102],
+    "userinfo": [1311385104374825102],
+    "leaderboard": [1311385104374825102],
+    "sum": [1543958477485908048],
+    "summaries": [1543958477485908048],
+    "help": [1311385104374825102],
+    "config": [1468548307553878260],
 }
 
 LOGGABLE_COMMANDS_DEFAULT = {
@@ -254,6 +312,8 @@ CONFIG = {
     "log_toggles": dict(LOGGABLE_COMMANDS_DEFAULT),
     "counting_channel_id": 1323344709724405782,
     "bump_channel_id": 1467961847511781386,
+    "allowed_channels": list(ALLOWED_CHANNEL_IDS),
+    "command_allowed_channels": dict(COMMAND_ALLOWED_CHANNELS),
     "permission_groups": {k: dict(v) for k, v in PERMISSION_GROUPS_DEFAULT.items()},
 }
 
@@ -278,4 +338,6 @@ def load_config():
     global CONFIG
     CONFIG["permission_groups"] = {k: dict(v) for k, v in PERMISSION_GROUPS_DEFAULT.items()}
     CONFIG["log_toggles"] = {**LOGGABLE_COMMANDS_DEFAULT, **CONFIG.get("log_toggles", {})}
+    CONFIG["command_allowed_channels"] = {**COMMAND_ALLOWED_CHANNELS, **CONFIG.get("command_allowed_channels", {})}
+    CONFIG["allowed_channels"] = CONFIG.get("allowed_channels", list(ALLOWED_CHANNEL_IDS))
     apply_config_globals()
