@@ -17,9 +17,11 @@ LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
 def is_allowed_channel():
     async def predicate(ctx: commands.Context) -> bool:
-        allowed = getattr(config, "ALLOWED_CHANNELS", [])
-        if not allowed or ctx.channel.id in allowed:
+        command_channels = config.CONFIG.get("command_allowed_channels", {}).get(ctx.command.name, [])
+        
+        if not command_channels or ctx.channel.id in command_channels:
             return True
+            
         await ctx.send(
             embed=make_error_embed(
                 "Ошибка доступа",

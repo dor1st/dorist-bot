@@ -56,9 +56,11 @@ def get_user_balance(user_id: int) -> tuple[int, int]:
 
 def is_allowed_channel():
     async def predicate(ctx: commands.Context) -> bool:
-        allowed = getattr(config, "ALLOWED_CHANNELS", [])
-        if not allowed or ctx.channel.id in allowed:
+        command_channels = config.CONFIG.get("command_allowed_channels", {}).get(ctx.command.name, [])
+        
+        if not command_channels or ctx.channel.id in command_channels:
             return True
+            
         await ctx.send(
             embed=make_error_embed(
                 "Ошибка доступа",
