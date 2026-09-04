@@ -84,7 +84,7 @@ PERMISSION_GROUPS_DEFAULT = {
             "withdraw", 
             "deposit", 
             "givemoney",
-            "work",
+            #"work",
             "crime",
             "income",
             "rob",
