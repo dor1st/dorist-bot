@@ -94,7 +94,7 @@ class EconomyCog(commands.Cog):
 
             embed = discord.Embed(
                 description=f"<a:gifclock:1544347190984441858> Вы сможете снова {action_text} {relative_time}.",
-                color=0xFF5555
+                color=config.EMBED_COLOR
             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
             
@@ -314,12 +314,14 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Эту команду можно использовать только на сервере."))
             return
 
+        collected_roles = []
         total_income = 0
         user_role_ids = [role.id for role in ctx.author.roles]
 
         for role_id, reward in ROLE_INCOME_TABLE.items():
             if role_id in user_role_ids:
                 total_income += reward
+                collected_roles.append((role_id, reward))
 
         if total_income <= 0:
             ctx.command.reset_cooldown(ctx)
@@ -327,11 +329,22 @@ class EconomyCog(commands.Cog):
             return
 
         update_user_balance_delta(ctx.author.id, cash_delta=total_income)
-        embed = make_status_embed(
-            "Доход с ролей",
-            f"Вы получили **+{total_income:,}** коинов за свои роли!",
-            "success"
+
+        coin_emoji = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
+
+        role_lines = [
+            f"`{idx}` - <@&{role_id}> {coin_emoji} **{reward:,}** (cash)"
+            for idx, (role_id, reward) in enumerate(collected_roles, start=1)
+        ]
+
+        description_text = "<:verify:1522329028420173976> **Вы успешно забрали доход с ролей!**\n\n" + "\n".join(role_lines)
+
+        embed = discord.Embed(
+            description=description_text,
+            color=config.EMBED_COLOR
         )
+        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+
         await ctx.send(embed=embed)
 
     @commands.command(name="rob")
@@ -402,7 +415,6 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
             return
 
-        # Проверка баланса строго наличных средств (банк не учитывается)
         user_cash, _ = get_user_balance(ctx.author.id)
         if user_cash < amount:
             ctx.command.reset_cooldown(ctx)
