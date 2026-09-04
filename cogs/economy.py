@@ -14,18 +14,17 @@ def get_user_balance(user_id: int) -> tuple[int, int]:
     return cash, bank
 
 
-def update_user_balance(user_id: int, cash: int = None, bank: int = None):
-    """Обновляет баланс наличных и/или банка у пользователя."""
-    update_data = {}
-    if cash is not None:
-        update_data["cash"] = max(0, cash)
-    if bank is not None:
-        update_data["bank"] = max(0, bank)
+def update_user_balance_delta(user_id: int, cash_delta: int = 0, bank_delta: int = 0):
+    inc_data = {}
+    if cash_delta != 0:
+        inc_data["cash"] = cash_delta
+    if bank_delta != 0:
+        inc_data["bank"] = bank_delta
 
-    if update_data:
+    if inc_data:
         users_col.update_one(
             {"_id": user_id},
-            {"$set": update_data},
+            {"$inc": inc_data},
             upsert=True
         )
 
@@ -87,7 +86,7 @@ class EconomyCog(commands.Cog):
 
         new_cash = cash + withdraw_amount
         new_bank = bank - withdraw_amount
-        update_user_balance(ctx.author.id, cash=new_cash, bank=new_bank)
+        update_user_balance_delta(ctx.author.id, cash_delta=withdraw_amount, bank_delta=-withdraw_amount)
 
         embed = make_status_embed(
             "Операция выполнена",
@@ -127,7 +126,7 @@ class EconomyCog(commands.Cog):
 
         new_cash = cash - deposit_amount
         new_bank = bank + deposit_amount
-        update_user_balance(ctx.author.id, cash=new_cash, bank=new_bank)
+        update_user_balance_delta(ctx.author.id, cash_delta=-deposit_amount, bank_delta=deposit_amount)
 
         embed = make_status_embed(
             "Операция выполнена",
@@ -164,8 +163,8 @@ class EconomyCog(commands.Cog):
 
         target_cash, _ = get_user_balance(target.id)
 
-        update_user_balance(ctx.author.id, cash=sender_cash - amount)
-        update_user_balance(target.id, cash=target_cash + amount)
+        update_user_balance_delta(ctx.author.id, cash_delta=-amount)
+        update_user_balance_delta(target.id, cash_delta=amount)
 
         embed = make_status_embed(
             "Перевод выполнен",
@@ -195,7 +194,7 @@ class EconomyCog(commands.Cog):
 
         cash, bank = get_user_balance(target.id)
         new_cash = cash + amount
-        update_user_balance(target.id, cash=new_cash)
+        update_user_balance_delta(target.id, cash_delta=amount)
 
         embed = make_status_embed(
             "Баланс пополнен",

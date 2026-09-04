@@ -1,16 +1,16 @@
-from datetime import datetime, timezone, timedelta
 import math
+from datetime import datetime, timedelta, timezone
 import discord
 from discord.ext import commands
 
 import config
 from database import (
-    message_stats_col,
     bump_stats_col,
-    tickets_col,
     deleted_tickets_col,
-    users_col,
     invites_col,
+    message_stats_col,
+    tickets_col,
+    users_col,
 )
 from utils import check_access_decorator, make_status_embed
 
@@ -46,7 +46,6 @@ class StatsCog(commands.Cog):
 
         bump_channel_id = config.CONFIG.get("bump_channel_id")
         if bump_channel_id and message.channel.id == bump_channel_id:
-           
             if message.author.id != config.DISBOARD_BOT_ID:
                 return
 
@@ -142,6 +141,8 @@ class StatsCog(commands.Cog):
             return await ctx.invoke(self.lb_invites)
         elif category in ["tickets", "t", "тикеты"]:
             return await ctx.invoke(self.lb_tickets)
+        elif category in ["economy", "ec", "bal", "coins", "экономика"]:
+            return await ctx.invoke(self.lb_economy)
 
         embed = discord.Embed(
             title="<:trophy:1522340749998428160> Меню таблиц лидеров",
@@ -149,7 +150,8 @@ class StatsCog(commands.Cog):
                 "Укажите категорию лидерборда:\n\n"
                 "• `.lb messages` — Топ 5 по сообщениям\n"
                 "• `.lb invites` — Топ 5 по приглашениям\n"
-                "• `.lb tickets` — Лидерборд тикетов, транскриптов и удалений"
+                "• `.lb tickets` — Лидерборд тикетов, транскриптов и удалений\n"
+                "• `.lb economy` — Топ 5 самых богатых участников"
             ),
             color=config.EMBED_COLOR,
         )
@@ -273,6 +275,44 @@ class StatsCog(commands.Cog):
         embed.add_field(name="<:staff:1522338131339251823> Удалено (Все время)", value=format_top_with_dashes(get_top(deleted_tickets_col, "staff_id"), "удалений"), inline=True)
 
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
+        await ctx.send(embed=embed)
+
+    @leaderboard_group.command(name="economy", aliases=["ec", "bal", "coins"])
+    @check_access_decorator("leaderboard")
+    async def lb_economy(self, ctx: commands.Context):
+        pipeline = [
+            {
+                "$project": {
+                    "_id": "$_id",
+                    "total": {
+                        "$add": [
+                            {"$ifNull": ["$cash", 0]},
+                            {"$ifNull": ["$bank", 0]}
+                        ]
+                    }
+                }
+            },
+            {"$match": {"total": {"$gt": 0}}},
+            {"$sort": {"total": -1}},
+            {"$limit": 5}
+        ]
+        top_data = list(users_col.aggregate(pipeline))
+
+        embed = discord.Embed(
+            title="<:leaderboard:1544301200894070844> Топ 5 по балансу",
+            color=config.EMBED_COLOR
+        )
+
+        lines = []
+        for i in range(1, 6):
+            if i <= len(top_data):
+                doc = top_data[i - 1]
+                lines.append(f"`{i}.` <@{doc['_id']}> — **{doc['total']:,}** коинов")
+            else:
+                lines.append(f"`{i}.` —")
+
+        embed.description = "\n".join(lines)
+        embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
 
