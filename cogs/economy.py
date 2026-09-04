@@ -408,9 +408,7 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("slotmachine")
     async def slotmachine(self, ctx: commands.Context, amount: int = None):
         if amount is None or amount <= 0:
-            ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
-            return
+            return await ctx.send(embed=build_command_help_embed("roll"))
 
         user_cash, _ = get_user_balance(ctx.author.id)
         if user_cash < amount:
@@ -447,10 +445,9 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)  # 3 секунды
     @check_access_decorator("roll")
     async def roll(self, ctx: commands.Context, amount: int = None, number: int = None):
-        if amount is None or amount <= 0:
-            ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
-            return
+
+        if amount is None or amount <= 0 or number is None:
+            return await ctx.send(embed=build_command_help_embed("roll"))
 
         if number is None or number < 1 or number > 6:
             ctx.command.reset_cooldown(ctx)
