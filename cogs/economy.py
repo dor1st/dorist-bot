@@ -333,7 +333,7 @@ class EconomyCog(commands.Cog):
         coin_emoji = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 
         role_lines = [
-            f"`{idx}` - <@&{role_id}> {coin_emoji} **{reward:,}** (cash)"
+            f"`{idx}` - <@&{role_id}> {coin_emoji} **{reward:,}** (коинов)"
             for idx, (role_id, reward) in enumerate(collected_roles, start=1)
         ]
 

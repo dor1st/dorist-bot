@@ -17,36 +17,58 @@ SETUP_TIMEOUT = 900
 
 LOGS_PER_PAGE = 3
 
+# Таблица дохода с ролей для команды .income (ID_РОЛИ: СУММА_ДОХОДА)
+ROLE_INCOME_TABLE = {
+    1437096779693686886: 15,
+    1323358508900417627: 20,
+    1309460485082714144: 70,
+}
+
 LOGGABLE_COMMANDS_DEFAULT = {
+    # Тикеты
     "addticket": False,
     "deleteticket": False,
-    "deletelog": True,
-    "resetlogs": True,
     "ticketlogs": False,
     "ticketstats": False,
-    "leaderboard": False,
+    "deletelog": True,
+    "resetlogs": True,
+
+    # Розыгрыши
+    "giveaway": False,
+    "checktime": False,
     "loggiveaway": True,
     "deletegiveaway": True,
     "giveawaylogs": False,
+
+    # Приглашения
     "loginvite": True,
     "deleteinvite": True,
     "invitelogs": False,
-    "validinvite": False,
-    "userinfo": True,
     "inviter": True,
     "invites": False,
-    "messages": False,
-    "sum": False,
-    "help": False,
-    "config": False,
-    "giveaway": False,
-    "checktime": False,
+    "validinvite": False,
+
+    # Экономика
     "balance": False,
     "withdraw": False,
     "deposit": False,
     "givemoney": True,
     "addmoney": True,
     "removemoney": True,
+    "work": False,
+    "crime": False,
+    "income": False,
+    "rob": True,
+    "slotmachine": False,
+    "roll": False,
+
+    # Общие команды и статистика
+    "messages": False,
+    "userinfo": True,
+    "leaderboard": False,
+    "sum": False,
+    "help": False,
+    "config": False,
 }
 
 PERMISSION_GROUPS_DEFAULT = {
@@ -58,9 +80,16 @@ PERMISSION_GROUPS_DEFAULT = {
             "help",
             "messages",
             "invites",
+            "balance",
             "withdraw", 
             "deposit", 
-            "givemoney"
+            "givemoney",
+            "work",
+            "crime",
+            "income",
+            "rob",
+            "slotmachine",
+            "roll",
         ],
     },
     "support": {
@@ -68,18 +97,12 @@ PERMISSION_GROUPS_DEFAULT = {
         "emoji": "<:ticket:1522343287816716379>",
         "roles": [1501507449860001853, 1322962344040464424],
         "commands": [
-            "help", 
-            "ticketstats", 
-            "leaderboard", 
-            "sum", 
-            "invites", 
-            "messages", 
-            "userinfo", 
-            "inviter", 
+            "ticketstats",
+            "leaderboard",
             "userinfo", 
             "inviter", 
             "validinvite", 
-            "checktime"
+            "checktime",
         ],
     },
     "transcript": {
@@ -144,6 +167,12 @@ COMMAND_USAGE_HELP = {
     "givemoney": "`.givemoney [ID / упоминание] [сумма]` — Передать деньги со своей налички другому игроку.",
     "addmoney": "`.addmoney [ID / упоминание] [сумма]` — Добавить деньги на баланс пользователя (наличка).",
     "removemoney": "`.removemoney [ID / упоминание] [сумма]` — Забрать деньги у пользователя.",
+    "work": "`.work` — Поработать и заработать наличные коины.",
+    "crime": "`.crime` — Совершить преступление с риском получить штраф.",
+    "income": "`.income` — Забрать ежедневный доход с ваших ролей.",
+    "rob": "`.rob [ID / упоминание]` — Попытаться ограбить наличные другого игрока.",
+    "slotmachine": "`.slotmachine [ставка]` — Сыграть в слот-машину на наличные.",
+    "roll": "`.roll [ставка] [1-6]` — Сыграть в кости на число от 1 до 6.",
     
     # Общие команды и статистика
     "messages": "`.messages [ID / упоминание]` — Просмотреть количество текстовых сообщений пользователя.",
@@ -160,6 +189,12 @@ HELP_CATEGORIES = {
             "> `.withdraw` — *Снять деньги с банкомата в наличные.*",
             "> `.deposit` — *Положить наличные деньги в банк.*",
             "> `.givemoney` — *Перевести наличные деньги другому игроку.*",
+            "> `.work` — *Поработать и заработать коины.*",
+            "> `.crime` — *Совершить преступление с риском.*",
+            "> `.income` — *Забрать доход с ваших ролей.*",
+            "> `.rob` — *Попытаться ограбить наличка другого игрока.*",
+            "> `.slotmachine` — *Сыграть в слот-машину.*",
+            "> `.roll` — *Сыграть в кости на число 1-6.*",
         ]
     },
     "tickets": {
