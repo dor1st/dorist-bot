@@ -66,7 +66,7 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "messages": False,
     "userinfo": True,
     "leaderboard": False,
-    "sum": False,
+    "summaries": False,
     "help": False,
     "config": False,
 }
@@ -132,7 +132,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Владелец",
         "emoji": "<:sparkles:1522342290494849034>",
         "roles": [1322962317885046844, 1502684875868737796],
-        "commands": ["deletelog", "resetlogs", "config", "addmoney", "removemoney"],
+        "commands": ["deletelog", "resetlogs", "config", "addmoney", "removemoney", "summaries"],
     },
 }
 
@@ -178,7 +178,7 @@ COMMAND_USAGE_HELP = {
     "messages": "`.messages [ID / упоминание]` — Просмотреть количество текстовых сообщений пользователя.",
     "userinfo": "`.userinfo [ID / упоминание]` — Показать подробную информацию об аккаунте и ролях пользователя.",
     "leaderboard": "`.leaderboard` — Просмотреть лидерборд пользователей.",
-    "sum": "`.sum` — Просмотреть сводную статистику.",
+    "summaries": "`.summaries` — Просмотреть сводную статистику.",
     "config": "`.config` — Настройка бота.",
     "help": "`.help [команда / категория]` — Показать справку по командам.",
 }

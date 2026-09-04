@@ -290,18 +290,18 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Сумма перевода должна быть больше 0."))
             return
 
-        sender_cash, _ = get_user_balance(ctx.author.id)
+        _, sender_bank = get_user_balance(ctx.author.id)
 
-        if sender_cash < amount:
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно наличных средств для перевода."))
+        if sender_bank < amount:
+            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно средств на банковском счёте для перевода."))
             return
 
-        update_user_balance_delta(ctx.author.id, cash_delta=-amount)
-        update_user_balance_delta(target.id, cash_delta=amount)
+        update_user_balance_delta(ctx.author.id, bank_delta=-amount)
+        update_user_balance_delta(target.id, bank_delta=amount)
 
         embed = make_status_embed(
             "Перевод выполнен",
-            f"Вы перевели **{amount:,}** коинов пользователю {target.mention} с ваших наличных средств.",
+            f"Вы перевели **{amount:,}** коинов пользователю {target.mention} с вашего банковского счёта.",
             "success"
         )
         await ctx.send(embed=embed)
@@ -555,14 +555,14 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть положительной."))
             return
 
-        cash, _ = get_user_balance(target.id)
-        new_cash = cash + amount
-        update_user_balance_delta(target.id, cash_delta=amount)
+        _, bank = get_user_balance(target.id)
+        new_bank = bank + amount
+        update_user_balance_delta(target.id, bank_delta=amount)
 
         embed = make_status_embed(
             "Баланс пополнен",
-            f"Вы успешно добавили **{amount:,}** коинов на наличный счёт {target.mention}.\n"
-            f"Новый баланс налички: `{new_cash:,}`",
+            f"Вы успешно добавили **{amount:,}** коинов на банковский счёт {target.mention}.\n"
+            f"Новый баланс банка: `{new_bank:,}`",
             "success"
         )
         await ctx.send(embed=embed)

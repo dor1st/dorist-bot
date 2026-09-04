@@ -22,30 +22,6 @@ def utc_day(dt=None):
     dt = dt or datetime.now(timezone.utc)
     return dt.date().isoformat()
 
-def is_allowed_channel():
-    async def predicate(ctx: commands.Context) -> bool:
-        cmd_channels = config.CONFIG.get("command_allowed_channels", {}).get(
-            ctx.command.name, 
-            config.COMMAND_ALLOWED_CHANNELS.get(ctx.command.name, [])
-        )
-
-        if not cmd_channels:
-            return True
-
-        if ctx.channel.id in cmd_channels:
-            return True
-
-        channels_mentions = ", ".join([f"<#{cid}>" for cid in cmd_channels])
-        
-        await ctx.send(
-            embed=make_error_embed(
-                "Отказ в доступе",
-                f"Эта команда доступна только в каналах: {channels_mentions}",
-            )
-        )
-        return False
-    return commands.check(predicate)
-
 class StatsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
