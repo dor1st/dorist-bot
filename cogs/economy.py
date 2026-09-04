@@ -54,36 +54,6 @@ def get_user_balance(user_id: int) -> tuple[int, int]:
     bank = doc.get("bank", 0)
     return cash, bank
 
-def is_allowed_channel():
-    async def predicate(ctx: commands.Context) -> bool:
-        command_names = [ctx.command.name] + list(ctx.command.aliases)
-
-        cmd_channels = []
-        for name in command_names:
-            channels = config.CONFIG.get("command_allowed_channels", {}).get(
-                name, 
-                config.COMMAND_ALLOWED_CHANNELS.get(name, [])
-            )
-            if channels:
-                cmd_channels = channels
-                break
-
-        if not cmd_channels:
-            return True
-
-        if ctx.channel.id in cmd_channels:
-            return True
-
-        channels_mentions = ", ".join([f"<#{cid}>" for cid in cmd_channels])
-        
-        await ctx.send(
-            embed=make_error_embed(
-                "Отказ в доступе",
-                f"Эта команда доступна только в каналах: {channels_mentions}",
-            )
-        )
-        return False
-    return commands.check(predicate)
 
 def update_user_balance_delta(user_id: int, cash_delta: int = 0, bank_delta: int = 0):
     inc_data = {}
@@ -138,7 +108,6 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="balance", aliases=["bal"])
     @check_access_decorator("balance")
-    @is_allowed_channel()
     async def balance(self, ctx: commands.Context, target: discord.Member | discord.User = None):
         target = target or ctx.author
         cash, bank = get_user_balance(target.id)
@@ -182,7 +151,6 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="withdraw", aliases=["with"])
     @check_access_decorator("withdraw")
-    @is_allowed_channel()
     async def withdraw(self, ctx: commands.Context, amount: str = None):
         if not amount:
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите сумму или `all` для снятия."))
@@ -223,7 +191,6 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="deposit", aliases=["dep"])
     @check_access_decorator("deposit")
-    @is_allowed_channel()
     async def deposit(self, ctx: commands.Context, amount: str = None):
         if not amount:
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите сумму или `all` для пополнения."))
@@ -264,7 +231,6 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="givemoney", aliases=["give"])
     @check_access_decorator("givemoney")
-    @is_allowed_channel()
     async def givemoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
         if not target or amount is None:
             await ctx.send(embed=make_error_embed("Ошибка", "Использование: `.givemoney [упоминание / ID] [сумма]`"))
@@ -305,7 +271,6 @@ class EconomyCog(commands.Cog):
     @commands.command(name="work")
     @commands.cooldown(1, 5400, commands.BucketType.user)  # 1.5 часа (5400 сек)
     @check_access_decorator("work")
-    @is_allowed_channel()
     async def work(self, ctx: commands.Context):
         amount = random.randint(100, 300)
         is_success = random.random() < 0.7  # 70% шанс успеха
@@ -325,7 +290,6 @@ class EconomyCog(commands.Cog):
     @commands.command(name="crime")
     @commands.cooldown(1, 43200, commands.BucketType.user)  # 12 часов (43200 сек)
     @check_access_decorator("crime")
-    @is_allowed_channel()
     async def crime(self, ctx: commands.Context):
         amount = random.randint(200, 500)
         is_success = random.random() < 0.4  # 40% шанс успеха
@@ -345,7 +309,6 @@ class EconomyCog(commands.Cog):
     @commands.command(name="income")
     @commands.cooldown(1, 86400, commands.BucketType.user)  # 1 день (86400 сек)
     @check_access_decorator("income")
-    @is_allowed_channel()
     async def income(self, ctx: commands.Context):
         if not isinstance(ctx.author, discord.Member):
             await ctx.send(embed=make_error_embed("Ошибка", "Эту команду можно использовать только на сервере."))
@@ -387,7 +350,6 @@ class EconomyCog(commands.Cog):
     @commands.command(name="rob")
     @commands.cooldown(1, 86400, commands.BucketType.user)  # 1 день (86400 сек)
     @check_access_decorator("rob")
-    @is_allowed_channel()
     async def rob(self, ctx: commands.Context, target: discord.Member | discord.User = None):
         if not target:
             ctx.command.reset_cooldown(ctx)
@@ -447,7 +409,6 @@ class EconomyCog(commands.Cog):
     @commands.command(name="slotmachine", aliases=["slot"])
     @commands.cooldown(1, 3, commands.BucketType.user)  # 3 секунды
     @check_access_decorator("slotmachine")
-    @is_allowed_channel()
     async def slotmachine(self, ctx: commands.Context, amount: int = None):
         if amount is None or amount <= 0:
             ctx.command.reset_cooldown(ctx)
@@ -488,7 +449,6 @@ class EconomyCog(commands.Cog):
     @commands.command(name="roll")
     @commands.cooldown(1, 3, commands.BucketType.user)  # 3 секунды
     @check_access_decorator("roll")
-    @is_allowed_channel()
     async def roll(self, ctx: commands.Context, amount: int = None, number: int = None):
         if amount is None or amount <= 0:
             ctx.command.reset_cooldown(ctx)
@@ -544,7 +504,6 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="addmoney")
     @check_access_decorator("addmoney")
-    @is_allowed_channel()
     async def addmoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
         if not is_owner_user(ctx.author):
             await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
@@ -572,7 +531,6 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="removemoney")
     @check_access_decorator("removemoney")
-    @is_allowed_channel()
     async def removemoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
         if not is_owner_user(ctx.author):
             await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
