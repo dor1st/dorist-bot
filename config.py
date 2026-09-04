@@ -11,6 +11,7 @@ VALID_CATEGORIES = ["Помощь по серверу", "Получение пр
 VALID_PRIZES = ["Робуксы", "Коины", "Геймпасс", "Годли"]
 
 GIVEAWAY_EMOJI = "<:giveaway:1522331215976206446>"
+COIN_EMOJI = "🪙"
 MAX_DURATION = timedelta(days=31)
 SETUP_TIMEOUT = 900
 

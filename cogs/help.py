@@ -66,7 +66,7 @@ class HelpView(discord.ui.View):
         self.author_id = author_id
         self.user = user
         self.user_groups = get_user_groups(user)
-        self.show_main_buttons()
+        self.setup_buttons()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
@@ -75,7 +75,7 @@ class HelpView(discord.ui.View):
             return False
         return True
 
-    def show_main_buttons(self):
+    def setup_buttons(self):
         self.clear_items()
         help_cats = getattr(config, "HELP_CATEGORIES", {})
 
@@ -93,26 +93,10 @@ class HelpView(discord.ui.View):
     def make_category_callback(self, cat_key: str):
         async def callback(interaction: discord.Interaction):
             embed = build_help_embed(cat_key, self.user)
-            self.show_back_button()
-            await interaction.response.edit_message(embed=embed, view=self)
+            # Отправка эембеда скрытым (ephemeral) сообщением лично пользователю без кнопок
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
         return callback
-
-    def show_back_button(self):
-        self.clear_items()
-        back_btn = discord.ui.Button(
-            label="Назад",
-            emoji="<:darkleft:1543989641751957565>",
-            style=discord.ButtonStyle.secondary,
-            custom_id="help_back",
-        )
-        back_btn.callback = self.back_callback
-        self.add_item(back_btn)
-
-    async def back_callback(self, interaction: discord.Interaction):
-        embed = build_help_embed("main", self.user)
-        self.show_main_buttons()
-        await interaction.response.edit_message(embed=embed, view=self)
 
 
 class HelpCog(commands.Cog):

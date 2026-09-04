@@ -5,6 +5,7 @@ import config
 from database import users_col
 from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed
 
+COIN_EMOJI = getattr(config, "COIN_EMOJI", "🪙")
 
 def get_user_balance(user_id: int) -> tuple[int, int]:
     """Возвращает (cash, bank) пользователя из базы данных."""
@@ -44,15 +45,39 @@ class EconomyCog(commands.Cog):
         cash, bank = get_user_balance(target.id)
         total = cash + bank
 
+        pipeline = [
+            {
+                "$project": {
+                    "_id": "$_id",
+                    "total": {
+                        "$add": [
+                            {"$ifNull": ["$cash", 0]},
+                            {"$ifNull": ["$bank", 0]}
+                        ]
+                    }
+                }
+            },
+            {"$match": {"total": {"$gt": 0}}},
+            {"$sort": {"total": -1}}
+        ]
+        all_users = list(users_col.aggregate(pipeline))
+        
+        rank_str = "Нет в топе"
+        for idx, u in enumerate(all_users, start=1):
+            if u["_id"] == target.id:
+                rank_str = f"{idx} место"
+                break
+
         embed = discord.Embed(
-            title=f"Финансовый профиль — {target.display_name}",
-            color=config.EMBED_COLOR,
+            description=f"**Ранг в топе:** {rank_str}",
+            color=0x00A2FF  # Синяя полоса слева
         )
-        embed.set_thumbnail(url=target.display_avatar.url)
-        embed.add_field(name="💵 Наличные", value=f"`{cash:,}` коинов", inline=True)
-        embed.add_field(name="💳 Банковский счёт", value=f"`{bank:,}` коинов", inline=True)
-        embed.add_field(name="💰 Всего средств", value=f"`{total:,}` коинов", inline=False)
-        embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Экономика"))
+        
+        embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+
+        embed.add_field(name="Наличные:", value=f"{COIN_EMOJI} {cash:,}", inline=True)
+        embed.add_field(name="Банк:", value=f"{COIN_EMOJI} {bank:,}", inline=True)
+        embed.add_field(name="Всего:", value=f"{COIN_EMOJI} {total:,}", inline=True)
 
         await ctx.send(embed=embed)
 
