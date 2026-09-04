@@ -10,6 +10,13 @@ from utils import check_access_decorator, is_owner_user, make_error_embed, make_
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 
 # -------------------------------------------------------------
+# КАНАЛЫ БЕЗ НАЧИСЛЕНИЯ ДОХОДА ЗА СООБЩЕНИЯ
+# -------------------------------------------------------------
+DISABLED_CHANNELS_INCOME = [
+    1311385104374825102,
+]
+
+# -------------------------------------------------------------
 # НАСТРОЙКИ ДОХОДА С РОЛЕЙ
 # -------------------------------------------------------------
 # Формат: ID_РОЛИ: СУММА_ДОХОДА
@@ -73,11 +80,49 @@ def update_user_balance_delta(user_id: int, cash_delta: int = 0, bank_delta: int
 class EconomyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.message_cooldowns = {}  # {user_id: last_timestamp}
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.guild:
+            return
+
+        if message.channel.id in DISABLED_CHANNELS_INCOME:
+            return
+
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
+            return
+
+        user_id = message.author.id
+        current_time = time.time()
+
+        last_time = self.message_cooldowns.get(user_id, 0)
+        if current_time - last_time < 60:
+            return
+
+        content_length = len(message.content.strip())
+        if content_length == 0:
+            return
+
+        if content_length <= 5:
+            reward = 2
+        elif content_length <= 15:
+            reward = random.randint(2, 4)
+        elif content_length <= 35:
+            reward = random.randint(4, 6)
+        elif content_length <= 70:
+            reward = random.randint(6, 8)
+        else:
+            reward = random.randint(8, 10)
+
+        # Выдача награды и обновление кулдауна
+        update_user_balance_delta(user_id, cash_delta=reward)
+        self.message_cooldowns[user_id] = current_time
 
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
         error = getattr(error, "original", error)
 
-        # Кастомная обработка кулдауна для экономики
         if isinstance(error, commands.CommandOnCooldown):
             unban_timestamp = int(time.time() + error.retry_after)
             relative_time = f"<t:{unban_timestamp}:R>"
