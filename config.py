@@ -186,7 +186,7 @@ COMMAND_USAGE_HELP = {
 HELP_CATEGORIES = {
     "economy": {
         "name": "Экономика",
-        "emoji": "<:rbx:1522327723203235971>",
+        "emoji": "<:coin:1545425273686597742>",
         "allowed_groups": ["everyone", "support", "transcript", "admin", "owner"],
         "commands": [
             "> `.balance` — *Просмотреть свой или чужой баланс.*",
