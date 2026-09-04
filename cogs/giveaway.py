@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 
 import config
 from database import giveaways_col, users_col
-from utils import check_access_decorator, make_error_embed, make_status_embed
+from utils import check_access_decorator, make_error_embed, make_status_embed, build_command_help_embed
 
 
 GIVEAWAY_EMOJI = getattr(config, "GIVEAWAY_EMOJI", "<:giveaway:1522331215976206446>")
@@ -1060,18 +1060,7 @@ class GiveawayCog(commands.Cog):
             return
 
         if len(args) < 4:
-            await ctx.send(
-                embed=make_error_embed(
-                    "Неверное использование",
-                    (
-                        "Использование:\n"
-                        "`.gw cr [приз] [длительность] [победители] [время на получение]`\n\n"
-                        "Пример:\n"
-                        "`.gw cr 1000 Robux 7d 1 24h`"
-                    ),
-                )
-            )
-            return
+            return await ctx.send(embed=build_command_help_embed("gw"))
 
         prize = " ".join(args[:-3]).strip()
         duration_text = args[-3]
