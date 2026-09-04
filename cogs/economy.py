@@ -14,7 +14,13 @@ COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 # -------------------------------------------------------------
 WORK_MIN_REWARD = 100
 WORK_MAX_REWARD = 300
-WORK_SUCCESS_CHANCE = 0.8  # 80% шанс успеха
+WORK_SUCCESS_CHANCE = 0.85  # 85% шанс успеха
+
+# Отдельные диапазоны вознаграждения для успеха и неуспеха работы
+WORK_SUCCESS_MIN_REWARD = 100
+WORK_SUCCESS_MAX_REWARD = 300
+WORK_FAILURE_MIN_REWARD = 50
+WORK_FAILURE_MAX_REWARD = 150
 
 CRIME_MIN_REWARD = 200
 CRIME_MAX_REWARD = 500
@@ -363,14 +369,15 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 5400, commands.BucketType.user)  # 1.5 часа (5400 сек)
     @check_access_decorator("work")
     async def work(self, ctx: commands.Context):
-        amount = random.randint(WORK_MIN_REWARD, WORK_MAX_REWARD)
         is_success = random.random() < WORK_SUCCESS_CHANCE
 
         if is_success:
+            amount = random.randint(WORK_SUCCESS_MIN_REWARD, WORK_SUCCESS_MAX_REWARD)
             update_user_balance_delta(ctx.author.id, cash_delta=amount)
             phrase = random.choice(WORK_SUCCESS_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Работа", phrase, "success")
         else:
+            amount = random.randint(WORK_FAILURE_MIN_REWARD, WORK_FAILURE_MAX_REWARD)
             # Списываем с налички (может уйти в минус)
             update_user_balance_delta(ctx.author.id, cash_delta=-amount)
             phrase = random.choice(WORK_FAILURE_PHRASES).format(amount=f"{amount:,}")
