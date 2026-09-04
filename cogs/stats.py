@@ -333,17 +333,17 @@ class StatsCog(commands.Cog):
             },
             {"$match": {"total": {"$gt": 0}}},
             {"$sort": {"total": -1}},
-            {"$limit": 5}
+            {"$limit": 10}
         ]
         top_data = list(users_col.aggregate(pipeline))
 
         embed = discord.Embed(
-            title="<:leaderboard:1544301200894070844> Топ 5 по балансу",
+            title="<:leaderboard:1544301200894070844> Топ 10 по балансу",
             color=config.EMBED_COLOR
         )
 
         lines = []
-        for i in range(1, 6):
+        for i in range(1, 11):
             if i <= len(top_data):
                 doc = top_data[i - 1]
                 lines.append(f"`{i}.` <@{doc['_id']}> — **{doc['total']:,}** коинов")
