@@ -316,7 +316,7 @@ class StatsCog(commands.Cog):
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
         await ctx.send(embed=embed)
 
-    @leaderboard_group.command(name="economy", aliases=["ec", "bal", "coins"])
+    @leaderboard_group.command(name="economy", aliases=["e"])
     @check_access_decorator("leaderboard")
     async def lb_economy(self, ctx: commands.Context):
         pipeline = [

@@ -5,7 +5,7 @@ from discord.ext import commands
 
 import config
 from database import users_col
-from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed
+from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed
 
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 
@@ -153,8 +153,7 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("withdraw")
     async def withdraw(self, ctx: commands.Context, amount: str = None):
         if not amount:
-            await ctx.send(embed=make_error_embed("Ошибка", "Укажите сумму или `all` для снятия."))
-            return
+            return await ctx.send(embed=build_command_help_embed("withdraw"))
 
         cash, bank = get_user_balance(ctx.author.id)
 
@@ -193,8 +192,7 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("deposit")
     async def deposit(self, ctx: commands.Context, amount: str = None):
         if not amount:
-            await ctx.send(embed=make_error_embed("Ошибка", "Укажите сумму или `all` для пополнения."))
-            return
+            return await ctx.send(embed=build_command_help_embed("deposit"))
 
         cash, bank = get_user_balance(ctx.author.id)
 
@@ -233,8 +231,7 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("givemoney")
     async def givemoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
         if not target or amount is None:
-            await ctx.send(embed=make_error_embed("Ошибка", "Использование: `.givemoney [упоминание / ID] [сумма]`"))
-            return
+            return await ctx.send(embed=build_command_help_embed("givemoney"))
 
         if target.id == ctx.author.id:
             await ctx.send(embed=make_error_embed("Ошибка", "Вы не можете переводить деньги самому себе."))
@@ -353,8 +350,7 @@ class EconomyCog(commands.Cog):
     async def rob(self, ctx: commands.Context, target: discord.Member | discord.User = None):
         if not target:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "Использование: `.rob [упоминание / ID]`"))
-            return
+            return await ctx.send(embed=build_command_help_embed("rob"))
 
         if target.id == ctx.author.id:
             ctx.command.reset_cooldown(ctx)
@@ -410,7 +406,11 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)  # 3 секунды
     @check_access_decorator("slotmachine")
     async def slotmachine(self, ctx: commands.Context, amount: int = None):
-        if amount is None or amount <= 0:
+        if amount is None:
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.send(embed=build_command_help_embed("slotmachine"))
+
+        if amount <= 0:
             ctx.command.reset_cooldown(ctx)
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
             return
@@ -450,12 +450,16 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)  # 3 секунды
     @check_access_decorator("roll")
     async def roll(self, ctx: commands.Context, amount: int = None, number: int = None):
-        if amount is None or amount <= 0:
+        if amount is None or number is None:
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.send(embed=build_command_help_embed("roll"))
+
+        if amount <= 0:
             ctx.command.reset_cooldown(ctx)
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
             return
 
-        if number is None or number < 1 or number > 6:
+        if number < 1 or number > 6:
             ctx.command.reset_cooldown(ctx)
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите число от 1 до 6."))
             return
@@ -510,8 +514,7 @@ class EconomyCog(commands.Cog):
             return
 
         if not target or amount is None:
-            await ctx.send(embed=make_error_embed("Ошибка", "Использование: `.addmoney [упоминание / ID] [сумма]`"))
-            return
+            return await ctx.send(embed=build_command_help_embed("addmoney"))
 
         if amount <= 0:
             await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть положительной."))
@@ -537,8 +540,7 @@ class EconomyCog(commands.Cog):
             return
 
         if not target or amount is None:
-            await ctx.send(embed=make_error_embed("Ошибка", "Использование: `.removemoney [упоминание / ID] [сумма]`"))
-            return
+            return await ctx.send(embed=build_command_help_embed("removemoney"))
 
         if amount <= 0:
             await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть положительной."))
