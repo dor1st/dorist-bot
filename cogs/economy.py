@@ -102,8 +102,6 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        raise error
-
     @commands.command(name="balance", aliases=["bal"])
     @check_access_decorator("balance")
     async def balance(self, ctx: commands.Context, target: discord.Member | discord.User = None):
