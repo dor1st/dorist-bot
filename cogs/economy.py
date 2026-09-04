@@ -74,13 +74,10 @@ class EconomyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # -------------------------------------------------------------
-    # Команды для всех игроков
-    # -------------------------------------------------------------
-
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
         error = getattr(error, "original", error)
 
+        # Кастомная обработка кулдауна для экономики
         if isinstance(error, commands.CommandOnCooldown):
             unban_timestamp = int(time.time() + error.retry_after)
             relative_time = f"<t:{unban_timestamp}:R>"
@@ -102,7 +99,11 @@ class EconomyCog(commands.Cog):
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
             
             await ctx.send(embed=embed)
-            ctx.handled = True
+            return
+        
+        if isinstance(error, commands.CheckFailure):
+            embed = make_error_embed("Отказ в доступе", str(error))
+            await ctx.send(embed=embed)
             return
 
     @commands.command(name="balance", aliases=["bal"])
