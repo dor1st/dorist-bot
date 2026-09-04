@@ -171,7 +171,7 @@ class StatsCog(commands.Cog):
             roles_str = "Слишком много ролей для отображения"
 
         embed = discord.Embed(
-            title=f"<:info:1522329987514892398> Информация: {member.mention}",
+            title=f"<:info:1522329987514892398> Информация — {member.display_name}",
             color=member.color if member.color.value != 0 else config.EMBED_COLOR
         )
         
@@ -179,8 +179,8 @@ class StatsCog(commands.Cog):
             embed.set_thumbnail(url=member.avatar.url)
 
         embed.add_field(
-            name="Имя пользователя / Отображаемое имя / ID",
-            value=f"`{member.name}` | `{member.display_name}` | `{member.id}`",
+            name="Упоминание / Имя пользователя / ID",
+            value=f"{member.mention} | `{member.name}` | `{member.id}`",
             inline=False
         )
         
