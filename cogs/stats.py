@@ -143,6 +143,81 @@ class StatsCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
+    @commands.command(name="userinfo", aliases=["ui"])
+    @check_access_decorator("userinfo")
+    async def userinfo_cmd(self, ctx: commands.Context, member: discord.Member = None):
+        member = member or ctx.author
+        
+        # Получаем данные пользователя из БД (сообщения, инвайты, экономика)
+        user_doc = users_col.find_one({"_id": member.id}) or {}
+        
+        messages_count = user_doc.get("messages_count", 0)
+        
+        real_inv = user_doc.get("real_invites", 0)
+        bonus_inv = user_doc.get("bonus_invites", 0)
+        total_invites = real_inv + bonus_inv
+        
+        cash = user_doc.get("cash", 0)
+        bank = user_doc.get("bank", 0)
+
+        # Форматирование дат (аккаунт и присоединение к серверу)
+        created_at_discord = discord.utils.format_dt(member.created_at, "R")
+        created_at_full = discord.utils.format_dt(member.created_at, "F")
+        
+        joined_at_discord = discord.utils.format_dt(member.joined_at, "R") if member.joined_at else "Неизвестно"
+        joined_at_full = discord.utils.format_dt(member.joined_at, "F") if member.joined_at else "Неизвестно"
+
+        roles = [role.mention for role in reversed(member.roles) if role.id != ctx.guild.default_role.id]
+        roles_str = ", ".join(roles) if roles else "Нет ролей"
+        if len(roles_str) > 1024:
+            roles_str = "Слишком много ролей для отображения"
+
+        embed = discord.Embed(
+            title=f"Информация — {member.name}",
+            color=member.color if member.color.value != 0 else config.EMBED_COLOR
+        )
+        
+        if member.avatar:
+            embed.set_thumbnail(url=member.avatar.url)
+
+        embed.add_field(
+            name="Имя пользователя / Отображаемое имя / ID",
+            value=f"`{member.name}` | `{member.display_name}` | `{member.id}`",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Создание аккаунта",
+            value=f"{created_at_discord} ({created_at_full})",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Вход на сервер",
+            value=f"{joined_at_discord} ({joined_at_full})",
+            inline=False
+        )
+
+        embed.add_field(
+            name=f"Роли [{len(roles)}]",
+            value=f"{roles_str}\n{ctx.guild.name}",
+            inline=False
+        )
+
+        embed.add_field(
+            name="📊 Статистика и Экономика",
+            value=(
+                f"• Сообщений: **{messages_count:,}**\n"
+                f"• Инвайтов: **{total_invites}**\n"
+                f"• Наличные: **{cash:,}**\n"
+                f"• Банк: **{bank:,}**"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
     # ==========================================
     # ГРУППА КОМАНД LEADERBOARD / LB
     # ==========================================
