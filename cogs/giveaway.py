@@ -835,15 +835,13 @@ class BonusRoleSelect(discord.ui.RoleSelect):
         await interaction.response.send_modal(BonusEntriesModal(self.setup, role.id))
 
 
-class BonusEntriesModal(
-    discord.ui.Modal,
-    title="Дополнительный шанс",
-):
+class BonusEntriesModal(discord.ui.Modal, title="Настройка дополнительных шансов"):
     entries = discord.ui.TextInput(
-        label="Сколько дополнительных шансов?",
-        placeholder="Например: 5",
-        required=True,
-        max_length=5,
+        label="Количество доп. шансов",
+        placeholder="Введите число (0 — чтобы удалить роль)",
+        default="1",
+        min_length=1,
+        max_length=3,
     )
 
     def __init__(self, setup: GiveawaySetupView, role_id: int):
@@ -851,24 +849,29 @@ class BonusEntriesModal(
         self.setup = setup
         self.role_id = role_id
 
-    async def on_submit(self, interaction: discord.Interaction):
-        try:
-            value = int(str(self.entries.value).strip())
-            if value < 1:
-                raise ValueError
-        except ValueError:
+    async def callback(self, interaction: discord.Interaction):
+        if not self.entries.value.isdigit():
             await interaction.response.send_message(
-                "Количество дополнительных шансов должно быть целым числом больше 0.",
-                ephemeral=True,
+                "Пожалуйста, введите корректное число.", ephemeral=True
             )
             return
 
-        self.setup.bonus_roles[self.role_id] = value
-        await self.setup.refresh_setup_message()
-        await interaction.response.send_message(
-            f"Для роли <@&{self.role_id}> установлено **+{value}** шансов.",
-            ephemeral=True,
-        )
+        count = int(self.entries.value)
+
+        if count == 0:
+            if self.role_id in self.setup.bonus_roles:
+                del self.setup.bonus_roles[self.role_id]
+                msg = f"Роль <@&{self.role_id}> удалена из списка бонусных ролей."
+            else:
+                msg = f"Роль <@&{self.role_id}> и не была добавлена, ничего не изменилось."
+        else:
+            self.setup.bonus_roles[self.role_id] = count
+            msg = f"Для роли <@&{self.role_id}> установлено значение +{count} доп. шансов."
+
+        if hasattr(self.setup, "update_message"):
+            await self.setup.update_message(interaction, msg)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
 
 
 class GiveawayCog(commands.Cog):
