@@ -79,6 +79,8 @@ class EconomyCog(commands.Cog):
     # -------------------------------------------------------------
 
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
+        error = getattr(error, "original", error)
+
         if isinstance(error, commands.CommandOnCooldown):
             unban_timestamp = int(time.time() + error.retry_after)
             relative_time = f"<t:{unban_timestamp}:R>"
@@ -100,6 +102,7 @@ class EconomyCog(commands.Cog):
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
             
             await ctx.send(embed=embed)
+            ctx.handled = True
             return
 
     @commands.command(name="balance", aliases=["bal"])
