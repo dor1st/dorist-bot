@@ -1,4 +1,5 @@
 import random
+import time
 import discord
 from discord.ext import commands
 
@@ -75,6 +76,32 @@ class EconomyCog(commands.Cog):
     # -------------------------------------------------------------
     # Команды для всех игроков
     # -------------------------------------------------------------
+
+    async def cog_command_error(self, ctx: commands.Context, error: Exception):
+        if isinstance(error, commands.CommandOnCooldown):
+            unban_timestamp = int(time.time() + error.retry_after)
+            relative_time = f"<t:{unban_timestamp}:R>"
+
+            actions = {
+                "work": "работать",
+                "crime": "совершить преступление",
+                "rob": "грабить",
+                "income": "получить доход с ролей",
+                "slotmachine": "играть в слот-машину",
+                "roll": "бросать кости"
+            }
+            action_text = actions.get(ctx.command.name, f"использовать `{ctx.command.name}`")
+
+            embed = discord.Embed(
+                description=f"<a:gifclock:1544347190984441858> Вы сможете снова {action_text} {relative_time}.",
+                color=0xFF5555
+            )
+            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+            
+            await ctx.send(embed=embed)
+            return
+
+        raise error
 
     @commands.command(name="balance", aliases=["bal"])
     @check_access_decorator("balance")
@@ -250,6 +277,7 @@ class EconomyCog(commands.Cog):
             phrase = random.choice(WORK_SUCCESS_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Работа", phrase, "success")
         else:
+            # Списываем с налички (может уйти в минус)
             update_user_balance_delta(ctx.author.id, cash_delta=-amount)
             phrase = random.choice(WORK_FAILURE_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Работа", phrase, "error")
@@ -261,14 +289,14 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("crime")
     async def crime(self, ctx: commands.Context):
         amount = random.randint(200, 500)
-        # Шанс 40/50 интерпретируется как 40% успеха и 50% провала
-        is_success = random.random() < 0.4
+        is_success = random.random() < 0.4  # 40% шанс успеха
 
         if is_success:
             update_user_balance_delta(ctx.author.id, cash_delta=amount)
             phrase = random.choice(CRIME_SUCCESS_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Преступление", phrase, "success")
         else:
+            # Списываем с налички (может уйти в минус)
             update_user_balance_delta(ctx.author.id, cash_delta=-amount)
             phrase = random.choice(CRIME_FAILURE_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Преступление", phrase, "error")
@@ -371,16 +399,16 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите корректную сумму ставки."))
             return
 
+        # Проверка баланса строго наличных средств (банк не учитывается)
         user_cash, _ = get_user_balance(ctx.author.id)
         if user_cash < amount:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно наличных средств для такой ставки."))
+            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно **наличных** средств для этой ставки."))
             return
 
         is_win = random.random() < 0.5  # 50/50 шанс
 
         if is_win:
-            # Взвешенный случайный коэффициент от х1.2 до х2.0
             weights = [30, 25, 20, 15, 10]
             multipliers = [1.2, 1.4, 1.6, 1.8, 2.0]
             mult = random.choices(multipliers, weights=weights, k=1)[0]
@@ -417,10 +445,11 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Укажите число от 1 до 6."))
             return
 
+        # Проверка баланса строго наличных средств (банк не учитывается)
         user_cash, _ = get_user_balance(ctx.author.id)
         if user_cash < amount:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно наличных средств для такой ставки."))
+            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно **наличных** средств для этой ставки."))
             return
 
         is_win = random.random() < 0.5  # 50/50 шанс

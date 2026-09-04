@@ -1,3 +1,4 @@
+import asyncio
 import math
 from datetime import datetime, timedelta, timezone
 import discord
@@ -14,6 +15,8 @@ from database import (
 )
 from utils import check_access_decorator, make_status_embed
 
+BUMP_REMINDER_MESSAGE = "**<a:gifclock:1544347190984441858> <@&1501943871960125461> Пришло время бампа! (/bump)**"
+
 
 def utc_day(dt=None):
     dt = dt or datetime.now(timezone.utc)
@@ -23,6 +26,14 @@ def utc_day(dt=None):
 class StatsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    async def schedule_bump_reminder(self, channel: discord.TextChannel):
+        """Отправляет напоминание через 2 часа и 5 минут (7500 секунд)."""
+        await asyncio.sleep(7500)
+        try:
+            await channel.send(BUMP_REMINDER_MESSAGE)
+        except discord.DiscordException:
+            pass
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -72,6 +83,9 @@ class StatsCog(commands.Cog):
                     {"$inc": {"count": 1}, "$set": {"last_command": "bump"}},
                     upsert=True,
                 )
+                
+                # Запускаем фоновую задачу с задержкой 2 часа 5 минут
+                asyncio.create_task(self.schedule_bump_reminder(message.channel))
 
     @commands.command(name="summaries", aliases=["sum"])
     @check_access_decorator("sum")
