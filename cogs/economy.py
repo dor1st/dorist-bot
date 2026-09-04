@@ -5,7 +5,7 @@ import config
 from database import users_col
 from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed
 
-COIN_EMOJI = getattr(config, "COIN_EMOJI", "🪙")
+COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 
 def get_user_balance(user_id: int) -> tuple[int, int]:
     """Возвращает (cash, bank) пользователя из базы данных."""
@@ -70,7 +70,7 @@ class EconomyCog(commands.Cog):
 
         embed = discord.Embed(
             description=f"**Ранг в топе:** {rank_str}",
-            color=0x00A2FF  # Синяя полоса слева
+            color=config.EMBED_COLOR
         )
         
         embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
@@ -116,7 +116,7 @@ class EconomyCog(commands.Cog):
         embed = make_status_embed(
             "Операция выполнена",
             f"Вы успешно сняли **{withdraw_amount:,}** коинов с банка на наличный счёт.\n\n"
-            f"💵 Наличка: `{new_cash:,}` | 💳 Банк: `{new_bank:,}`",
+            f"Наличка: `{new_cash:,}` | Банк: `{new_bank:,}`",
             "success"
         )
         await ctx.send(embed=embed)
@@ -156,7 +156,7 @@ class EconomyCog(commands.Cog):
         embed = make_status_embed(
             "Операция выполнена",
             f"Вы успешно положили **{deposit_amount:,}** коинов на свой банковский счёт.\n\n"
-            f"💵 Наличка: `{new_cash:,}` | 💳 Банк: `{new_bank:,}`",
+            f"Наличка: `{new_cash:,}` | Банк: `{new_bank:,}`",
             "success"
         )
         await ctx.send(embed=embed)
@@ -185,8 +185,6 @@ class EconomyCog(commands.Cog):
         if sender_cash < amount:
             await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно наличных средств для перевода."))
             return
-
-        target_cash, _ = get_user_balance(target.id)
 
         update_user_balance_delta(ctx.author.id, cash_delta=-amount)
         update_user_balance_delta(target.id, cash_delta=amount)
@@ -217,7 +215,7 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть положительной."))
             return
 
-        cash, bank = get_user_balance(target.id)
+        cash, _ = get_user_balance(target.id)
         new_cash = cash + amount
         update_user_balance_delta(target.id, cash_delta=amount)
 
@@ -244,13 +242,14 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть положительной."))
             return
 
-        cash, bank = get_user_balance(target.id)
-        new_cash = max(0, cash - amount)
-        update_user_balance(target.id, cash=new_cash)
+        cash, _ = get_user_balance(target.id)
+        deduct_amount = min(cash, amount)
+        new_cash = cash - deduct_amount
+        update_user_balance_delta(target.id, cash_delta=-deduct_amount)
 
         embed = make_status_embed(
             "Баланс уменьшен",
-            f"Вы списали **{amount:,}** коинов с наличного счёта {target.mention}.\n"
+            f"Вы списали **{deduct_amount:,}** коинов с наличного счёта {target.mention}.\n"
             f"Новый баланс налички: `{new_cash:,}`",
             "success"
         )
