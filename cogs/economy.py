@@ -56,10 +56,17 @@ def get_user_balance(user_id: int) -> tuple[int, int]:
 
 def is_allowed_channel():
     async def predicate(ctx: commands.Context) -> bool:
-        cmd_channels = config.CONFIG.get("command_allowed_channels", {}).get(
-            ctx.command.name, 
-            config.COMMAND_ALLOWED_CHANNELS.get(ctx.command.name, [])
-        )
+        command_names = [ctx.command.name] + list(ctx.command.aliases)
+
+        cmd_channels = []
+        for name in command_names:
+            channels = config.CONFIG.get("command_allowed_channels", {}).get(
+                name, 
+                config.COMMAND_ALLOWED_CHANNELS.get(name, [])
+            )
+            if channels:
+                cmd_channels = channels
+                break
 
         if not cmd_channels:
             return True
