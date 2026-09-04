@@ -268,7 +268,7 @@ class GiveawayPublicView(discord.ui.View):
     async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         doc = giveaways_col.find_one({"message_id": interaction.message.id, "status": "active"})
         if not doc:
-            await interaction.response.send_message("❌ Этот розыгрыш уже завершен.", ephemeral=True)
+            await interaction.response.send_message("<a:alert:1544047350345891851> Этот розыгрыш уже завершен.", ephemeral=True)
             return
 
         is_eligible, missing_reasons = check_user_eligibility(interaction.user, doc)
@@ -325,7 +325,7 @@ class GiveawayPublicView(discord.ui.View):
 
     @discord.ui.button(
         label="Участники",
-        style=discord.ButtonStyle.link,
+        style=discord.ButtonStyle.secondary,
         custom_id="giveaway_participants_button",
     )
     async def participants_button(self, interaction: discord.Interaction, button: discord.ui.Button):
