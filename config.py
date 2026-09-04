@@ -337,7 +337,6 @@ def load_config():
     global CONFIG
     CONFIG["permission_groups"] = {k: dict(v) for k, v in PERMISSION_GROUPS_DEFAULT.items()}
     CONFIG["log_toggles"] = {**LOGGABLE_COMMANDS_DEFAULT, **CONFIG.get("log_toggles", {})}
-    CONFIG["command_allowed_channels"] = {**COMMAND_ALLOWED_CHANNELS, **CONFIG.get("command_allowed_channels", {})}
-    CONFIG["allowed_channels"] = CONFIG.get("allowed_channels", list(ALLOWED_CHANNEL_IDS))
     CONFIG["command_allowed_channels"] = dict(COMMAND_ALLOWED_CHANNELS)
+    CONFIG["allowed_channels"] = CONFIG.get("allowed_channels", list(ALLOWED_CHANNEL_IDS))
     apply_config_globals()
