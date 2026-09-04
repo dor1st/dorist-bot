@@ -88,7 +88,6 @@ class StatsCog(commands.Cog):
 
     @commands.command(name="summaries", aliases=["sum"])
     @check_access_decorator("sum")
-    @is_allowed_channel()
     async def summaries_cmd(self, ctx: commands.Context, mode: str = None):
         limit = 10 if mode and mode.lower() in ["ex", "extended"] else 3
 
@@ -148,7 +147,6 @@ class StatsCog(commands.Cog):
     # ГРУППА КОМАНД LEADERBOARD / LB
     # ==========================================
     @commands.group(name="leaderboard", aliases=["lb"], invoke_without_command=True)
-    @is_allowed_channel()
     async def leaderboard_group(self, ctx: commands.Context, category: str = None):
         if category in ["messages", "m", "msgs", "сообщения"]:
             return await ctx.invoke(self.lb_messages)
