@@ -15,29 +15,6 @@ from utils import (
 VALID_PRIZES = ["Робуксы", "Коины", "Геймпасс", "Годли"]
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
-def is_allowed_channel():
-    async def predicate(ctx: commands.Context) -> bool:
-        cmd_channels = config.CONFIG.get("command_allowed_channels", {}).get(
-            ctx.command.name, 
-            config.COMMAND_ALLOWED_CHANNELS.get(ctx.command.name, [])
-        )
-
-        if not cmd_channels:
-            return True
-
-        if ctx.channel.id in cmd_channels:
-            return True
-
-        channels_mentions = ", ".join([f"<#{cid}>" for cid in cmd_channels])
-        
-        await ctx.send(
-            embed=make_error_embed(
-                "Отказ в доступе",
-                f"Эта команда доступна только в каналах: {channels_mentions}",
-            )
-        )
-        return False
-    return commands.check(predicate)
 
 def build_cmd_help(command_name: str, usage: str, description: str) -> discord.Embed:
     """Генератор полноценного эмбеда с подсказкой по использованию команды."""
@@ -327,7 +304,6 @@ class PlayerLogsCog(commands.Cog):
 
     @commands.command(name="messages", aliases=["msg", "msgs", "message"])
     @check_access_decorator("messages")
-    @is_allowed_channel()
     async def messages_cmd(self, ctx: commands.Context, target: discord.User = None):
         """Просмотреть количество текстовых сообщений пользователя."""
         target = target or ctx.author
@@ -344,7 +320,6 @@ class PlayerLogsCog(commands.Cog):
 
     @commands.command(name="invites", aliases=["inv"])
     @check_access_decorator("invites")
-    @is_allowed_channel()
     async def invites_cmd(self, ctx: commands.Context, target: discord.User = None):
         target = target or ctx.author
         

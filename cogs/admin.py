@@ -5,29 +5,6 @@ import config
 from database import tickets_col, deleted_tickets_col
 from utils import check_access_decorator, make_error_embed, make_status_embed, is_owner_user, log_action
 
-def is_allowed_channel():
-    async def predicate(ctx: commands.Context) -> bool:
-        cmd_channels = config.CONFIG.get("command_allowed_channels", {}).get(
-            ctx.command.name, 
-            config.COMMAND_ALLOWED_CHANNELS.get(ctx.command.name, [])
-        )
-
-        if not cmd_channels:
-            return True
-
-        if ctx.channel.id in cmd_channels:
-            return True
-
-        channels_mentions = ", ".join([f"<#{cid}>" for cid in cmd_channels])
-        
-        await ctx.send(
-            embed=make_error_embed(
-                "Отказ в доступе",
-                f"Эта команда доступна только в каналах: {channels_mentions}",
-            )
-        )
-        return False
-    return commands.check(predicate)
 
 class ConfigSelect(discord.ui.Select):
     def __init__(self):
@@ -130,7 +107,6 @@ class AdminCog(commands.Cog):
 
     @commands.command(name="deletelog")
     @check_access_decorator("deletelog")
-    @is_allowed_channel()
     async def deletelog_cmd(self, ctx: commands.Context, log_id: int = None):
         if log_id is None:
             embed = make_error_embed("Недостаточно аргументов", config.COMMAND_USAGE_HELP["deletelog"])
@@ -147,7 +123,6 @@ class AdminCog(commands.Cog):
 
     @commands.command(name="resetlogs")
     @check_access_decorator("resetlogs")
-    @is_allowed_channel()
     async def resetlogs_cmd(self, ctx: commands.Context, target: discord.User = None):
         if not target:
             embed = make_error_embed("Недостаточно аргументов", config.COMMAND_USAGE_HELP["resetlogs"])
