@@ -472,7 +472,9 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
     displayname = user.display_name
     cash, bank = get_user_balance(user.id)
     balance = f"{cash + bank:,}"
-    
+
+
+    embed.set_image
     embed.set_footer(text=f"Вызвано: {displayname} • Баланс: {balance} • {config.FOOTER_TEXT}")
     return embed
 
