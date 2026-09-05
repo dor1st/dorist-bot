@@ -282,12 +282,11 @@ def create_shop_embed(category_key: str) -> discord.Embed:
     
     description_lines = []
     for item in category_data["items"]:
-        # Форматирование по вашему JSON примеру
         description_lines.append(f"<:arrow:1537827656043728956> Роль <@&{item['role_id']}>")
         description_lines.append(f"> **Цена:** {item['price']:,}")
         for desc_line in item["description"].split("\n"):
             description_lines.append(f"> {desc_line}")
-        description_lines.append("") # Пустая строка между товарами
+        description_lines.append("")
 
     embed = discord.Embed(
         title=f"<:coin:1545425273686597742> __**Магазин предметов**__",
