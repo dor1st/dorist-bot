@@ -338,7 +338,7 @@ class ShopView(discord.ui.View):
         async def callback(interaction: discord.Interaction):
             self.current_category = cat_key
             self.update_components()
-            embed = create_shop_embed(cat_key)
+            embed = create_shop_embed(cat_key, interaction.user)
             await interaction.response.edit_message(embed=embed, view=self)
         return callback
 
