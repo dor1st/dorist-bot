@@ -445,7 +445,11 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
     
     description_lines = []
     for item in category_data["items"]:
-        description_lines.append(f"<:arrow:1537827656043728956> Роль <@&{item['role_id']}>")
+        if "role_id" in item:
+            description_lines.append(f"<:arrow:1537827656043728956> Роль <@&{item['role_id']}>")
+        else:
+            description_lines.append(f"<:arrow:1537827656043728956> **{item['display_name']}**")
+            
         description_lines.append(f"> **Цена:** {item['price']:,}")
         
         item_desc = item["description"]
