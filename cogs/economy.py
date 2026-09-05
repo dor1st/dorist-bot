@@ -167,6 +167,62 @@ def decrease_item_stock(item_id: str, amount: int = 1) -> int:
     )
     return res["stock"] if res else 0
 
+class RestockSelect(discord.ui.Select):
+    def __init__(self):
+        options = []
+        for cat_key, cat_data in SHOP_DATA.items():
+            for item in cat_data["items"]:
+                options.append(
+                    discord.SelectOption(
+                        label=item["display_name"][:100],
+                        value=f"{cat_key}:{item['id']}",
+                        description=f"Категория: {cat_data['label']}"[:100],
+                        emoji="<:arrow:1537827656043728956>"
+                    )
+                )
+        
+        if not options:
+            options.append(discord.SelectOption(label="Нет товаров", value="none"))
+
+        super().__init__(placeholder="Выберите товар для пополнения...", min_values=1, max_values=1, options=options[:25])
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.values[0] == "none":
+            return await interaction.response.send_message("Товары не найдены.", ephemeral=True)
+
+        cat_key, item_id = self.values[0].split(":")
+        category_data = SHOP_DATA.get(cat_key, {"items": []})
+        selected_item = next((item for item in category_data["items"] if item["id"] == item_id), None)
+
+        if not selected_item:
+            return await interaction.response.send_message("Товар не найден в конфиге.", ephemeral=True)
+
+        desc = selected_item.get("description", "")
+        stock_match = re.search(r"\*\*В наличии:\*\*\s*(\d+)", desc)
+        
+        if not stock_match:
+            return await interaction.response.send_message("У этого товара нет лимита количества (бесконечный).", ephemeral=True)
+
+        initial_stock = int(stock_match.group(1))
+        
+        # Сбрасываем количество в базе данных до начального из конфига
+        shop_stock_col.update_one(
+            {"_id": item_id},
+            {"$set": {"stock": initial_stock}},
+            upsert=True
+        )
+
+        await interaction.response.edit_message(
+            content=f"<:verify:1522329028420173976> Склад товара **{selected_item['name']}** успешно пополнен до исходного значения: **{initial_stock}**.",
+            view=None
+        )
+
+
+class RestockView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=60)
+        self.add_item(RestockSelect())
+
 class ItemTakeSelect(discord.ui.Select):
     def __init__(self, target_id: int):
         self.target_id = target_id
@@ -190,26 +246,87 @@ class ItemTakeSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         if self.values[0] == "none":
-            return await interaction.response.send_message("У пользователя пустой инвентарь.", ephemeral=True)
+            return await interaction.response.send_message("В этой категории нет доступных товаров.", ephemeral=True)
 
-        item_index = int(self.values[0])
-        user_doc = users_col.find_one({"_id": self.target_id}) or {}
+        selected_item_id = self.values[0]
+        category_data = SHOP_DATA.get(self.category_key, {"items": []})
+        
+        selected_item = next((item for item in category_data["items"] if item["id"] == selected_item_id), None)
+        if not selected_item:
+            return await interaction.response.send_message("Товар не найден.", ephemeral=True)
+
+        desc = selected_item.get("description", "")
+        stock_match = re.search(r"\*\*В наличии:\*\*\s*(\d+)", desc)
+        
+        current_stock = None
+        if stock_match:
+            default_stock = int(stock_match.group(1))
+            current_stock = get_item_stock(selected_item["id"], default_stock)
+            if current_stock <= 0:
+                return await interaction.response.send_message(
+                    "<a:alert:1544047350345891851> Этот товар закончился на складе!",
+                    ephemeral=True
+                )
+
+        user_doc = users_col.find_one({"_id": interaction.user.id}) or {}
         inventory = user_doc.get("inventory", [])
+        
+        if not selected_item.get("stackable", True):
+            if any(i.get("id") == selected_item["id"] for i in inventory):
+                return await interaction.response.send_message(
+                    "<a:alert:1544047350345891851> У вас уже есть этот предмет, и его нельзя купить повторно!",
+                    ephemeral=True
+                )
 
-        if item_index >= len(inventory):
-            return await interaction.response.send_message("Предмет не найден.", ephemeral=True)
+        cash, bank = get_user_balance(interaction.user.id)
+        if (cash + bank) < selected_item["price"]:
+            return await interaction.response.send_message(
+                f"<a:alert:1544047350345891851> У вас недостаточно средств! Нужно: **{selected_item['price']:,}** коинов.",
+                ephemeral=True
+            )
 
-        removed_item = inventory.pop(item_index)
+        guild = interaction.guild
+        if guild and ("role_id" in selected_item or self.category_key == "roles"):
+            role_id = selected_item.get("role_id")
+            if role_id:
+                role = guild.get_role(role_id)
+                if role:
+                    try:
+                        await interaction.user.add_roles(role, reason="Покупка в магазине ролей")
+                    except discord.Forbidden:
+                        return await interaction.response.send_message(
+                            "<a:alert:1544047350345891851> У бота недостаточно прав для выдачи этой роли. Обратитесь к администрации.", 
+                            ephemeral=True
+                        )
+
+        if stock_match:
+            current_stock = decrease_item_stock(selected_item["id"], 1)
+
+        if bank >= selected_item["price"]:
+            update_user_balance_delta(interaction.user.id, bank_delta=-selected_item["price"])
+        else:
+            remainder = selected_item["price"] - bank
+            update_user_balance_delta(interaction.user.id, bank_delta=-bank, cash_delta=-remainder)
 
         users_col.update_one(
-            {"_id": self.target_id},
-            {"$set": {"inventory": inventory}}
+            {"_id": interaction.user.id},
+            {"$push": {"inventory": {"id": selected_item["id"], "name": selected_item["name"]}}},
+            upsert=True
         )
 
-        await interaction.response.edit_message(
-            content=f"<:verify:1522329028420173976> Успешно изъят предмет **{removed_item['name']}** у пользователя <@{self.target_id}>.",
-            view=None
+        stock_display = str(current_stock) if stock_match and current_stock is not None else '∞'
+        
+        # Сначала отправляем скрытый ответ о покупке
+        await interaction.response.send_message(
+            f"<:verify:1522329028420173976> Вы успешно приобрели **{selected_item['name']}** за **{selected_item['price']:,}** коинов! (Остаток на складе: {stock_display})",
+            ephemeral=True
         )
+
+        new_embed = create_shop_embed(self.category_key, interaction.user)
+        try:
+            await interaction.message.edit(embed=new_embed, view=self.view)
+        except discord.HTTPException:
+            pass
 
 
 class ItemTakeView(discord.ui.View):
@@ -476,6 +593,15 @@ class EconomyCog(commands.Cog):
         view = ShopView(current_category=None)
         embed = create_shop_main_embed()
         await ctx.send(embed=embed, view=view)
+
+    @commands.command(name="restock")
+    @check_access_decorator("restock")
+    async def restock(self, ctx: commands.Context):
+        if not is_owner_user(ctx.author):
+            return await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
+
+        view = RestockView()
+        await ctx.send("Выберите товар, который нужно пополнить до начального количества:", view=view, ephemeral=True)
 
     @commands.command(name="inventory", aliases=["inv"])
     @check_access_decorator("inventory")
