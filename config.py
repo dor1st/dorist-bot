@@ -325,6 +325,45 @@ SHOP_DATA = {
             }
         ]
     },
+    "robux": {
+        "label": "Робуксы",
+        "emoji": "<:rbx:1522327723203235971>",
+        "items": [
+            {
+                "id": "robux_15",
+                "name": "15 Робуксов",
+                "display_name": "15 Робуксов",
+                "price": 2500,
+                "stackable": True,
+                "description": "Реальные 15 робуксов в Роблокс.\n**В наличии:** 10"
+            },
+            {
+                "id": "robux_50",
+                "name": "50 Робуксов",
+                "display_name": "50 Робуксов",
+                "price": 7000,
+                "stackable": True,
+                "description": "Реальные 50 робуксов в Роблокс.\n**В наличии:** 10"
+            },
+            {
+                "id": "robux_100",
+                "name": "100 Робуксов",
+                "display_name": "100 Робуксов",
+                "price": 15000,
+                "stackable": True,
+                "description": "Реальные 100 робуксов в Роблокс.\n**В наличии:** 10"
+            },
+            {
+                "id": "double_tools",
+                "name": "Double Tools",
+                "display_name": "Геймпасс Double Tools",
+                "price": 15000,
+                "stackable": True,
+                "description": "Геймпасс Double Tools в Residence Massacre.\n**В наличии:** 10"
+            },
+        ]
+
+    }
 }
 
 CONFIG = {
