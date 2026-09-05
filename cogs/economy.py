@@ -1,10 +1,11 @@
 import random
 import time
+import re
 import discord
 from discord.ext import commands
 
 import config
-from database import users_col
+from database import users_col, shop_stock_col
 from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed
 
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
@@ -147,6 +148,25 @@ def update_user_balance_delta(user_id: int, cash_delta: int = 0, bank_delta: int
             upsert=True
         )
 
+def get_item_stock(item_id: str, default_stock: int) -> int:
+    doc = shop_stock_col.find_one({"_id": item_id})
+    if doc is None:
+        shop_stock_col.update_one(
+            {"_id": item_id},
+            {"$set": {"stock": default_stock}},
+            upsert=True
+        )
+        return default_stock
+    return doc.get("stock", default_stock)
+
+def decrease_item_stock(item_id: str, amount: int = 1) -> int:
+    res = shop_stock_col.find_one_and_update(
+        {"_id": item_id},
+        {"$inc": {"stock": -amount}},
+        return_document=True
+    )
+    return res["stock"] if res else 0
+
 class ItemTakeSelect(discord.ui.Select):
     def __init__(self, target_id: int):
         self.target_id = target_id
@@ -154,7 +174,6 @@ class ItemTakeSelect(discord.ui.Select):
         inventory = user_doc.get("inventory", [])
 
         options = []
-        # Сохраняем индекс в инвентаре как value для удаления нужного элемента
         for idx, item in enumerate(inventory[:25]):
             options.append(
                 discord.SelectOption(
@@ -182,7 +201,6 @@ class ItemTakeSelect(discord.ui.Select):
 
         removed_item = inventory.pop(item_index)
 
-        # Обновляем инвентарь в базе
         users_col.update_one(
             {"_id": self.target_id},
             {"$set": {"inventory": inventory}}
@@ -206,7 +224,6 @@ class ShopSelect(discord.ui.Select):
         
         options = []
         for item in category_data["items"][:25]:
-            # Динамически вычисляем оставшееся количество из описания или используем дефолтное
             options.append(
                 discord.SelectOption(
                     label=item["display_name"][:100],
@@ -232,20 +249,19 @@ class ShopSelect(discord.ui.Select):
         if not selected_item:
             return await interaction.response.send_message("Товар не найден.", ephemeral=True)
 
-        # Проверка наличия (stock) в описании товара (например: "**В наличии:** 10")
-        import re
         desc = selected_item.get("description", "")
         stock_match = re.search(r"\*\*В наличии:\*\*\s*(\d+)", desc)
         
+        current_stock = None
         if stock_match:
-            current_stock = int(stock_match.group(1))
+            default_stock = int(stock_match.group(1))
+            current_stock = get_item_stock(selected_item["id"], default_stock)
             if current_stock <= 0:
                 return await interaction.response.send_message(
                     "<a:alert:1544047350345891851> Этот товар закончился на складе!",
                     ephemeral=True
                 )
             new_stock = current_stock - 1
-            # Обновляем количество в описании товара внутри словаря SHOP_DATA
             selected_item["description"] = re.sub(r"\*\*В наличии:\*\*\s*\d+", f"**В наличии:** {new_stock}", desc)
 
         user_doc = users_col.find_one({"_id": interaction.user.id}) or {}
@@ -298,8 +314,12 @@ class ShopSelect(discord.ui.Select):
             upsert=True
         )
 
+        if stock_match:
+            current_stock = decrease_item_stock(selected_item["id"], 1)
+
+        stock_display = str(current_stock) if stock_match and current_stock is not None else '∞'
         await interaction.response.send_message(
-            f"<:verify:1522329028420173976> Вы успешно приобрели **{selected_item['name']}** за **{selected_item['price']:,}** коинов! (Остаток на складе: {new_stock if stock_match else '∞'})",
+            f"<:verify:1522329028420173976> Вы успешно приобрели **{selected_item['name']}** за **{selected_item['price']:,}** коинов! (Остаток на складе: {stock_display})",
             ephemeral=True
         )
 
@@ -310,7 +330,15 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
     for item in category_data["items"]:
         description_lines.append(f"<:arrow:1537827656043728956> Роль <@&{item['role_id']}>")
         description_lines.append(f"> **Цена:** {item['price']:,}")
-        for desc_line in item["description"].split("\n"):
+        
+        item_desc = item["description"]
+        stock_match = re.search(r"\*\*В наличии:\*\*\s*(\d+)", item_desc)
+        if stock_match:
+            default_stock = int(stock_match.group(1))
+            real_stock = get_item_stock(item["id"], default_stock)
+            item_desc = re.sub(r"\*\*В наличии:\*\*\s*\d+", f"**В наличии:** {real_stock}", item_desc)
+
+        for desc_line in item_desc.split("\n"):
             description_lines.append(f"> {desc_line}")
         description_lines.append("")
 
