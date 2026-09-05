@@ -201,9 +201,8 @@ class ShopSelect(discord.ui.Select):
                 try:
                     await interaction.user.add_roles(role, reason="Покупка в магазине")
                 except discord.Forbidden:
-                    return await interaction.response.send_message("❌ У бота недостаточно прав для выдачи этой роли.", ephemeral=True)
+                    return await interaction.response.send_message("<a:alert:1544047350345891851> У бота недостаточно прав для выдачи этой роли.", ephemeral=True)
 
-        # Списание денег (сначала с банка, если не хватает — с наличных)
         if bank >= selected_item["price"]:
             update_user_balance_delta(interaction.user.id, bank_delta=-selected_item["price"])
         else:
