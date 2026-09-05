@@ -318,7 +318,7 @@ class PlayerLogsCog(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-    @commands.command(name="invites", aliases=["inv"])
+    @commands.command(name="invites")
     @check_access_decorator("invites")
     async def invites_cmd(self, ctx: commands.Context, target: discord.User = None):
         target = target or ctx.author
