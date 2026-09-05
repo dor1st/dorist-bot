@@ -27,7 +27,7 @@ class TicketLogsView(discord.ui.View):
 
     def build_page_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title=f"<:ticket:1522343287816716379> Тикеты — {self.target.name}",
+            title=f"<:ticket:1522343287816716379> Тикеты: {self.target.name}",
             color=config.EMBED_COLOR,
         )
 
@@ -104,7 +104,7 @@ class DeletedTicketLogsView(discord.ui.View):
 
     def build_page_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title=f"<:staff:1522338131339251823> Удаленные тикеты — {self.target.name}",
+            title=f"<:staff:1522338131339251823> Удаленные тикеты: {self.target.name}",
             color=config.EMBED_COLOR,
         )
 
@@ -230,7 +230,7 @@ class TicketsCog(commands.Cog):
         )
 
         embed = discord.Embed(
-            title=f"<:logs:1522340749998428160> Лог №{log_id} — {staff.name}",
+            title=f"<:logs:1522340749998428160> Лог №{log_id}: {staff.name}",
             color=config.EMBED_COLOR,
         )
         embed.add_field(
@@ -391,7 +391,7 @@ class TicketsCog(commands.Cog):
         del_all = deleted_tickets_col.count_documents({"staff_id": target.id})
 
         embed = discord.Embed(
-            title=f"<:sparkles:1522342290494849034> Статистика — {target.name}",
+            title=f"<:sparkles:1522342290494849034> Статистика: {target.name}",
             color=config.EMBED_COLOR,
         )
 

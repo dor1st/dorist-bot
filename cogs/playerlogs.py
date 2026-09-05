@@ -19,7 +19,7 @@ LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 def build_cmd_help(command_name: str, usage: str, description: str) -> discord.Embed:
     """Генератор полноценного эмбеда с подсказкой по использованию команды."""
     embed = discord.Embed(
-        title=f"Информация о команде — .{command_name}",
+        title=f"Информация о команде: .{command_name}",
         description=f"{description}\n\n**Использование:**\n`{usage}`",
         color=config.EMBED_COLOR,
     )
@@ -55,7 +55,7 @@ class GiveawayLogsView(discord.ui.View):
 
     def build_page_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title=f"<:sparkles:1522342290494849034> Розыгрыши — {self.target.name}",
+            title=f"<:sparkles:1522342290494849034> Розыгрыши: {self.target.name}",
             color=config.EMBED_COLOR,
         )
 
@@ -138,7 +138,7 @@ class InviteLogsView(discord.ui.View):
 
     def build_page_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title=f"<:logs:1522340749998428160> Приглашения — {self.target.name}",
+            title=f"<:logs:1522340749998428160> Приглашения: {self.target.name}",
             color=config.EMBED_COLOR,
         )
 

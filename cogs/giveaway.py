@@ -440,7 +440,7 @@ class GiveawaySetupView(discord.ui.View):
 
         if self.bonus_roles:
             bonus_text = "\n".join(
-                f"• {role_mentions(self.guild, [role_id])} — **+{entries}**"
+                f"• {role_mentions(self.guild, [role_id])}: **+{entries}**"
                 for role_id, entries in self.bonus_roles.items()
             )
         else:
@@ -838,7 +838,7 @@ class BonusRoleSelect(discord.ui.RoleSelect):
 class BonusEntriesModal(discord.ui.Modal, title="Настройка дополнительных шансов"):
     entries = discord.ui.TextInput(
         label="Количество доп. шансов",
-        placeholder="Введите число (0 — чтобы удалить роль)",
+        placeholder="Введите число (0 чтобы удалить роль)",
         default="1",
         min_length=1,
         max_length=3,
@@ -1036,10 +1036,10 @@ class GiveawayCog(commands.Cog):
             title="<:giveaway:1522331215976206446> Меню розыгрышей",
             description=(
                 "Укажите команду для управления розыгрышами:\n\n"
-                "• `.giveaway create` — Создать новый розыгрыш\n"
-                "• `.giveaway end [ID]` — Завершить розыгрыш\n"
-                "• `.giveaway reroll [ID]` — Перевыбрать победителя (реролл)\n"
-                "• `.giveaway delete [ID]` — Удалить розыгрыш\n"
+                "• `.giveaway create` - Создать новый розыгрыш\n"
+                "• `.giveaway end [ID]` - Завершить розыгрыш\n"
+                "• `.giveaway reroll [ID]` - Перевыбрать победителя (реролл)\n"
+                "• `.giveaway delete [ID]` - Удалить розыгрыш\n"
             ),
             color=config.EMBED_COLOR,
         )
@@ -1078,7 +1078,7 @@ class GiveawayCog(commands.Cog):
                     (
                         "Неверная длительность. "
                         "Используйте, например: `30m`, `12h`, `7d`, `2w`, `1mo`.\n"
-                        "Максимальная длительность — 31 день."
+                        "Максимальная длительность: 31 день."
                     ),
                 )
             )

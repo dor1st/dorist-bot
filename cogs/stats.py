@@ -115,7 +115,7 @@ class StatsCog(commands.Cog):
             for i in range(1, limit + 1):
                 if i <= len(rows):
                     uid, count = rows[i - 1]
-                    lines.append(f"`{i}.` <@{uid}> — **{count}**")
+                    lines.append(f"`{i}.` <@{uid}> - **{count}**")
                 else:
                     lines.append(f"`{i}.` —")
             return "\n".join(lines)
@@ -171,7 +171,7 @@ class StatsCog(commands.Cog):
             roles_str = "Слишком много ролей для отображения"
 
         embed = discord.Embed(
-            title=f"<:info:1522329987514892398> Информация — {member.display_name}",
+            title=f"<:info:1522329987514892398> Информация: {member.display_name}",
             color=config.EMBED_COLOR
         )
         
@@ -234,10 +234,10 @@ class StatsCog(commands.Cog):
             title="<:trophy:1522340749998428160> Меню таблиц лидеров",
             description=(
                 "Укажите категорию лидерборда:\n\n"
-                "• `.lb messages` — Топ 5 по сообщениям\n"
-                "• `.lb invites` — Топ 5 по приглашениям\n"
-                "• `.lb tickets` — Лидерборд тикетов, транскриптов и удалений\n"
-                "• `.lb economy` — Топ 5 самых богатых участников"
+                "• `.lb messages` - Топ 5 по сообщениям\n"
+                "• `.lb invites` - Топ 5 по приглашениям\n"
+                "• `.lb tickets` - Лидерборд тикетов, транскриптов и удалений\n"
+                "• `.lb economy` - Топ 5 самых богатых участников"
             ),
             color=config.EMBED_COLOR,
         )
@@ -264,9 +264,9 @@ class StatsCog(commands.Cog):
         for i in range(1, 6):
             if i <= len(top_data):
                 doc = top_data[i - 1]
-                lines.append(f"`{i}.` <@{doc['_id']}> — **{doc['count']}** сообщ.")
+                lines.append(f"`{i}.` <@{doc['_id']}> - **{doc['count']}** сообщ.")
             else:
-                lines.append(f"`{i}.` —")
+                lines.append(f"`{i}.` -")
 
         embed.description = "\n".join(lines)
         embed.set_footer(text=config.FOOTER_TEXT)
@@ -303,7 +303,7 @@ class StatsCog(commands.Cog):
         for i in range(1, 6):
             if i <= len(top_data):
                 doc = top_data[i - 1]
-                lines.append(f"`{i}.` <@{doc['_id']}> — **{doc['count']}** приглашений")
+                lines.append(f"`{i}.` <@{doc['_id']}> - **{doc['count']}** приглашений")
             else:
                 lines.append(f"`{i}.` —")
 
@@ -341,7 +341,7 @@ class StatsCog(commands.Cog):
             for i in range(1, 4):
                 if i <= len(top_list):
                     u_id, count = top_list[i - 1]
-                    lines.append(f"`{i}.` <@{u_id}> — **{count}** {unit_label}")
+                    lines.append(f"`{i}.` <@{u_id}> - **{count}** {unit_label}")
                 else:
                     lines.append(f"`{i}.` —")
             return "\n".join(lines)
@@ -393,9 +393,9 @@ class StatsCog(commands.Cog):
         for i in range(1, 11):
             if i <= len(top_data):
                 doc = top_data[i - 1]
-                lines.append(f"`{i}.` <@{doc['_id']}> — **{doc['total']:,}** коинов")
+                lines.append(f"`{i}.` <@{doc['_id']}> - **{doc['total']:,}** коинов")
             else:
-                lines.append(f"`{i}.` —")
+                lines.append(f"`{i}.` -")
 
         embed.description = "\n".join(lines)
         embed.set_footer(text=config.FOOTER_TEXT)

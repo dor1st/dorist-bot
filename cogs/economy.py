@@ -100,7 +100,7 @@ CRIME_SUCCESS_PHRASES = [
     "Вам удалось совершить преступление и уйти с **+{amount}** коинов!",
     "План сработал идеально! Вы провернули темное дело и обогатились на **+{amount}** коинов.",
     "Никто ничего не заметил. Вы тихо унесли с места преступления **+{amount}** коинов!",
-    "Риск стоил того — ваша афера принесла вам **+{amount}** коинов.",
+    "Риск стоил того - ваша афера принесла вам **+{amount}** коинов.",
 ]
 
 CRIME_FAILURE_PHRASES = [
@@ -114,7 +114,7 @@ ROB_SUCCESS_PHRASES = [
     "Вы успешно ограбили {target} и забрали **+{amount}** коинов!",
     "Операция прошла как по маслу: вы обокрали {target} на **+{amount}** коинов!",
     "Вы застали {target} врасплох и увели прямо из-под носа **+{amount}** коинов.",
-    "Ловкость рук — и карман {target} опустел на **+{amount}** коинов, которые теперь ваши!",
+    "Ловкость рук - и карман {target} опустел на **+{amount}** коинов, которые теперь ваши!",
 ]
 
 ROB_FAILURE_PHRASES = [
@@ -147,16 +147,68 @@ def update_user_balance_delta(user_id: int, cash_delta: int = 0, bank_delta: int
             upsert=True
         )
 
+class ItemTakeSelect(discord.ui.Select):
+    def __init__(self, target_id: int):
+        self.target_id = target_id
+        user_doc = users_col.find_one({"_id": target_id}) or {}
+        inventory = user_doc.get("inventory", [])
+
+        options = []
+        # Сохраняем индекс в инвентаре как value для удаления нужного элемента
+        for idx, item in enumerate(inventory[:25]):
+            options.append(
+                discord.SelectOption(
+                    label=item["name"][:100],
+                    value=str(idx),
+                    description=f"ID: {item['id']}"[:100]
+                )
+            )
+
+        if not options:
+            options.append(discord.SelectOption(label="Инвентарь пуст", value="none", description="У пользователя ничего нет"))
+
+        super().__init__(placeholder="Выберите предмет, чтобы забрать...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.values[0] == "none":
+            return await interaction.response.send_message("У пользователя пустой инвентарь.", ephemeral=True)
+
+        item_index = int(self.values[0])
+        user_doc = users_col.find_one({"_id": self.target_id}) or {}
+        inventory = user_doc.get("inventory", [])
+
+        if item_index >= len(inventory):
+            return await interaction.response.send_message("Предмет не найден.", ephemeral=True)
+
+        removed_item = inventory.pop(item_index)
+
+        # Обновляем инвентарь в базе
+        users_col.update_one(
+            {"_id": self.target_id},
+            {"$set": {"inventory": inventory}}
+        )
+
+        await interaction.response.edit_message(
+            content=f"<:verify:1522329028420173976> Успешно изъят предмет **{removed_item['name']}** у пользователя <@{self.target_id}>.",
+            view=None
+        )
+
+
+class ItemTakeView(discord.ui.View):
+    def __init__(self, target_id: int):
+        super().__init__(timeout=60)
+        self.add_item(ItemTakeSelect(target_id))
+
 class ShopSelect(discord.ui.Select):
     def __init__(self, category_key: str):
         self.category_key = category_key
         category_data = SHOP_DATA.get(category_key, {"items": []})
         
         options = []
-        for item in category_data["items"][:25]:  # Discord лимит: максимум 25 опций в селекте
+        for item in category_data["items"][:25]:
             options.append(
                 discord.SelectOption(
-                    label=item["name"][:100],
+                    label=item["display_name"][:100],  # Название в дроп-ауте
                     value=item["id"],
                     description=f"Цена: {item['price']:,} коинов"[:100],
                     emoji="<:arrow:1537827656043728956>"
@@ -175,25 +227,29 @@ class ShopSelect(discord.ui.Select):
         selected_item_id = self.values[0]
         category_data = SHOP_DATA.get(self.category_key, {"items": []})
         
-        selected_item = None
-        for item in category_data["items"]:
-            if item["id"] == selected_item_id:
-                selected_item = item
-                break
-
+        selected_item = next((item for item in category_data["items"] if item["id"] == selected_item_id), None)
         if not selected_item:
             return await interaction.response.send_message("Товар не найден.", ephemeral=True)
 
-        cash, bank = get_user_balance(interaction.user.id)
-        total_balance = cash + bank
+        # Проверка инвентаря на предмет уникальности (если stackable = False)
+        user_doc = users_col.find_one({"_id": interaction.user.id}) or {}
+        inventory = user_doc.get("inventory", [])
+        
+        if not selected_item.get("stackable", True):
+            if any(i.get("id") == selected_item["id"] for i in inventory):
+                return await interaction.response.send_message(
+                    "<a:alert:1544047350345891851> У вас уже есть этот предмет, и его нельзя купить повторно!",
+                    ephemeral=True
+                )
 
-        if total_balance < selected_item["price"]:
+        cash, bank = get_user_balance(interaction.user.id)
+        if (cash + bank) < selected_item["price"]:
             return await interaction.response.send_message(
                 f"<a:alert:1544047350345891851> У вас недостаточно средств! Нужно: **{selected_item['price']:,}** коинов.",
                 ephemeral=True
             )
 
-        # Логика покупки (выдача роли, списание средств)
+        # Выдача роли (если есть)
         guild = interaction.guild
         if guild and "role_id" in selected_item:
             role = guild.get_role(selected_item["role_id"])
@@ -203,49 +259,23 @@ class ShopSelect(discord.ui.Select):
                 except discord.Forbidden:
                     return await interaction.response.send_message("<a:alert:1544047350345891851> У бота недостаточно прав для выдачи этой роли.", ephemeral=True)
 
+        # Списание средств
         if bank >= selected_item["price"]:
             update_user_balance_delta(interaction.user.id, bank_delta=-selected_item["price"])
         else:
             remainder = selected_item["price"] - bank
             update_user_balance_delta(interaction.user.id, bank_delta=-bank, cash_delta=-remainder)
 
+        users_col.update_one(
+            {"_id": interaction.user.id},
+            {"$push": {"inventory": {"id": selected_item["id"], "name": selected_item["name"]}}},
+            upsert=True
+        )
+
         await interaction.response.send_message(
             f"<:verify:1522329028420173976> Вы успешно приобрели **{selected_item['name']}** за **{selected_item['price']:,}** коинов!",
             ephemeral=True
         )
-
-
-class ShopView(discord.ui.View):
-    def __init__(self, current_category: str = "roles"):
-        super().__init__(timeout=180)
-        self.current_category = current_category
-        self.update_components()
-
-    def update_components(self):
-        self.clear_items()
-        
-        # Добавляем кнопки категорий (по аналогии с хелпом)
-        for cat_key, cat_info in SHOP_DATA.items():
-            button = discord.ui.Button(
-                label=cat_info["label"],
-                emoji=cat_info["emoji"],
-                style=discord.ButtonStyle.primary if self.current_category == cat_key else discord.ButtonStyle.secondary,
-                custom_id=f"shop_cat_{cat_key}"
-            )
-            button.callback = self.create_category_callback(cat_key)
-            self.add_item(button)
-
-        # Добавляем выпадающий список товаров выбранной категории
-        self.add_item(ShopSelect(self.current_category))
-
-    def create_category_callback(self, cat_key: str):
-        async def callback(interaction: discord.Interaction):
-            self.current_category = cat_key
-            self.update_components()
-            embed = create_shop_embed(cat_key)
-            await interaction.response.edit_message(embed=embed, view=self)
-        return callback
-
 
 def create_shop_embed(category_key: str) -> discord.Embed:
     category_data = SHOP_DATA.get(category_key, {"items": []})
@@ -265,6 +295,47 @@ def create_shop_embed(category_key: str) -> discord.Embed:
         description="\n".join(description_lines)
     )
     return embed
+
+def create_shop_main_embed() -> discord.Embed:
+    embed = discord.Embed(
+        title="<:coin:1545425273686597742> Магазин предметов",
+        color=0x383838,
+        description="Выберите категорию ниже, чтобы просмотреть доступные товары.\n\n"
+                    "**Доступные вам категории**\n" +
+                    "\n".join([f"{cat_info['emoji']} {cat_info['label']}" for cat_info in SHOP_DATA.values()])
+    )
+    return embed
+
+class ShopView(discord.ui.View):
+    def __init__(self, current_category: str = None):
+        super().__init__(timeout=180)
+        self.current_category = current_category
+        self.update_components()
+
+    def update_components(self):
+        self.clear_items()
+        
+        # Кнопки категорий
+        for cat_key, cat_info in SHOP_DATA.items():
+            button = discord.ui.Button(
+                label=cat_info["label"],
+                emoji=cat_info["emoji"],
+                style=discord.ButtonStyle.primary if self.current_category == cat_key else discord.ButtonStyle.secondary,
+                custom_id=f"shop_cat_{cat_key}"
+            )
+            button.callback = self.create_category_callback(cat_key)
+            self.add_item(button)
+
+        if self.current_category and self.current_category in SHOP_DATA:
+            self.add_item(ShopSelect(self.current_category))
+
+    def create_category_callback(self, cat_key: str):
+        async def callback(interaction: discord.Interaction):
+            self.current_category = cat_key
+            self.update_components()
+            embed = create_shop_embed(cat_key)
+            await interaction.response.edit_message(embed=embed, view=self)
+        return callback
 
 
 class EconomyCog(commands.Cog):
@@ -343,9 +414,50 @@ class EconomyCog(commands.Cog):
     @commands.command(name="shop")
     @check_access_decorator("shop")
     async def shop(self, ctx: commands.Context):
-        view = ShopView(current_category="roles")
-        embed = create_shop_embed("roles")
+        view = ShopView(current_category=None)
+        embed = create_shop_main_embed()
         await ctx.send(embed=embed, view=view)
+
+    @commands.command(name="inventory", aliases=["inv"])
+    @check_access_decorator("inventory")
+    async def inventory(self, ctx: commands.Context, target: discord.Member | discord.User = None):
+        target = target or ctx.author
+        user_doc = users_col.find_one({"_id": target.id}) or {}
+        inventory = user_doc.get("inventory", [])
+
+        if not inventory:
+            embed = discord.Embed(
+                description=f"У пользователя {target.mention} инвентарь пуст.",
+                color=config.EMBED_COLOR
+            )
+        else:
+            items_list = [f"`{idx}.` {item['name']}" for idx, item in enumerate(inventory, start=1)]
+            embed = discord.Embed(
+                title=f"<:plush:1543996244857327777> Инвентарь: {target.display_name}",
+                description="\n".join(items_list),
+                color=config.EMBED_COLOR
+            )
+        
+        embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+        await ctx.send(embed=embed)
+
+    @commands.command(name="itemtake")
+    @check_access_decorator("itemtake")
+    async def itemtake(self, ctx: commands.Context, target: discord.Member | discord.User = None):
+        if not is_owner_user(ctx.author):
+            return await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
+
+        if target is None:
+            return await ctx.send(embed=build_command_help_embed("itemtake"))
+
+        user_doc = users_col.find_one({"_id": target.id}) or {}
+        inventory = user_doc.get("inventory", [])
+
+        if not inventory:
+            return await ctx.send(embed=make_error_embed("Ошибка", f"У пользователя {target.mention} инвентарь пуст."))
+
+        view = ItemTakeView(target.id)
+        await ctx.send(f"Выберите предмет, который хотите забрать у {target.mention}:", view=view, ephemeral=True)
 
     @commands.command(name="balance", aliases=["bal"])
     @check_access_decorator("balance")
