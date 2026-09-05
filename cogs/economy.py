@@ -8,23 +8,27 @@ from database import users_col
 from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed
 
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
+SHOP_DATA = config.SHOP_DATA
 
 # -------------------------------------------------------------
 # НАСТРОЙКИ ЭКОНОМИКИ И ШАНСОВ
 # -------------------------------------------------------------
+
 WORK_MIN_REWARD = 100
 WORK_MAX_REWARD = 200
 WORK_SUCCESS_CHANCE = 0.85  # 85% шанс успеха
 
-# Отдельные диапазоны вознаграждения для успеха и неуспеха работы
 WORK_SUCCESS_MIN_REWARD = 100
 WORK_SUCCESS_MAX_REWARD = 300
 WORK_FAILURE_MIN_REWARD = 50
-WORK_FAILURE_MAX_REWARD = 150
+WORK_FAILURE_MAX_REWARD = 120
 
-CRIME_MIN_REWARD = 200
-CRIME_MAX_REWARD = 500
-CRIME_SUCCESS_CHANCE = 0.5  # 50% шанс успеха
+CRIME_SUCCESS_CHANCE = 0.65  # 65% шанс успеха
+
+CRIME_SUCCESS_MIN_REWARD = 200
+CRIME_SUCCESS_MAX_REWARD = 500
+CRIME_FAILURE_MIN_REWARD = 100
+CRIME_FAILURE_MAX_REWARD = 250
 
 ROB_SUCCESS_CHANCE = 0.3  # 30% шанс успеха
 ROB_STEEL_MIN_PERCENT = 30
@@ -38,6 +42,15 @@ SLOT_MULTIPLIERS = [1.2, 1.4, 1.6, 1.8, 2.0]
 ROLL_WIN_CHANCE = 0.5  # 50/50 шанс
 ROLL_WEIGHTS = [30, 25, 20, 15, 10]
 ROLL_MULTIPLIERS = [1.2, 1.4, 1.6, 1.8, 2.0]
+
+# -------------------------------------------------------------
+# КУЛДАУНЫ
+# -------------------------------------------------------------
+
+WORK_COOLDOWN = 60*60
+CRIME_COOLDOWN = 60*60*3
+INCOME_COOLDOWN = 60*60*24
+ROB_COOLDOWN = 60*60*24
 
 # -------------------------------------------------------------
 # КАНАЛЫ БЕЗ НАЧИСЛЕНИЯ ДОХОДА ЗА СООБЩЕНИЯ
@@ -60,6 +73,8 @@ ROLE_INCOME_TABLE = {
     1467961492275200296: 30,
     1537847767433617448: 25,
     1475808795757252609: 25,
+    1528419077843058698: 15,
+    1528417549702660260: 100,
 }
 
 # -------------------------------------------------------------
@@ -78,6 +93,7 @@ WORK_FAILURE_PHRASES = [
     "Вы случайно испортили дорогое оборудование на рабочем месте и выплатили компенсацию в **-{amount}** коинов.",
     "На работе случился форс-мажор, из-за которого вы лишились **-{amount}** коинов.",
     "Ваш рабочий день не задался, и за допущенные ошибки с вас удержали **-{amount}** коинов.",
+    "Ты пришел на завод, а тебя там съел Ларри, лох. Он у тебя забрал **{amount}** коинов.",
 ]
 
 CRIME_SUCCESS_PHRASES = [
@@ -131,6 +147,126 @@ def update_user_balance_delta(user_id: int, cash_delta: int = 0, bank_delta: int
             upsert=True
         )
 
+class ShopSelect(discord.ui.Select):
+    def __init__(self, category_key: str):
+        self.category_key = category_key
+        category_data = SHOP_DATA.get(category_key, {"items": []})
+        
+        options = []
+        for item in category_data["items"][:25]:  # Discord лимит: максимум 25 опций в селекте
+            options.append(
+                discord.SelectOption(
+                    label=item["name"][:100],
+                    value=item["id"],
+                    description=f"Цена: {item['price']:,} коинов"[:100],
+                    emoji="<:arrow:1537827656043728956>"
+                )
+            )
+        
+        if not options:
+            options.append(discord.SelectOption(label="Товаров нет", value="none", description="В этой категории пока пусто"))
+
+        super().__init__(placeholder="Выберите предмет для покупки...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.values[0] == "none":
+            return await interaction.response.send_message("В этой категории нет доступных товаров.", ephemeral=True)
+
+        selected_item_id = self.values[0]
+        category_data = SHOP_DATA.get(self.category_key, {"items": []})
+        
+        selected_item = None
+        for item in category_data["items"]:
+            if item["id"] == selected_item_id:
+                selected_item = item
+                break
+
+        if not selected_item:
+            return await interaction.response.send_message("Товар не найден.", ephemeral=True)
+
+        cash, bank = get_user_balance(interaction.user.id)
+        total_balance = cash + bank
+
+        if total_balance < selected_item["price"]:
+            return await interaction.response.send_message(
+                f"<a:alert:1544047350345891851> У вас недостаточно средств! Нужно: **{selected_item['price']:,}** коинов.",
+                ephemeral=True
+            )
+
+        # Логика покупки (выдача роли, списание средств)
+        guild = interaction.guild
+        if guild and "role_id" in selected_item:
+            role = guild.get_role(selected_item["role_id"])
+            if role:
+                try:
+                    await interaction.user.add_roles(role, reason="Покупка в магазине")
+                except discord.Forbidden:
+                    return await interaction.response.send_message("❌ У бота недостаточно прав для выдачи этой роли.", ephemeral=True)
+
+        # Списание денег (сначала с банка, если не хватает — с наличных)
+        if bank >= selected_item["price"]:
+            update_user_balance_delta(interaction.user.id, bank_delta=-selected_item["price"])
+        else:
+            remainder = selected_item["price"] - bank
+            update_user_balance_delta(interaction.user.id, bank_delta=-bank, cash_delta=-remainder)
+
+        await interaction.response.send_message(
+            f"<:verify:1522329028420173976> Вы успешно приобрели **{selected_item['name']}** за **{selected_item['price']:,}** коинов!",
+            ephemeral=True
+        )
+
+
+class ShopView(discord.ui.View):
+    def __init__(self, current_category: str = "roles"):
+        super().__init__(timeout=180)
+        self.current_category = current_category
+        self.update_components()
+
+    def update_components(self):
+        self.clear_items()
+        
+        # Добавляем кнопки категорий (по аналогии с хелпом)
+        for cat_key, cat_info in SHOP_DATA.items():
+            button = discord.ui.Button(
+                label=cat_info["label"],
+                emoji=cat_info["emoji"],
+                style=discord.ButtonStyle.primary if self.current_category == cat_key else discord.ButtonStyle.secondary,
+                custom_id=f"shop_cat_{cat_key}"
+            )
+            button.callback = self.create_category_callback(cat_key)
+            self.add_item(button)
+
+        # Добавляем выпадающий список товаров выбранной категории
+        self.add_item(ShopSelect(self.current_category))
+
+    def create_category_callback(self, cat_key: str):
+        async def callback(interaction: discord.Interaction):
+            self.current_category = cat_key
+            self.update_components()
+            embed = create_shop_embed(cat_key)
+            await interaction.response.edit_message(embed=embed, view=self)
+        return callback
+
+
+def create_shop_embed(category_key: str) -> discord.Embed:
+    category_data = SHOP_DATA.get(category_key, {"items": []})
+    
+    description_lines = []
+    for item in category_data["items"]:
+        # Форматирование по вашему JSON примеру
+        description_lines.append(f"<:arrow:1537827656043728956> Роль <@&{item['role_id']}>")
+        description_lines.append(f"> **Цена:** {item['price']:,}")
+        for desc_line in item["description"].split("\n"):
+            description_lines.append(f"> {desc_line}")
+        description_lines.append("") # Пустая строка между товарами
+
+    embed = discord.Embed(
+        title=f"<:coin:1545425273686597742> __**Магазин предметов**__",
+        color=0x383838,
+        description="\n".join(description_lines)
+    )
+    return embed
+
 
 class EconomyCog(commands.Cog):
     def __init__(self, bot):
@@ -171,7 +307,6 @@ class EconomyCog(commands.Cog):
         else:
             reward = random.randint(8, 10)
 
-        # Выдача награды и обновление кулдауна
         update_user_balance_delta(user_id, cash_delta=reward)
         self.message_cooldowns[user_id] = current_time
 
@@ -205,6 +340,13 @@ class EconomyCog(commands.Cog):
             embed = make_error_embed("Отказ в доступе", str(error))
             await ctx.send(embed=embed)
             return
+
+    @commands.command(name="shop")
+    @check_access_decorator("shop")
+    async def shop(self, ctx: commands.Context):
+        view = ShopView(current_category="roles")
+        embed = create_shop_embed("roles")
+        await ctx.send(embed=embed, view=view)
 
     @commands.command(name="balance", aliases=["bal"])
     @check_access_decorator("balance")
@@ -366,7 +508,7 @@ class EconomyCog(commands.Cog):
     # -------------------------------------------------------------
 
     @commands.command(name="work")
-    @commands.cooldown(1, 5400, commands.BucketType.user)  # 1.5 часа (5400 сек)
+    @commands.cooldown(1, WORK_COOLDOWN, commands.BucketType.user)  # 1.5 часа (5400 сек)
     @check_access_decorator("work")
     async def work(self, ctx: commands.Context):
         is_success = random.random() < WORK_SUCCESS_CHANCE
@@ -386,17 +528,18 @@ class EconomyCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="crime")
-    @commands.cooldown(1, 43200, commands.BucketType.user)  # 12 часов (43200 сек)
+    @commands.cooldown(1, CRIME_COOLDOWN, commands.BucketType.user)
     @check_access_decorator("crime")
     async def crime(self, ctx: commands.Context):
-        amount = random.randint(CRIME_MIN_REWARD, CRIME_MAX_REWARD)
         is_success = random.random() < CRIME_SUCCESS_CHANCE
 
         if is_success:
+            amount = random.randint(CRIME_SUCCESS_MIN_REWARD, CRIME_SUCCESS_MAX_REWARD)
             update_user_balance_delta(ctx.author.id, cash_delta=amount)
             phrase = random.choice(CRIME_SUCCESS_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Преступление", phrase, "success")
         else:
+            amount = random.randint(CRIME_FAILURE_MIN_REWARD, CRIME_FAILURE_MAX_REWARD)
             # Списываем с налички (может уйти в минус)
             update_user_balance_delta(ctx.author.id, cash_delta=-amount)
             phrase = random.choice(CRIME_FAILURE_PHRASES).format(amount=f"{amount:,}")
@@ -405,7 +548,7 @@ class EconomyCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="income")
-    @commands.cooldown(1, 86400, commands.BucketType.user)  # 1 день (86400 сек)
+    @commands.cooldown(1, INCOME_COOLDOWN, commands.BucketType.user)  # 1 день (86400 сек)
     @check_access_decorator("income")
     async def income(self, ctx: commands.Context):
         if not isinstance(ctx.author, discord.Member):
@@ -446,7 +589,7 @@ class EconomyCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="rob")
-    @commands.cooldown(1, 86400, commands.BucketType.user)  # 1 день (86400 сек)
+    @commands.cooldown(1, ROB_COOLDOWN, commands.BucketType.user)  # 1 день (86400 сек)
     @check_access_decorator("rob")
     async def rob(self, ctx: commands.Context, target: discord.Member | discord.User = None):
 
