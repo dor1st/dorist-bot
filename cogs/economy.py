@@ -206,6 +206,7 @@ class ShopSelect(discord.ui.Select):
         
         options = []
         for item in category_data["items"][:25]:
+            # Динамически вычисляем оставшееся количество из описания или используем дефолтное
             options.append(
                 discord.SelectOption(
                     label=item["display_name"][:100],
@@ -231,11 +232,29 @@ class ShopSelect(discord.ui.Select):
         if not selected_item:
             return await interaction.response.send_message("Товар не найден.", ephemeral=True)
 
+        # Проверка наличия (stock) в описании товара (например: "**В наличии:** 10")
+        import re
+        desc = selected_item.get("description", "")
+        stock_match = re.search(r"\*\*В наличии:\*\*\s*(\d+)", desc)
+        
+        if stock_match:
+            current_stock = int(stock_match.group(1))
+            if current_stock <= 0:
+                return await interaction.response.send_message(
+                    "<a:alert:1544047350345891851> Этот товар закончился на складе!",
+                    ephemeral=True
+                )
+            new_stock = current_stock - 1
+            # Обновляем количество в описании товара внутри словаря SHOP_DATA
+            selected_item["description"] = re.sub(r"\*\*В наличии:\*\*\s*\d+", f"**В наличии:** {new_stock}", desc)
+
         user_doc = users_col.find_one({"_id": interaction.user.id}) or {}
         inventory = user_doc.get("inventory", [])
         
         if not selected_item.get("stackable", True):
             if any(i.get("id") == selected_item["id"] for i in inventory):
+                if stock_match:
+                    selected_item["description"] = desc
                 return await interaction.response.send_message(
                     "<a:alert:1544047350345891851> У вас уже есть этот предмет, и его нельзя купить повторно!",
                     ephemeral=True
@@ -243,6 +262,8 @@ class ShopSelect(discord.ui.Select):
 
         cash, bank = get_user_balance(interaction.user.id)
         if (cash + bank) < selected_item["price"]:
+            if stock_match:
+                selected_item["description"] = desc
             return await interaction.response.send_message(
                 f"<a:alert:1544047350345891851> У вас недостаточно средств! Нужно: **{selected_item['price']:,}** коинов.",
                 ephemeral=True
@@ -258,6 +279,8 @@ class ShopSelect(discord.ui.Select):
                     try:
                         await interaction.user.add_roles(role, reason="Покупка в магазине ролей")
                     except discord.Forbidden:
+                        if stock_match:
+                            selected_item["description"] = desc
                         return await interaction.response.send_message(
                             "<a:alert:1544047350345891851> У бота недостаточно прав для выдачи этой роли. Обратитесь к администрации.", 
                             ephemeral=True
@@ -276,7 +299,7 @@ class ShopSelect(discord.ui.Select):
         )
 
         await interaction.response.send_message(
-            f"<:verify:1522329028420173976> Вы успешно приобрели **{selected_item['name']}** за **{selected_item['price']:,}** коинов!",
+            f"<:verify:1522329028420173976> Вы успешно приобрели **{selected_item['name']}** за **{selected_item['price']:,}** коинов! (Остаток на складе: {new_stock if stock_match else '∞'})",
             ephemeral=True
         )
 

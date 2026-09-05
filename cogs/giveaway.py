@@ -255,15 +255,14 @@ class ParticipantsPaginatedView(discord.ui.View):
 
 
 class GiveawayPublicView(discord.ui.View):
-    def __init__(self, message_id: int):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.message_id = message_id
 
     @discord.ui.button(
         label="Участвовать",
         emoji=GIVEAWAY_EMOJI,
         style=discord.ButtonStyle.secondary,
-        custom_id="giveaway_entry_button",
+        custom_id="giveaway:join_button",
     )
     async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         doc = giveaways_col.find_one({"message_id": interaction.message.id, "status": "active"})
@@ -326,7 +325,7 @@ class GiveawayPublicView(discord.ui.View):
     @discord.ui.button(
         label="Участники",
         style=discord.ButtonStyle.secondary,
-        custom_id="giveaway_participants_button",
+        custom_id="giveaway:participants_button",
     )
     async def participants_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         doc = giveaways_col.find_one({"message_id": interaction.message.id})
@@ -561,7 +560,7 @@ class GiveawaySetupView(discord.ui.View):
                 content=content_ping if content_ping else None,
                 embeds=list(embeds),
             )
-            public_view = GiveawayPublicView(message.id)
+            public_view = GiveawayPublicView()
             await message.edit(view=public_view)
         except discord.HTTPException:
             await interaction.followup.send(
@@ -877,6 +876,7 @@ class BonusEntriesModal(discord.ui.Modal, title="Настройка дополн
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.bot.add_view(GiveawayPublicView())
         self.finish_loop.start()
 
     def cog_unload(self):
