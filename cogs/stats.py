@@ -27,8 +27,8 @@ class StatsCog(commands.Cog):
         self.bot = bot
 
     async def schedule_bump_reminder(self, channel: discord.TextChannel):
-        """Отправляет напоминание через 2 часа и 5 минут (7500 секунд)."""
-        await asyncio.sleep(7500)
+        """Отправляет напоминание через 2 часа (7200 секунд)."""
+        await asyncio.sleep(7200)
         try:
             await channel.send(BUMP_REMINDER_MESSAGE)
         except discord.DiscordException:
