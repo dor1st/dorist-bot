@@ -277,7 +277,7 @@ class ShopSelect(discord.ui.Select):
             ephemeral=True
         )
 
-def create_shop_embed(category_key: str) -> discord.Embed:
+def create_shop_embed(category_key: str, user: discord.User | discord.Member) -> discord.Embed:
     category_data = SHOP_DATA.get(category_key, {"items": []})
     
     description_lines = []
@@ -293,6 +293,12 @@ def create_shop_embed(category_key: str) -> discord.Embed:
         color=0x383838,
         description="\n".join(description_lines)
     )
+    
+    displayname = user.display_name
+    cash, bank = get_user_balance(user.id)
+    balance = f"{cash + bank:,}"
+    
+    embed.set_footer(text=f"Вызвано: {displayname} • Баланс: {balance} • {config.FOOTER_TEXT}")
     return embed
 
 def create_shop_main_embed() -> discord.Embed:
