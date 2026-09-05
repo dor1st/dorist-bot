@@ -64,6 +64,7 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "shop": False,
     "inventory": False,
     "itemtake": True,
+    "restock": True,
 
     # Общие команды и статистика
     "messages": False,
@@ -136,7 +137,18 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Владелец",
         "emoji": "<:sparkles:1522342290494849034>",
         "roles": [1322962317885046844, 1502684875868737796],
-        "commands": ["deletelog", "resetlogs", "config", "addmoney", "removemoney", "summaries", "itemtake", "deletegiveaway", "deleteinvite",],
+        "commands": [
+            "deletelog", 
+            "resetlogs", 
+            "config", 
+            "addmoney", 
+            "removemoney", 
+            "summaries", 
+            "itemtake", 
+            "deletegiveaway", 
+            "deleteinvite", 
+            "restock",
+        ],
     },
 }
 
@@ -180,6 +192,7 @@ COMMAND_USAGE_HELP = {
     "shop": "`.shop` - Просмотреть магазин предметов.",
     "inventory": "`.inventory` - Просмотреть свой инвентарь и купленные предметы.",
     "itemtake": "`.itemtake [ID / упоминание]` - Забрать предмет у пользователя.",
+    "restock": "`.restock` - Пополнить товар в магазине до начального количества (только для владельца).",
     
     # Общие команды и статистика
     "messages": "`.messages [ID / упоминание]` - Просмотреть количество текстовых сообщений пользователя.",
