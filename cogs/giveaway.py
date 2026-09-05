@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands, tasks
 
 import config
-from database import giveaways_col, users_col
+from database import giveaways_col, users_col, message_stats_col, bump_stats_col
 from utils import check_access_decorator, make_error_embed, make_status_embed, build_command_help_embed
 
 
@@ -17,6 +17,10 @@ SETUP_TIMEOUT = getattr(config, "SETUP_TIMEOUT", 300)
 PARTICIPANTS_PER_PAGE = 10
 
 BONUS_TIME_ROLE_ID = getattr(config, "BONUS_TIME_ROLE_ID", 1545156954807337011)
+
+DEFAULT_BONUS_ROLES = {
+    1528430151581437962: 2,
+}
 
 
 def utcnow() -> datetime:
@@ -106,6 +110,30 @@ def check_user_eligibility(member: discord.Member, doc: dict) -> tuple[bool, lis
     if total_invites < min_invites:
         missing_reqs.append(f"<a:alert:1544047350345891851> Недостаточно приглашений: **{total_invites} / {min_invites}**")
 
+    counting_channel_id = config.CONFIG.get("counting_channel_id")
+    min_counting = doc.get("min_counting_messages", 0)
+    if min_counting > 0 and counting_channel_id:
+        pipeline = [
+            {"$match": {"channel_id": counting_channel_id, "user_id": member.id}},
+            {"$group": {"_id": None, "total": {"$sum": "$count"}}}
+        ]
+        res = list(message_stats_col.aggregate(pipeline))
+        user_counting = res[0]["total"] if res else 0
+        if user_counting < min_counting:
+            missing_reqs.append(f"<a:alert:1544047350345891851> Недостаточно сообщений в считалке: **{user_counting} / {min_counting}**")
+
+    bump_channel_id = config.CONFIG.get("bump_channel_id")
+    min_bumps = doc.get("min_bumps", 0)
+    if min_bumps > 0 and bump_channel_id:
+        pipeline = [
+            {"$match": {"channel_id": bump_channel_id, "user_id": member.id}},
+            {"$group": {"_id": None, "total": {"$sum": "$count"}}}
+        ]
+        res = list(bump_stats_col.aggregate(pipeline))
+        user_bumps = res[0]["total"] if res else 0
+        if user_bumps < min_bumps:
+            missing_reqs.append(f"<a:alert:1544047350345891851> Недостаточно бампов: **{user_bumps} / {min_bumps}**")
+
     required_roles = [int(r) for r in doc.get("required_roles", [])]
     if required_roles:
         member_role_ids = {r.id for r in member.roles}
@@ -135,6 +163,8 @@ def build_giveaway_embeds(
     required_roles: list[int],
     min_messages: int,
     min_invites: int,
+    min_counting_messages: int = 0,
+    min_bumps: int = 0,
     bonus_roles: dict[int, int],
     claim_time: str = "—",
     ended: bool = False,
@@ -173,6 +203,10 @@ def build_giveaway_embeds(
         requirements.append(f"- Сообщений: **{min_messages}**+")
     if min_invites > 0:
         requirements.append(f"- Приглашений: **{min_invites}**+")
+    if min_counting_messages > 0:
+        requirements.append(f"- Сообщений в считалке: **{min_counting_messages}**+")
+    if min_bumps > 0:
+        requirements.append(f"- Бампов: **{min_bumps}**+")
     if required_roles:
         mode_text = "все" if role_mode == "all" else "одна из"
         guild = getattr(host, "guild", None)
@@ -184,11 +218,16 @@ def build_giveaway_embeds(
         lines.append("<:buildercap:1541377896189534238> **Требования:**")
         lines.extend(requirements)
 
-    if bonus_roles:
+    display_bonus_roles = {
+        role_id: entries for role_id, entries in bonus_roles.items() 
+        if role_id not in DEFAULT_BONUS_ROLES
+    }
+
+    if display_bonus_roles:
         lines.append("")
         lines.append("<:buildercap:1541377896189534238> **Дополнительные шансы:**")
         guild = getattr(host, "guild", None)
-        for role_id, entries in bonus_roles.items():
+        for role_id, entries in display_bonus_roles.items():
             role_name = guild.get_role(int(role_id)).mention if guild and guild.get_role(int(role_id)) else f"`{role_id}`"
             lines.append(f"- {role_name}: **+{entries} доп. шансов**")
 
@@ -372,9 +411,13 @@ class GiveawaySetupView(discord.ui.View):
         self.role_mode = "all"
         self.required_roles: list[int] = []
         self.ping_roles: list[int] = []
+        self.bonus_roles: dict[int, int] = {}
+        self.bonus_roles = {**DEFAULT_BONUS_ROLES}
+
         self.min_messages = 0
         self.min_invites = 0
-        self.bonus_roles: dict[int, int] = {}
+        self.min_counting_messages = 0
+        self.min_bumps = 0
 
         self.setup_message: discord.Message | None = None
 
@@ -432,7 +475,9 @@ class GiveawaySetupView(discord.ui.View):
             name="3. Требования",
             value=(
                 f"• Минимум сообщений: **{self.min_messages}**\n"
-                f"• Минимум приглашений: **{self.min_invites}**"
+                f"• Минимум приглашений: **{self.min_invites}**\n"
+                f"• Минимум в считалке: **{self.min_counting_messages}**\n"
+                f"• Минимум бампов: **{self.min_bumps}**"
             ),
             inline=False,
         )
@@ -588,6 +633,8 @@ class GiveawaySetupView(discord.ui.View):
             "required_roles": self.required_roles,
             "min_messages": self.min_messages,
             "min_invites": self.min_invites,
+            "min_counting_messages": self.min_counting_messages,
+            "min_bumps": self.min_bumps,
             "bonus_roles": {str(role_id): entries for role_id, entries in self.bonus_roles.items()},
             "eligible_user_ids": [],
         }
@@ -777,25 +824,47 @@ class RequirementsModal(
         max_length=10,
     )
 
+    min_counting_messages = discord.ui.TextInput(
+        label="Мин. сообщений в считалке",
+        placeholder="0",
+        required=True,
+        max_length=10,
+    )
+
+    min_bumps = discord.ui.TextInput(
+        label="Минимальное количество бампов",
+        placeholder="0",
+        required=True,
+        max_length=10,
+    )
+
     def __init__(self, setup: GiveawaySetupView):
         super().__init__()
         self.setup = setup
+        self.min_messages.default = str(setup.min_messages)
+        self.min_invites.default = str(setup.min_invites)
+        self.min_counting_messages.default = str(setup.min_counting_messages)
+        self.min_bumps.default = str(setup.min_bumps)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
             messages = int(str(self.min_messages.value).strip())
             invites = int(str(self.min_invites.value).strip())
-            if messages < 0 or invites < 0:
+            counting = int(str(self.min_counting_messages.value).strip())
+            bumps = int(str(self.min_bumps.value).strip())
+            if messages < 0 or invites < 0 or counting < 0 or bumps < 0:
                 raise ValueError
         except ValueError:
             await interaction.response.send_message(
-                "Оба значения должны быть целыми числами от 0.",
+                "Все значения должны быть целыми числами от 0.",
                 ephemeral=True,
             )
             return
 
         self.setup.min_messages = messages
         self.setup.min_invites = invites
+        self.setup.min_counting_messages = counting
+        self.setup.min_bumps = bumps
         await self.setup.refresh_setup_message()
         await interaction.response.send_message(
             "Требования сохранены.",
