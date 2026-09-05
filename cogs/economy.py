@@ -208,7 +208,7 @@ class ShopSelect(discord.ui.Select):
         for item in category_data["items"][:25]:
             options.append(
                 discord.SelectOption(
-                    label=item["display_name"][:100],  # Название в дроп-ауте
+                    label=item["display_name"][:100],
                     value=item["id"],
                     description=f"Цена: {item['price']:,} коинов"[:100],
                     emoji="<:arrow:1537827656043728956>"
@@ -231,7 +231,6 @@ class ShopSelect(discord.ui.Select):
         if not selected_item:
             return await interaction.response.send_message("Товар не найден.", ephemeral=True)
 
-        # Проверка инвентаря на предмет уникальности (если stackable = False)
         user_doc = users_col.find_one({"_id": interaction.user.id}) or {}
         inventory = user_doc.get("inventory", [])
         
@@ -249,17 +248,21 @@ class ShopSelect(discord.ui.Select):
                 ephemeral=True
             )
 
-        # Выдача роли (если есть)
         guild = interaction.guild
-        if guild and "role_id" in selected_item:
-            role = guild.get_role(selected_item["role_id"])
-            if role:
-                try:
-                    await interaction.user.add_roles(role, reason="Покупка в магазине")
-                except discord.Forbidden:
-                    return await interaction.response.send_message("<a:alert:1544047350345891851> У бота недостаточно прав для выдачи этой роли.", ephemeral=True)
+        
+        if guild and ("role_id" in selected_item or self.category_key == "roles"):
+            role_id = selected_item.get("role_id")
+            if role_id:
+                role = guild.get_role(role_id)
+                if role:
+                    try:
+                        await interaction.user.add_roles(role, reason="Покупка в магазине ролей")
+                    except discord.Forbidden:
+                        return await interaction.response.send_message(
+                            "<a:alert:1544047350345891851> У бота недостаточно прав для выдачи этой роли. Обратитесь к администрации.", 
+                            ephemeral=True
+                        )
 
-        # Списание средств
         if bank >= selected_item["price"]:
             update_user_balance_delta(interaction.user.id, bank_delta=-selected_item["price"])
         else:
