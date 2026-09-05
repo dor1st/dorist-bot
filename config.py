@@ -61,6 +61,9 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "rob": True,
     "slotmachine": False,
     "roll": False,
+    "shop": False,
+    "inventory": False,
+    "itemtake": True,
 
     # Общие команды и статистика
     "messages": False,
@@ -91,7 +94,9 @@ PERMISSION_GROUPS_DEFAULT = {
             "rob",
             "slotmachine",
             "roll",
-            "leaderboard"
+            "leaderboard",
+            "shop",
+            "inventory",
         ],
     },
     "support": {
@@ -118,8 +123,6 @@ PERMISSION_GROUPS_DEFAULT = {
         "roles": [1542602508252487710, 1501503300200304640],
         "commands": [
             "deleteticket",
-            "deletegiveaway",
-            "deleteinvite",
             "invitelogs",
             "giveawaylogs",
             "loginvite",
@@ -133,7 +136,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "name": "Владелец",
         "emoji": "<:sparkles:1522342290494849034>",
         "roles": [1322962317885046844, 1502684875868737796],
-        "commands": ["deletelog", "resetlogs", "config", "addmoney", "removemoney", "summaries"],
+        "commands": ["deletelog", "resetlogs", "config", "addmoney", "removemoney", "summaries", "itemtake", "deletegiveaway", "deleteinvite",],
     },
 }
 
@@ -174,6 +177,9 @@ COMMAND_USAGE_HELP = {
     "rob": "`.rob [ID / упоминание]` - Попытаться ограбить наличные другого игрока.",
     "slotmachine": "`.slotmachine [ставка]` - Сыграть в слот-машину на наличные.",
     "roll": "`.roll [ставка] [1-6]` - Сыграть в кости на число от 1 до 6.",
+    "shop": "`.shop` - Просмотреть магазин предметов.",
+    "inventory": "`.inventory` - Просмотреть свой инвентарь и купленные предметы.",
+    "itemtake": "`.itemtake [ID / упоминание]` - Забрать предмет у пользователя.",
     
     # Общие команды и статистика
     "messages": "`.messages [ID / упоминание]` - Просмотреть количество текстовых сообщений пользователя.",
@@ -200,6 +206,8 @@ HELP_CATEGORIES = {
             "> `.rob` - *Попытаться ограбить наличка другого игрока.*",
             "> `.slotmachine` - *Сыграть в слот-машину.*",
             "> `.roll` - *Сыграть в кости на число 1-6.*",
+            "> `.shop` - *Просмотреть магазин предметов.*",
+            "> `.inventory` - *Просмотреть свой инвентарь и купленные предметы.*",
         ]
     },
     "tickets": {
