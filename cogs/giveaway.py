@@ -1331,6 +1331,82 @@ class GiveawayCog(commands.Cog):
             f"       **<:arrow:1537827656043728956> Роль <@&{BONUS_TIME_ROLE_ID}> даёт +3 дополнительных часа на получение.**"
         )
 
+    @giveaway_group.command(name="refresh", aliases=["ref"])
+    @check_access_decorator("giveaway")
+    async def giveaway_refresh(self, ctx: commands.Context, message_id: str):
+        if not ctx.guild:
+            return
+
+        try:
+            message_id_int = int(message_id)
+        except ValueError:
+            await ctx.send(embed=make_error_embed("Ошибка", "ID сообщения должен быть числом."))
+            return
+
+        doc = giveaways_col.find_one(
+            {
+                "type": "giveaway",
+                "guild_id": ctx.guild.id,
+                "message_id": message_id_int,
+                "status": "active",
+            }
+        )
+
+        if not doc:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Розыгрыш не найден",
+                    "Активный розыгрыш с таким ID не найден.",
+                )
+            )
+            return
+
+        message = await self._get_giveaway_message(doc)
+        if not message:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Ошибка",
+                    "Не удалось найти сообщение розыгрыша в канале.",
+                )
+            )
+            return
+
+        guild = ctx.guild
+        host = guild.get_member(int(doc["host_id"])) or self.bot.user
+
+        main_embed, _ = build_giveaway_embeds(
+            prize=doc["prize"],
+            host=host,
+            ends_at=doc["ends_at"],
+            winners_count=doc["winners_count"],
+            participant_count=doc.get("participant_count", 0),
+            role_mode=doc.get("role_mode"),
+            required_roles=doc.get("required_roles", []),
+            min_messages=doc.get("min_messages", 0),
+            min_invites=doc.get("min_invites", 0),
+            min_counting_messages=doc.get("min_counting_messages", 0),
+            min_bumps=doc.get("min_bumps", 0),
+            bonus_roles={int(k): int(v) for k, v in doc.get("bonus_roles", {}).items()},
+            claim_time=doc.get("claim_time", "—"),
+        )
+
+        try:
+            await message.edit(embed=main_embed, view=GiveawayPublicView())
+            await ctx.send(
+                embed=make_status_embed(
+                    "Успешно",
+                    f"Розыгрыш `{message_id_int}` обновлен, лишний эмбед удален.",
+                    "success",
+                )
+            )
+        except discord.HTTPException:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Ошибка",
+                    "Не удалось обновить сообщение розыгрыша.",
+                )
+            )
+
     @giveaway_group.command(name="delete", aliases=["del"])
     @check_access_decorator("giveaway")
     async def giveaway_delete(self, ctx: commands.Context, message_id: str):
