@@ -431,6 +431,10 @@ class GiveawaySetupView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
+    async def update_message(self, interaction: discord.Interaction, message: str):
+        await self.refresh_setup_message()
+        await interaction.response.send_message(message, ephemeral=True)
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.ctx.author.id:
             await interaction.response.send_message(
