@@ -395,7 +395,7 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
         description_lines.append("")
 
     embed = discord.Embed(
-        title=f"🛒 **Магазин предметов**",
+        title=f"<:cart:1546089572994383892> **Магазин предметов**",
         color=0x383838,
         description="\n".join(description_lines)
     )
@@ -407,7 +407,7 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
 
 def create_shop_main_embed() -> discord.Embed:
     embed = discord.Embed(
-        title="🛒 **Магазин предметов**",
+        title="<:cart:1546089572994383892> **Магазин предметов**",
         color=0x383838,
         description="Выберите категорию ниже, чтобы просмотреть доступные товары.\n\n"
                     "**Доступные вам категории:**\n" +
