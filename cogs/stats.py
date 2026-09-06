@@ -218,6 +218,28 @@ class StatsCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
+    @commands.command(name="inviter")
+    @check_access_decorator("inviter")
+    async def inviter_cmd(self, ctx: commands.Context, invited_id: int):
+        doc = invites_col.find_one({"invited_id": invited_id})
+        if not doc:
+            return ctx.send if False else await ctx.send(
+                embed=make_error_embed("Информация", f"За пользователя <@!{invited_id}> (`{invited_id}`) никто не получал награду в базе инвайтов.")
+            )
+
+        embed = discord.Embed(
+            title="<:info:1522329987514892398> Информация об инвайте",
+            color=config.EMBED_COLOR
+        )
+        embed.add_field(name="Приглашенный", value=f"<@!{doc['invited_id']}> (`{doc['invited_id']}`)", inline=False)
+        embed.add_field(name="Кто пригласил", value=f"<@!{doc['inviter_id']}> (`{doc['inviter_id']}`)", inline=False)
+        embed.add_field(name="Приз", value=f"{doc['prize']} ({doc['amount']} шт.)", inline=True)
+        embed.add_field(name="Внес в базу (Staff)", value=f"<@!{doc['staff_id']}>", inline=True)
+        embed.add_field(name="Дата записи", value=discord.utils.format_dt(doc['created_at'], "f"), inline=False)
+        embed.set_footer(text=config.FOOTER_TEXT)
+        
+        await ctx.send(embed=embed)
+
     @commands.command(name="loginvite")
     @check_access_decorator("loginvite")
     async def loginvite_cmd(
