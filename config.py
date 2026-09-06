@@ -284,7 +284,7 @@ SHOP_DATA = {
                 "role_id": 1528419077843058698,
                 "price": 1000,
                 "stackable": False,
-                "description": "Даёт дополнительные 10 коинов к ежедневному доходу.\nВыдаётся навсегда.\n**",
+                "description": "Даёт дополнительные 10 коинов к ежедневному доходу.\nВыдаётся навсегда.",
                 "startstock": 10,
             },
             {
@@ -293,7 +293,7 @@ SHOP_DATA = {
                 "role_id": 1528417549702660260,
                 "price": 5000,
                 "stackable": False,
-                "description": "Даёт дополнительные 100 коинов к ежедневному доходу.\nВыдаётся навсегда.\n**",
+                "description": "Даёт дополнительные 100 коинов к ежедневному доходу.\nВыдаётся навсегда.",
                 "startstock": 10,
             },
             {
@@ -302,7 +302,7 @@ SHOP_DATA = {
                 "role_id": 1528430151581437962,
                 "price": 2500,
                 "stackable": False,
-                "description": "Даёт дополнительные шансы в розыгрышах и дропах.\nВыдаётся навсегда.\n**",
+                "description": "Даёт дополнительные шансы в розыгрышах и дропах.\nВыдаётся навсегда.",
                 "startstock": 10,
             },
             {
@@ -311,7 +311,7 @@ SHOP_DATA = {
                 "role_id": 1528428889703977171,
                 "price": 5000,
                 "stackable": False,
-                "description": "Даёт доступ к прикреплению фото и файлов в каналах.\nВыдаётся навсегда.\n**",
+                "description": "Даёт доступ к прикреплению фото и файлов в каналах.\nВыдаётся навсегда.",
                 "startstock": 10,
             },
             {
@@ -320,7 +320,7 @@ SHOP_DATA = {
                 "role_id": 1528428801032327299,
                 "price": 3000,
                 "stackable": False,
-                "description": "Даёт доступ к прикреплению Embed к ссылкам и GIF в каналах.\nВыдаётся навсегда.\n**",
+                "description": "Даёт доступ к прикреплению Embed к ссылкам и GIF в каналах.\nВыдаётся навсегда.",
                 "startstock": 10,
             }
         ]
@@ -334,7 +334,7 @@ SHOP_DATA = {
                 "name": "15 Робуксов",
                 "price": 2500,
                 "stackable": True,
-                "description": "Реальные 15 робуксов в Роблокс.\n**",
+                "description": "Реальные 15 робуксов в Роблокс.",
                 "startstock": 10,
             },
             {
@@ -342,7 +342,7 @@ SHOP_DATA = {
                 "name": "50 Робуксов",
                 "price": 7000,
                 "stackable": True,
-                "description": "Реальные 50 робуксов в Роблокс.\n**",
+                "description": "Реальные 50 робуксов в Роблокс.",
                 "startstock": 10,
             },
             {
@@ -350,7 +350,7 @@ SHOP_DATA = {
                 "name": "100 Робуксов",
                 "price": 15000,
                 "stackable": True,
-                "description": "Реальные 100 робуксов в Роблокс.\n**",
+                "description": "Реальные 100 робуксов в Роблокс.",
                 "startstock": 10,
             },
             {
@@ -358,11 +358,10 @@ SHOP_DATA = {
                 "name": "Double Tools",
                 "price": 15000,
                 "stackable": True,
-                "description": "Геймпасс Double Tools в Residence Massacre.\n**",
+                "description": "Геймпасс Double Tools в Residence Massacre.",
                 "startstock": 10,
             },
         ]
-
     }
 }
 
