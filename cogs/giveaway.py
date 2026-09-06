@@ -899,15 +899,15 @@ class BonusRoleSelect(discord.ui.RoleSelect):
     def __init__(self, setup: GiveawaySetupView):
         self.setup = setup
         super().__init__(
-            placeholder="Выберите роль для дополнительного шанса",
+            placeholder="Выберите роль для доп. шансов",
             min_values=1,
             max_values=1,
             row=0,
         )
 
     async def callback(self, interaction: discord.Interaction):
-        role = self.values[0]
-        await interaction.response.send_modal(BonusEntriesModal(self.setup, role.id))
+        role_id = self.values[0].id
+        await interaction.response.send_modal(BonusEntriesModal(self.setup, role_id))
 
 
 class BonusEntriesModal(discord.ui.Modal, title="Настройка дополнительных шансов"):
@@ -924,7 +924,7 @@ class BonusEntriesModal(discord.ui.Modal, title="Настройка дополн
         self.setup = setup
         self.role_id = role_id
 
-    async def callback(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction):
         if not self.entries.value.isdigit():
             await interaction.response.send_message(
                 "Пожалуйста, введите корректное число.", ephemeral=True
@@ -943,10 +943,8 @@ class BonusEntriesModal(discord.ui.Modal, title="Настройка дополн
             self.setup.bonus_roles[self.role_id] = count
             msg = f"Для роли <@&{self.role_id}> установлено значение +{count} доп. шансов."
 
-        if hasattr(self.setup, "update_message"):
-            await self.setup.update_message(interaction, msg)
-        else:
-            await interaction.response.send_message(msg, ephemeral=True)
+        await self.setup.refresh_setup_message()
+        await interaction.response.send_message(msg, ephemeral=True)
 
 
 class GiveawayCog(commands.Cog):
