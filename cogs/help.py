@@ -56,6 +56,7 @@ def build_help_embed(category: str = "main", user: discord.Member | discord.User
         embed.description = "\n".join(cat_data["commands"])
 
     user_group_display = "Владелец" if is_owner_user(user) else ("Участник" if "everyone" in user_groups else "Гость")
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
     embed.set_footer(text=f"Вызвано: {user.display_name} • Группа: {user_group_display} • {config.FOOTER_TEXT}")
     return embed
 
@@ -129,6 +130,7 @@ class HelpCog(commands.Cog):
             ),
             color=config.EMBED_COLOR
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
@@ -149,6 +151,7 @@ class HelpCog(commands.Cog):
             ),
             color=config.EMBED_COLOR
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
@@ -169,6 +172,7 @@ class HelpCog(commands.Cog):
             ),
             color=config.EMBED_COLOR
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
@@ -190,6 +194,7 @@ class HelpCog(commands.Cog):
             ),
             color=config.EMBED_COLOR
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
@@ -210,6 +215,7 @@ class HelpCog(commands.Cog):
             ),
             color=config.EMBED_COLOR
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
@@ -230,6 +236,7 @@ class HelpCog(commands.Cog):
             ),
             color=config.EMBED_COLOR
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 

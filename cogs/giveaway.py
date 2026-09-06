@@ -183,6 +183,8 @@ def build_giveaway_embeds(
         icon_url=host.guild.icon.url if hasattr(host, "guild") and host.guild and host.guild.icon else None,
     )
 
+    main_embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
+
     lines = []
 
     if ended:
@@ -278,6 +280,7 @@ class ParticipantsPaginatedView(discord.ui.View):
         embed.set_footer(
             text=f"Страница {self.current_page + 1} из {self.max_pages} • Сегодня в {utcnow().strftime('%H:%M')}"
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         return embed
 
     @discord.ui.button(emoji="<:darkleft:1543989641751957565>", style=discord.ButtonStyle.secondary)
@@ -481,6 +484,8 @@ class GiveawaySetupView(discord.ui.View):
             ),
             inline=False,
         )
+
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
 
         if self.bonus_roles:
             bonus_text = "\n".join(
@@ -1112,6 +1117,7 @@ class GiveawayCog(commands.Cog):
             ),
             color=config.EMBED_COLOR,
         )
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Розыгрыши"))
         await ctx.send(embed=embed)
 
@@ -1455,6 +1461,7 @@ class GiveawayCog(commands.Cog):
                 inline=False,
             )
 
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Розыгрыши"))
         await ctx.send(embed=embed)
 

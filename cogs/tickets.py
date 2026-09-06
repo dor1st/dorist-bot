@@ -59,6 +59,7 @@ class TicketLogsView(discord.ui.View):
             )
 
         embed.description = "\n".join(description_lines)
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(
             text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.logs)} логов) • {config.FOOTER_TEXT}"
         )
@@ -136,6 +137,7 @@ class DeletedTicketLogsView(discord.ui.View):
             )
 
         embed.description = "\n".join(description_lines)
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(
             text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.logs)} удалений) • {config.FOOTER_TEXT}"
         )
@@ -255,6 +257,7 @@ class TicketsCog(commands.Cog):
             inline=False,
         )
         embed.add_field(name="Категория", value=category, inline=False)
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
 
         await ctx.send(embed=embed)
@@ -444,6 +447,7 @@ class TicketsCog(commands.Cog):
             inline=True,
         )
 
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
