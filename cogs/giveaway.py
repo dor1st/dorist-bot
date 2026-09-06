@@ -169,7 +169,7 @@ def build_giveaway_embeds(
     claim_time: str = "—",
     ended: bool = False,
     winner_ids: list[int] | None = None,
-) -> tuple[discord.Embed, discord.Embed]:
+) -> discord.Embed:
 
     main_embed = discord.Embed(
         title=prize,
@@ -251,9 +251,7 @@ def build_giveaway_embeds(
             lines.append("<a:alert:1544047350345891851> Подходящих участников не найдено.")
 
     main_embed.description = "\n".join(lines)
-    preview_embed.description = main_embed.description
-
-    return (main_embed, preview_embed)
+    return main_embed
 
 
 class ParticipantsPaginatedView(discord.ui.View):
@@ -623,7 +621,7 @@ class GiveawaySetupView(discord.ui.View):
         try:
             message = await channel.send(
                 content=content_ping if content_ping else None,
-                embed=main_embed,  # В сам канал отправляется основной эмбед розыгрыша
+                embed=main_embed,
             )
             public_view = GiveawayPublicView()
             await message.edit(view=public_view)
