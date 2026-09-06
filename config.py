@@ -15,6 +15,8 @@ COIN_EMOJI = "<:coin:1545425273686597742>"
 MAX_DURATION = timedelta(days=31)
 SETUP_TIMEOUT = 900
 
+COIN_PER_ROBUX = 200
+
 LOGS_PER_PAGE = 3
 
 # Таблица дохода с ролей для команды .income (ID_РОЛИ: СУММА_ДОХОДА)
@@ -332,7 +334,7 @@ SHOP_DATA = {
             {
                 "id": "robux_15",
                 "name": "15 Робуксов",
-                "price": 2500,
+                "price": COIN_PER_ROBUX*15,
                 "stackable": True,
                 "description": "Реальные 15 робуксов в Роблокс.",
                 "startstock": 10,
@@ -340,7 +342,7 @@ SHOP_DATA = {
             {
                 "id": "robux_50",
                 "name": "50 Робуксов",
-                "price": 7000,
+                "price": COIN_PER_ROBUX*40,
                 "stackable": True,
                 "description": "Реальные 50 робуксов в Роблокс.",
                 "startstock": 10,
@@ -348,21 +350,75 @@ SHOP_DATA = {
             {
                 "id": "robux_100",
                 "name": "100 Робуксов",
-                "price": 15000,
+                "price": COIN_PER_ROBUX*80,
                 "stackable": True,
                 "description": "Реальные 100 робуксов в Роблокс.",
+                "startstock": 10,
+            },
+        ]
+    },
+    "gamepass": {
+        "label": "Геймпассы",
+        "emoji": "<:plush:1543996244857327777>",
+        "items": [
+            {
+                "id": "double_coins",
+                "name": "Double Coins",
+                "price": COIN_PER_ROBUX*300,
+                "stackable": False,
+                "description": "Геймпасс в Residence Massacre.",
+                "startstock": 10,
+            },
+            {
+                "id": "iron_lungs",
+                "name": "Iron Lungs",
+                "price": COIN_PER_ROBUX*200,
+                "stackable": False,
+                "description": "Геймпасс в Residence Massacre.",
+                "startstock": 10,
+            },
+            {
+                "id": "better_flashlight",
+                "name": "Better Flashlight",
+                "price": COIN_PER_ROBUX*150,
+                "stackable": False,
+                "description": "Геймпасс в Residence Massacre.",
+                "startstock": 10,
+            },
+            {
+                "id": "vip",
+                "name": "VIP",
+                "price": COIN_PER_ROBUX*120,
+                "stackable": False,
+                "description": "Геймпасс в Residence Massacre.",
+                "startstock": 10,
+            },
+            {
+                "id": "double_hats",
+                "name": "Double Hats",
+                "price": COIN_PER_ROBUX*100,
+                "stackable": False,
+                "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
             },
             {
                 "id": "double_tools",
                 "name": "Double Tools",
-                "price": 15000,
-                "stackable": True,
-                "description": "Геймпасс Double Tools в Residence Massacre.",
+                "price": COIN_PER_ROBUX*100,
+                "stackable": False,
+                "description": "Геймпасс в Residence Massacre.",
+                "startstock": 10,
+            },
+            {
+                "id": "color_picker",
+                "name": "Color Picker",
+                "price": COIN_PER_ROBUX*75,
+                "stackable": False,
+                "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
             },
         ]
-    }
+    },
 }
 
 CONFIG = {

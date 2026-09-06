@@ -169,16 +169,26 @@ def build_giveaway_embeds(
     claim_time: str = "—",
     ended: bool = False,
     winner_ids: list[int] | None = None,
-) -> tuple[discord.Embed]:
+) -> tuple[discord.Embed, discord.Embed]:
 
     main_embed = discord.Embed(
         title=prize,
+        color=config.EMBED_COLOR,
+    )
+    
+    # Эмбед предварительного просмотра / превью
+    preview_embed = discord.Embed(
+        title="Предварительный просмотр розыгрыша",
         color=config.EMBED_COLOR,
     )
 
     formatted_claim = format_claim_time(claim_time)
 
     main_embed.set_author(
+        name="тусовка дориста",
+        icon_url=host.guild.icon.url if hasattr(host, "guild") and host.guild and host.guild.icon else None,
+    )
+    preview_embed.set_author(
         name="тусовка дориста",
         icon_url=host.guild.icon.url if hasattr(host, "guild") and host.guild and host.guild.icon else None,
     )
@@ -206,7 +216,7 @@ def build_giveaway_embeds(
     if min_counting_messages > 0:
         requirements.append(f"- Сообщений в считалке: **{min_counting_messages}**+")
     if min_bumps > 0:
-        requirements.append(f"- Бампов: **{min_bumps}**+")
+        requirements.append(f"- Мин. бампов: **{min_bumps}**+")
     if required_roles:
         mode_text = "все" if role_mode == "all" else "одна из"
         guild = getattr(host, "guild", None)
@@ -215,7 +225,7 @@ def build_giveaway_embeds(
 
     if requirements:
         lines.append("")
-        lines.append("<:buildercap:1541377896189534238> **Требования:**")
+        lines.append("<:buildercap:1541377896189534238> **Условия:**")
         lines.extend(requirements)
 
     display_bonus_roles = {
@@ -241,8 +251,9 @@ def build_giveaway_embeds(
             lines.append("<a:alert:1544047350345891851> Подходящих участников не найдено.")
 
     main_embed.description = "\n".join(lines)
+    preview_embed.description = main_embed.description
 
-    return (main_embed,)
+    return (main_embed, preview_embed)
 
 
 class ParticipantsPaginatedView(discord.ui.View):
@@ -424,28 +435,28 @@ class GiveawaySetupView(discord.ui.View):
     async def refresh_setup_message(self):
         if self.setup_message:
             try:
+                ends_at = utcnow() + self.duration
+                _, preview_embed = build_giveaway_embeds(
+                    prize=self.prize,
+                    host=self.ctx.author,
+                    ends_at=ends_at,
+                    winners_count=self.winners_count,
+                    participant_count=0,
+                    role_mode=self.role_mode,
+                    required_roles=self.required_roles,
+                    min_messages=self.min_messages,
+                    min_invites=self.min_invites,
+                    min_counting_messages=self.min_counting_messages,
+                    min_bumps=self.min_bumps,
+                    bonus_roles=self.bonus_roles,
+                    claim_time=self.claim_time,
+                )
                 await self.setup_message.edit(
-                    embed=self.setup_embed(),
+                    embeds=[self.setup_embed(), preview_embed],
                     view=self,
                 )
             except discord.HTTPException:
                 pass
-
-    async def update_message(self, interaction: discord.Interaction, message: str):
-        await self.refresh_setup_message()
-        if interaction.response.is_done():
-            await interaction.followup.send(message, ephemeral=True)
-        else:
-            await interaction.response.send_message(message, ephemeral=True)
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message(
-                "Только автор создания розыгрыша может менять его настройки.",
-                ephemeral=True,
-            )
-            return False
-        return True
 
     def setup_embed(self) -> discord.Embed:
         role_mode_text = "Все из списка" if self.role_mode == "all" else "Одна из"
@@ -464,7 +475,7 @@ class GiveawaySetupView(discord.ui.View):
         )
 
         embed.add_field(
-            name="1. Роли (Требования)",
+            name="1. Роли (Условия)",
             value=(
                 f"**Режим:** {role_mode_text}\n"
                 f"**Роли:** {role_mentions(self.guild, self.required_roles)}"
@@ -479,12 +490,12 @@ class GiveawaySetupView(discord.ui.View):
         )
 
         embed.add_field(
-            name="3. Требования",
+            name="3. Условия",
             value=(
                 f"• Минимум сообщений: **{self.min_messages}**\n"
                 f"• Минимум приглашений: **{self.min_invites}**\n"
                 f"• Минимум в считалке: **{self.min_counting_messages}**\n"
-                f"• Минимум бампов: **{self.min_bumps}**"
+                f"• Мин. бампов: **{self.min_bumps}**"
             ),
             inline=False,
         )
@@ -589,7 +600,7 @@ class GiveawaySetupView(discord.ui.View):
 
         ends_at = utcnow() + self.duration
 
-        embeds = build_giveaway_embeds(
+        main_embed, preview_embed = build_giveaway_embeds(
             prize=self.prize,
             host=self.ctx.author,
             ends_at=ends_at,
@@ -599,6 +610,8 @@ class GiveawaySetupView(discord.ui.View):
             required_roles=self.required_roles,
             min_messages=self.min_messages,
             min_invites=self.min_invites,
+            min_counting_messages=self.min_counting_messages,
+            min_bumps=self.min_bumps,
             bonus_roles=self.bonus_roles,
             claim_time=self.claim_time,
         )
@@ -610,7 +623,7 @@ class GiveawaySetupView(discord.ui.View):
         try:
             message = await channel.send(
                 content=content_ping if content_ping else None,
-                embeds=list(embeds),
+                embed=main_embed,  # В сам канал отправляется основной эмбед розыгрыша
             )
             public_view = GiveawayPublicView()
             await message.edit(view=public_view)
@@ -815,7 +828,7 @@ class RequiredRoleSelect(discord.ui.RoleSelect):
 
 class RequirementsModal(
     discord.ui.Modal,
-    title="Требования розыгрыша",
+    title="Условия розыгрыша",
 ):
     min_messages = discord.ui.TextInput(
         label="Минимальное количество сообщений",
@@ -1181,8 +1194,25 @@ class GiveawayCog(commands.Cog):
             claim_time,
         )
 
+        dummy_ends = utcnow() + duration
+        main_prev, preview_prev = build_giveaway_embeds(
+            prize=prize,
+            host=ctx.author,
+            ends_at=dummy_ends,
+            winners_count=winners_count,
+            participant_count=0,
+            role_mode="all",
+            required_roles=[],
+            min_messages=0,
+            min_invites=0,
+            min_counting_messages=0,
+            min_bumps=0,
+            bonus_roles=view.bonus_roles,
+            claim_time=claim_time,
+        )
+
         setup_message = await ctx.send(
-            embed=view.setup_embed(),
+            embeds=[view.setup_embed(), preview_prev],
             view=view,
         )
         view.setup_message = setup_message
