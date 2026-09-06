@@ -168,30 +168,32 @@ def decrease_item_stock(item_id: str, amount: int = 1) -> int:
     return res["stock"] if res else 0
 
 class RestockSelect(discord.ui.Select):
-    def __init__(self):
+    def __init__(self, category_key: str):
+        self.category_key = category_key
+        category_data = SHOP_DATA.get(category_key, {"items": []})
+        
         options = []
-        for cat_key, cat_data in SHOP_DATA.items():
-            for item in cat_data["items"]:
-                options.append(
-                    discord.SelectOption(
-                        label=item["name"][:100],
-                        value=f"{cat_key}:{item['id']}",
-                        description=f"Категория: {cat_data['label']}"[:100],
-                        emoji="<:arrow:1537827656043728956>"
-                    )
+        for item in category_data["items"]:
+            options.append(
+                discord.SelectOption(
+                    label=item["name"][:100],
+                    value=item["id"],
+                    description=f"Цена: {item['price']:,} коинов"[:100],
+                    emoji="<:arrow:1537827656043728956>"
                 )
+            )
         
         if not options:
             options.append(discord.SelectOption(label="Нет товаров", value="none"))
 
-        super().__init__(placeholder="Выберите товар для пополнения...", min_values=1, max_values=1, options=options[:25])
+        super().__init__(placeholder=f"Выберите товар для пополнения ({category_data['label']})...", min_values=1, max_values=1, options=options[:25])
 
     async def callback(self, interaction: discord.Interaction):
         if self.values[0] == "none":
             return await interaction.response.send_message("Товары не найдены.", ephemeral=True)
 
-        cat_key, item_id = self.values[0].split(":")
-        category_data = SHOP_DATA.get(cat_key, {"items": []})
+        item_id = self.values[0]
+        category_data = SHOP_DATA.get(self.category_key, {"items": []})
         selected_item = next((item for item in category_data["items"] if item["id"] == item_id), None)
 
         if not selected_item:
@@ -214,9 +216,9 @@ class RestockSelect(discord.ui.Select):
 
 
 class RestockView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, category_key: str):
         super().__init__(timeout=60)
-        self.add_item(RestockSelect())
+        self.add_item(RestockSelect(category_key))
 
 class ItemTakeSelect(discord.ui.Select):
     def __init__(self, target_id: int):
@@ -527,12 +529,17 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="restock")
     @check_access_decorator("restock")
-    async def restock(self, ctx: commands.Context):
+    async def restock(self, ctx: commands.Context, category: str = None):
         if not is_owner_user(ctx.author):
             return await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
 
-        view = RestockView()
-        await ctx.send("Выберите товар, который нужно пополнить до начального количества:", view=view, ephemeral=True)
+        if not category or category.lower() not in SHOP_DATA:
+            valid_cats = ", ".join([f"`{cat}`" for cat in SHOP_DATA.keys()])
+            return await ctx.send(embed=make_error_embed("Ошибка", f"Укажите корректную категорию.\nДоступные категории: {valid_cats}"))
+
+        cat_key = category.lower()
+        view = RestockView(cat_key)
+        await ctx.send(f"Выберите товар из категории **{SHOP_DATA[cat_key]['label']}**, который нужно пополнить до начального количества:", view=view, ephemeral=True)
 
     @commands.command(name="inventory", aliases=["inv"])
     @check_access_decorator("inventory")
