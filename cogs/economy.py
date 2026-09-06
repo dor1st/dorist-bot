@@ -410,8 +410,8 @@ def create_shop_main_embed() -> discord.Embed:
         title="<:coin:1545425273686597742> Магазин предметов",
         color=0x383838,
         description="Выберите категорию ниже, чтобы просмотреть доступные товары.\n\n"
-                    "**Доступные вам категории**\n" +
-                    "\n".join([f"{cat_info['emoji']} {cat_info['label']}" for cat_info in SHOP_DATA.values()])
+                    "**Доступные вам категории:**\n" +
+                    "\n".join([f"> {cat_info['emoji']} {cat_info['label']}" for cat_info in SHOP_DATA.values()])
     )
     return embed
 
@@ -424,7 +424,6 @@ class ShopView(discord.ui.View):
     def update_components(self):
         self.clear_items()
         
-        # Кнопки категорий
         for cat_key, cat_info in SHOP_DATA.items():
             button = discord.ui.Button(
                 label=cat_info["label"],
