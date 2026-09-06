@@ -22,7 +22,8 @@ INITIAL_EXTENSIONS = [
     "cogs.help",
     "cogs.playerlogs",
     "cogs.giveaway",
-    "cogs.economy"
+    "cogs.economy",
+    "cogs.streak",
 ]
 
 @bot.event

@@ -658,6 +658,33 @@ class StatsCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
+    @leaderboard_group.command(name="streak", aliases=["st", " стрики"])
+    @check_access_decorator("leaderboard")
+    async def lb_streak(self, ctx: commands.Context):
+        pipeline = [
+            {"$match": {"streak.current": {"$gt": 0}}},
+            {"$sort": {"streak.current": -1}},
+            {"$limit": 5},
+            {"$project": {"_id": "$_id", "current": "$streak.current"}}
+        ]
+        top_data = list(users_col.aggregate(pipeline))
+
+        embed = discord.Embed(
+            title="<:leaderboard:1544301200894070844> Топ 5 по стрику активности",
+            color=config.EMBED_COLOR
+        )
+
+        lines = []
+        for i in range(1, 6):
+            if i <= len(top_data):
+                doc = top_data[i - 1]
+                lines.append(f"`{i}.` <@{doc['_id']}> - **{doc['current']}** дн.")
+            else:
+                lines.append(f"`{i}.` —")
+
+        embed.description = "\n".join(lines)
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(StatsCog(bot))

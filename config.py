@@ -75,6 +75,7 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "summaries": False,
     "help": False,
     "config": False,
+    "streak": False,
 }
 
 PERMISSION_GROUPS_DEFAULT = {
@@ -101,7 +102,8 @@ PERMISSION_GROUPS_DEFAULT = {
             "shop",
             "inventory",
             "summaries",
-            "userinfo"
+            "userinfo",
+            "streak"
         ],
     },
     "support": {
@@ -203,6 +205,7 @@ COMMAND_USAGE_HELP = {
     "summaries": "`.summaries` - Просмотреть сводную статистику.",
     "config": "`.config` - Настройка бота.",
     "help": "`.help [команда / категория]` - Показать справку по командам.",
+    "streak": "`.streak` [ID / упоминание] - Посмотреть стрик участника."
 }
 
 HELP_CATEGORIES = {
@@ -272,6 +275,7 @@ HELP_CATEGORIES = {
             "> `.userinfo` - *Посмотреть профиль, даты и роли участника.*",
             "> `.summaries` - *Посмотреть общие итоги и подсчет.*",
             "> `.leaderboard` - *Посмотреть текущий список лидеров в разных категориях.*"
+            "> `.streak` - *Посмотреть стрик участника*."
         ]
     }
 }
