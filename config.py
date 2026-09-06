@@ -281,47 +281,47 @@ SHOP_DATA = {
             {
                 "id": "role_1528419077843058698",
                 "name": "Роль Доход",
-                "display_name": "Роль Доход",
                 "role_id": 1528419077843058698,
                 "price": 1000,
                 "stackable": False,
-                "description": "Даёт дополнительные 10 коинов к ежедневному доходу.\nВыдаётся навсегда.\n**В наличии:** 10"
+                "description": "Даёт дополнительные 10 коинов к ежедневному доходу.\nВыдаётся навсегда.\n**",
+                "startstock": 10,
             },
             {
                 "id": "role_1528417549702660260",
                 "name": "Роль Доход+",
-                "display_name": "Роль Доход+",
                 "role_id": 1528417549702660260,
                 "price": 5000,
                 "stackable": False,
-                "description": "Даёт дополнительные 100 коинов к ежедневному доходу.\nВыдаётся навсегда.\n**В наличии:** 10"
+                "description": "Даёт дополнительные 100 коинов к ежедневному доходу.\nВыдаётся навсегда.\n**",
+                "startstock": 10,
             },
             {
                 "id": "role_1528430151581437962",
                 "name": "Роль Шансы",
-                "display_name": "Роль Шансы",
                 "role_id": 1528430151581437962,
                 "price": 2500,
                 "stackable": False,
-                "description": "Даёт дополнительные шансы в розыгрышах и дропах.\nВыдаётся навсегда.\n**В наличии:** 10"
+                "description": "Даёт дополнительные шансы в розыгрышах и дропах.\nВыдаётся навсегда.\n**",
+                "startstock": 10,
             },
             {
                 "id": "role_1528428889703977171",
                 "name": "Роль Attach Files",
-                "display_name": "Роль Attach Files",
                 "role_id": 1528428889703977171,
                 "price": 5000,
                 "stackable": False,
-                "description": "Даёт доступ к прикреплению фото и файлов в каналах.\nВыдаётся навсегда.\n**В наличии:** 10"
+                "description": "Даёт доступ к прикреплению фото и файлов в каналах.\nВыдаётся навсегда.\n**",
+                "startstock": 10,
             },
             {
                 "id": "role_1528428801032327299",
                 "name": "Роль Embed Links",
-                "display_name": "Роль Embed Links",
                 "role_id": 1528428801032327299,
                 "price": 3000,
                 "stackable": False,
-                "description": "Даёт доступ к прикреплению Embed к ссылкам и GIF в каналах.\nВыдаётся навсегда.\n**В наличии:** 10"
+                "description": "Даёт доступ к прикреплению Embed к ссылкам и GIF в каналах.\nВыдаётся навсегда.\n**",
+                "startstock": 10,
             }
         ]
     },
@@ -332,34 +332,34 @@ SHOP_DATA = {
             {
                 "id": "robux_15",
                 "name": "15 Робуксов",
-                "display_name": "15 Робуксов",
                 "price": 2500,
                 "stackable": True,
-                "description": "Реальные 15 робуксов в Роблокс.\n**В наличии:** 10"
+                "description": "Реальные 15 робуксов в Роблокс.\n**",
+                "startstock": 10,
             },
             {
                 "id": "robux_50",
                 "name": "50 Робуксов",
-                "display_name": "50 Робуксов",
                 "price": 7000,
                 "stackable": True,
-                "description": "Реальные 50 робуксов в Роблокс.\n**В наличии:** 10"
+                "description": "Реальные 50 робуксов в Роблокс.\n**",
+                "startstock": 10,
             },
             {
                 "id": "robux_100",
                 "name": "100 Робуксов",
-                "display_name": "100 Робуксов",
                 "price": 15000,
                 "stackable": True,
-                "description": "Реальные 100 робуксов в Роблокс.\n**В наличии:** 10"
+                "description": "Реальные 100 робуксов в Роблокс.\n**",
+                "startstock": 10,
             },
             {
                 "id": "double_tools",
                 "name": "Double Tools",
-                "display_name": "Геймпасс Double Tools",
                 "price": 15000,
                 "stackable": True,
-                "description": "Геймпасс Double Tools в Residence Massacre.\n**В наличии:** 10"
+                "description": "Геймпасс Double Tools в Residence Massacre.\n**",
+                "startstock": 10,
             },
         ]
 

@@ -174,7 +174,7 @@ class RestockSelect(discord.ui.Select):
             for item in cat_data["items"]:
                 options.append(
                     discord.SelectOption(
-                        label=item["display_name"][:100],
+                        label=item["name"][:100],  # Используем только name
                         value=f"{cat_key}:{item['id']}",
                         description=f"Категория: {cat_data['label']}"[:100],
                         emoji="<:arrow:1537827656043728956>"
@@ -343,7 +343,7 @@ class ShopSelect(discord.ui.Select):
         for item in category_data["items"][:25]:
             options.append(
                 discord.SelectOption(
-                    label=item["display_name"][:100],
+                    label=item["name"][:100],  # Используем только name
                     value=item["id"],
                     description=f"Цена: {item['price']:,} коинов"[:100],
                     emoji="<:arrow:1537827656043728956>"
@@ -445,22 +445,24 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
     
     description_lines = []
     for item in category_data["items"]:
+        # Название или пинг роли
         if "role_id" in item:
             description_lines.append(f"<:arrow:1537827656043728956> Роль <@&{item['role_id']}>")
         else:
-            description_lines.append(f"<:arrow:1537827656043728956> **{item['display_name']}**")
+            description_lines.append(f"<:arrow:1537827656043728956> **{item['name']}**")
             
         description_lines.append(f"> **Цена:** {item['price']:,}")
         
-        item_desc = item["description"]
-        stock_match = re.search(r"\*\*В наличии:\*\*\s*(\d+)", item_desc)
-        if stock_match:
-            default_stock = int(stock_match.group(1))
+        default_stock = item.get("startstock")
+        if default_stock is not None:
             real_stock = get_item_stock(item["id"], default_stock)
-            item_desc = re.sub(r"\*\*В наличии:\*\*\s*\d+", f"**В наличии:** {real_stock}", item_desc)
+            description_lines.append(f"> **В наличии:** {real_stock}")
 
-        for desc_line in item_desc.split("\n"):
+        for desc_line in item["description"].strip().split("\n"):
+            if "**В наличии:**" in desc_line:
+                continue
             description_lines.append(f"> {desc_line}")
+            
         description_lines.append("")
 
     embed = discord.Embed(
@@ -469,13 +471,9 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
         description="\n".join(description_lines)
     )
     
-    displayname = user.display_name
     cash, bank = get_user_balance(user.id)
     balance = f"{cash + bank:,}"
-
-
-    #embed.set_image
-    embed.set_footer(text=f"Вызвано: {displayname} • Баланс: {balance} • {config.FOOTER_TEXT}")
+    embed.set_footer(text=f"Вызвано: {user.display_name} • Баланс: {balance} • {config.FOOTER_TEXT}")
     return embed
 
 def create_shop_main_embed() -> discord.Embed:
