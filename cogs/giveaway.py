@@ -176,7 +176,6 @@ def build_giveaway_embeds(
         color=config.EMBED_COLOR,
     )
     
-    # Эмбед предварительного просмотра / превью
     preview_embed = discord.Embed(
         title="Предварительный просмотр розыгрыша",
         color=config.EMBED_COLOR,
@@ -251,7 +250,8 @@ def build_giveaway_embeds(
             lines.append("<a:alert:1544047350345891851> Подходящих участников не найдено.")
 
     main_embed.description = "\n".join(lines)
-    return main_embed
+    preview_embed.description = main_embed.description
+    return main_embed, preview_embed
 
 
 class ParticipantsPaginatedView(discord.ui.View):
