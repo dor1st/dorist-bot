@@ -382,7 +382,7 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
         else:
             description_lines.append(f"<:arrow:1537827656043728956> **{item['name']}**")
             
-        description_lines.append(f"> **Цена:** {item['price']:,}")
+        description_lines.append(f"> **Цена:** {item['price']:,} {COIN_EMOJI}")
         
         default_stock = item.get("startstock")
         if default_stock is not None:
@@ -395,7 +395,7 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
         description_lines.append("")
 
     embed = discord.Embed(
-        title=f"<:coin:1545425273686597742> __**Магазин предметов**__",
+        title=f"🛒 **Магазин предметов**",
         color=0x383838,
         description="\n".join(description_lines)
     )
@@ -407,7 +407,7 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
 
 def create_shop_main_embed() -> discord.Embed:
     embed = discord.Embed(
-        title="<:coin:1545425273686597742> Магазин предметов",
+        title="🛒 **Магазин предметов**",
         color=0x383838,
         description="Выберите категорию ниже, чтобы просмотреть доступные товары.\n\n"
                     "**Доступные вам категории:**\n" +
