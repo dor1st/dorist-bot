@@ -569,7 +569,7 @@ class StatsCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @leaderboard_group.command(name="tickets", aliases=["t"])
-    @check_access_decorator("addticket")
+    @check_access_decorator("ticketstats")
     async def lb_tickets(self, ctx: commands.Context):
         now = datetime.now(timezone.utc)
         d7 = now - timedelta(days=7)

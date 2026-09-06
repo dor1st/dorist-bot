@@ -10,8 +10,8 @@ from utils import check_access_decorator, make_error_embed
 # НАСТРОЙКИ СТРИКОВ И НАГРАД ЗА РОЛИ
 # -------------------------------------------------------------
 STREAK_ROLE_REWARDS = {
-    1437096779693686886: 7,   # Пример: роль выдается за стрикт в 7 дней
-    1309460485082714144: 30,  # Пример: роль выдается за стрикт в 30 дней
+    1546122269544415272: 7,
+    1546122433642237972: 30,
 }
 
 def get_utc_today() -> str:
@@ -131,7 +131,6 @@ class StreakCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
 
         await ctx.send(embed=embed)
-
 
 async def setup(bot):
     await bot.add_cog(StreakCog(bot))
