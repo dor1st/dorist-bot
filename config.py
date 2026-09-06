@@ -100,6 +100,8 @@ PERMISSION_GROUPS_DEFAULT = {
             "leaderboard",
             "shop",
             "inventory",
+            "summaries",
+            "userinfo"
         ],
     },
     "support": {
@@ -108,7 +110,6 @@ PERMISSION_GROUPS_DEFAULT = {
         "roles": [1501507449860001853, 1322962344040464424],
         "commands": [
             "ticketstats",
-            "userinfo", 
             "inviter", 
             "validinvite", 
             "checktime",
@@ -144,8 +145,7 @@ PERMISSION_GROUPS_DEFAULT = {
             "resetlogs", 
             "config", 
             "addmoney", 
-            "removemoney", 
-            "summaries", 
+            "removemoney",
             "itemtake", 
             "deletegiveaway", 
             "deleteinvite", 
@@ -270,7 +270,8 @@ HELP_CATEGORIES = {
         "commands": [
             "> `.messages` - *Количество отправленных сообщений.*",
             "> `.userinfo` - *Посмотреть профиль, даты и роли участника.*",
-            "> `.summaries` - *Просмотреть общие итоги и подсчет.*",
+            "> `.summaries` - *Посмотреть общие итоги и подсчет.*",
+            "> `.leaderboard` - *Посмотреть текущий список лидеров в разных категориях.*"
         ]
     }
 }
@@ -364,7 +365,7 @@ SHOP_DATA = {
             {
                 "id": "double_coins",
                 "name": "Double Coins",
-                "price": COIN_PER_ROBUX*300,
+                "price": COIN_PER_ROBUX*280,
                 "stackable": False,
                 "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
@@ -372,7 +373,7 @@ SHOP_DATA = {
             {
                 "id": "iron_lungs",
                 "name": "Iron Lungs",
-                "price": COIN_PER_ROBUX*200,
+                "price": COIN_PER_ROBUX*180,
                 "stackable": False,
                 "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
@@ -380,7 +381,7 @@ SHOP_DATA = {
             {
                 "id": "better_flashlight",
                 "name": "Better Flashlight",
-                "price": COIN_PER_ROBUX*150,
+                "price": COIN_PER_ROBUX*120,
                 "stackable": False,
                 "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
@@ -388,7 +389,7 @@ SHOP_DATA = {
             {
                 "id": "vip",
                 "name": "VIP",
-                "price": COIN_PER_ROBUX*120,
+                "price": COIN_PER_ROBUX*100,
                 "stackable": False,
                 "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
@@ -396,7 +397,7 @@ SHOP_DATA = {
             {
                 "id": "double_hats",
                 "name": "Double Hats",
-                "price": COIN_PER_ROBUX*100,
+                "price": COIN_PER_ROBUX*80,
                 "stackable": False,
                 "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
@@ -404,7 +405,7 @@ SHOP_DATA = {
             {
                 "id": "double_tools",
                 "name": "Double Tools",
-                "price": COIN_PER_ROBUX*100,
+                "price": COIN_PER_ROBUX*80,
                 "stackable": False,
                 "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,
@@ -412,7 +413,7 @@ SHOP_DATA = {
             {
                 "id": "color_picker",
                 "name": "Color Picker",
-                "price": COIN_PER_ROBUX*75,
+                "price": COIN_PER_ROBUX*60,
                 "stackable": False,
                 "description": "Геймпасс в Residence Massacre.",
                 "startstock": 10,

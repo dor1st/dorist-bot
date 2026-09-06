@@ -12,8 +12,10 @@ from database import (
     message_stats_col,
     tickets_col,
     users_col,
+    giveaways_col,
+    get_next_sequence_value,
 )
-from utils import check_access_decorator, make_error_embed, make_status_embed
+from utils import check_access_decorator, make_error_embed, make_status_embed, log_action
 
 BUMP_REMINDER_MESSAGE = "**<a:gifclock:1544347190984441858> <@&1501943871960125461> Пришло время бампа! (/bump)**"
 
@@ -215,6 +217,187 @@ class StatsCog(commands.Cog):
 
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
+
+    @commands.command(name="loginvite")
+    @check_access_decorator("loginvite")
+    async def loginvite_cmd(
+        self, 
+        ctx: commands.Context, 
+        inviter_id: int, 
+        invited_id: int, 
+        prize: str, 
+        amount: int
+    ):
+        if prize not in config.VALID_PRIZES:
+            cats = ", ".join(f"`{c}`" for c in config.VALID_PRIZES)
+            return await ctx.send(embed=make_error_embed("Ошибка", f"Неверная категория приза. Допустимые: {cats}"))
+
+        existing = invites_col.find_one({"invited_id": invited_id})
+        if existing:
+            return await ctx.send(embed=make_error_embed("Ошибка", f"За пользователя <@!{invited_id}> уже забирали награду."))
+
+        log_id = get_next_sequence_value("invites_seq")
+        now = datetime.now(timezone.utc)
+
+        invites_col.insert_one({
+            "_id": log_id,
+            "inviter_id": inviter_id,
+            "invited_id": invited_id,
+            "prize": prize,
+            "amount": amount,
+            "staff_id": ctx.author.id,
+            "created_at": now
+        })
+
+        embed = discord.Embed(
+            title=f"<:logs:1522340749998428160> Инвайт No{log_id} — {ctx.author.name}",
+            color=config.EMBED_COLOR
+        )
+        embed.add_field(name="Дата записи", value=discord.utils.format_dt(now, "f"), inline=False)
+        embed.add_field(name="Пригласил", value=f"{inviter_id} (<@!{inviter_id}>)", inline=False)
+        embed.add_field(name="Приглашённый", value=f"{invited_id} (<@!{invited_id}>)", inline=False)
+        embed.add_field(name="Приз", value=prize, inline=False)
+        embed.add_field(name="Количество", value=str(amount), inline=False)
+        embed.add_field(name="Внёс в базу", value=ctx.author.mention, inline=False)
+        embed.set_footer(text=config.FOOTER_TEXT)
+
+        await ctx.send(embed=embed)
+        await log_action(ctx.guild, "loginvite", embed)
+
+    @commands.command(name="validinvite")
+    @check_access_decorator("validinvite")
+    async def validinvite_cmd(self, ctx: commands.Context, invited_id: int):
+        doc = invites_col.find_one({"invited_id": invited_id})
+        if not doc:
+            embed = discord.Embed(
+                title="<:verify:1522329028420173976> Приз еще не получен",
+                description=f"За пользователя <@!{invited_id}> (`{invited_id}`) никто еще не забирал награду.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=config.FOOTER_TEXT)
+            return await ctx.send(embed=embed)
+
+        embed = discord.Embed(
+            title="<:logs:1522340749998428160> Приз уже был получен",
+            description=f"За пользователя <@!{invited_id}> (`{invited_id}`) **уже забирали награду**.",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Пригласивший (Кто забрал приз)", value=f"<@!{doc['inviter_id']}> (`{doc['inviter_id']}`)", inline=False)
+        embed.add_field(name="Полученный приз", value=f"{doc['prize']} ({doc['amount']} шт.)", inline=True)
+        embed.add_field(name="Кто внес запись", value=f"<@!{doc['staff_id']}>", inline=True)
+        embed.add_field(name="Дата записи", value=discord.utils.format_dt(doc['created_at'], "f"), inline=False)
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
+    @commands.command(name="loggiveaway")
+    @check_access_decorator("loggiveaway")
+    async def loggiveaway_cmd(self, ctx: commands.Context, hoster_id: int, prize: str, amount: int):
+        if prize not in config.VALID_PRIZES:
+            cats = ", ".join(f"`{c}`" for c in config.VALID_PRIZES)
+            return await ctx.send(embed=make_error_embed("Ошибка", f"Неверная категория приза. Допустимые: {cats}"))
+
+        log_id = get_next_sequence_value("giveaways_seq")
+        now = datetime.now(timezone.utc)
+
+        giveaways_col.insert_one({
+            "_id": log_id,
+            "hoster_id": hoster_id,
+            "prize": prize,
+            "amount": amount,
+            "staff_id": ctx.author.id,
+            "created_at": now
+        })
+
+        embed = discord.Embed(
+            title=f"<:giveaway:1522331215976206446> Розыгрыш No{log_id}: {ctx.author.name}",
+            color=config.EMBED_COLOR
+        )
+        embed.add_field(name="Дата записи", value=discord.utils.format_dt(now, "f"), inline=False)
+        embed.add_field(name="Хостер розыгрыша", value=f"{hoster_id} (<@!{hoster_id}>)", inline=False)
+        embed.add_field(name="Тип приза", value=prize, inline=False)
+        embed.add_field(name="Количество", value=str(amount), inline=False)
+        embed.add_field(name="Внёс в базу", value=ctx.author.mention, inline=False)
+        embed.set_footer(text=config.FOOTER_TEXT)
+
+        await ctx.send(embed=embed)
+        await log_action(ctx.guild, "loggiveaway", embed)
+
+    @commands.command(name="giveawaylogs")
+    @check_access_decorator("giveawaylogs")
+    async def giveawaylogs_id(self, ctx: commands.Context, user_id: int):
+        docs = list(giveaways_col.find({"hoster_id": user_id}).sort("created_at", 1))
+        if not docs:
+            return await ctx.send(embed=make_error_embed("Логи", "У этого пользователя нет проведенных розыгрышей."))
+
+        embed = discord.Embed(title=f"<:giveaway:1522331215976206446> Розыгрыши: хостер", color=config.EMBED_COLOR)
+        embed.description = f"`{user_id}`\n" + "----------------------------------------"
+        for doc in docs:
+            dt_str = discord.utils.format_dt(doc['created_at'], "f")
+            embed.add_field(
+                name=f"Розыгрыш No{doc['_id']} (Лог No{doc['_id']})",
+                value=f"**Хостер:** <@!{doc['hoster_id']}>\n**Приз:** {doc['prize']}\n**Количество:** {doc['amount']}\n**Внёс в базу:** <@!{doc['staff_id']}>\n{dt_str}",
+                inline=False
+            )
+        embed.set_footer(text=f"Страница 1/1 ({len(docs)} логов) • {config.FOOTER_TEXT}")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="invitelogs")
+    @check_access_decorator("invitelogs")
+    async def invitelogs_id(self, ctx: commands.Context, user_id: int):
+        docs = list(invites_col.find({"inviter_id": user_id}).sort("created_at", 1))
+        if not docs:
+            return await ctx.send(embed=make_error_embed("Логи", "У этого пользователя нет записанных приглашений."))
+
+        embed = discord.Embed(title=f"<:logs:1522340749998428160> Приглашения", color=config.EMBED_COLOR)
+        embed.description = f"`{user_id}`\n" + "----------------------------------------"
+        for idx, doc in enumerate(docs, 1):
+            dt_str = discord.utils.format_dt(doc['created_at'], "f")
+            embed.add_field(
+                name=f"Приглашение No{idx} (Лог No{doc['_id']})",
+                value=f"**Пригласил:** <@!{doc['inviter_id']}>\n**Приглашённый:** <@!{doc['invited_id']}>\n**Приз:** {doc['prize']}\n**Количество:** {doc['amount']}\n{dt_str}",
+                inline=False
+            )
+        embed.set_footer(text=f"Страница 1/1 ({len(docs)} логов) • {config.FOOTER_TEXT}")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="deletegiveaway")
+    @check_access_decorator("deletegiveaway")
+    async def deletegiveaway_cmd(self, ctx: commands.Context, log_id: int):
+        doc = giveaways_col.find_one_and_delete({"_id": log_id})
+        if not doc:
+            return await ctx.send(embed=make_error_embed("Ошибка", f"Розыгрыш с ID No{log_id} не найден в базе."))
+
+        embed = discord.Embed(
+            title="Удаление розыгрыша",
+            description=f"Лог розыгрыша **No{log_id}** успешно удалён из базы данных.",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Хостер", value=f"<@!{doc['hoster_id']}> (`{doc['hoster_id']}`)", inline=False)
+        embed.add_field(name="Приз", value=f"{doc['prize']} ({doc['amount']} шт.)", inline=True)
+        embed.add_field(name="Удалил", value=ctx.author.mention, inline=True)
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
+    @commands.command(name="deleteinvite")
+    @check_access_decorator("deleteinvite")
+    async def deleteinvite_cmd(self, ctx: commands.Context, log_id: int):
+        doc = invites_col.find_one_and_delete({"_id": log_id})
+        if not doc:
+            return await ctx.send(embed=make_error_embed("Ошибка", f"Инвайт с ID No{log_id} не найден в базе."))
+
+        embed = discord.Embed(
+            title="Удаление инвайта",
+            description=f"Лог инвайта **No{log_id}** успешно удалён из базы данных.",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Пригласивший", value=f"<@!{doc['inviter_id']}>", inline=False)
+        embed.add_field(name="Приглашённый", value=f"<@!{doc['invited_id']}>", inline=False)
+        embed.add_field(name="Приз", value=f"{doc['prize']} ({doc['amount']} шт.)", inline=True)
+        embed.add_field(name="Удалил", value=ctx.author.mention, inline=True)
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
+    
 
     # ==========================================
     # ГРУППА КОМАНД LEADERBOARD / LB
