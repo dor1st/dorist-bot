@@ -24,6 +24,56 @@ def utc_day(dt=None):
     dt = dt or datetime.now(timezone.utc)
     return dt.date().isoformat()
 
+class InviteTrackerCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.invites_cache = {}
+        self.bot.loop.create_task(self.cache_invites())
+
+    async def cache_invites(self):
+        await self.bot.wait_until_ready()
+        for guild in self.bot.guilds:
+            try:
+                self.invites_cache[guild.id] = await guild.invites()
+            except discord.Forbidden:
+                pass
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        guild = member.guild
+        if guild.id not in self.invites_cache:
+            return
+
+        old_invites = self.invites_cache[guild.id]
+        try:
+            new_invites = await guild.invites()
+        except discord.Forbidden:
+            return
+
+        self.invites_cache[guild.id] = new_invites  # Обновляем кэш
+
+        used_invite = None
+        for old_inv in old_invites:
+            for new_inv in new_invites:
+                if old_inv.code == new_inv.code and new_inv.uses > old_inv.uses:
+                    used_invite = new_inv
+                    break
+            if used_invite:
+                break
+
+        if used_invite and used_invite.inviter:
+            invites_col.update_one(
+                {"invited_id": member.id},
+                {
+                    "$set": {
+                        "inviter_id": used_invite.inviter.id,
+                        "invite_code": used_invite.code,
+                        "joined_at": datetime.now(timezone.utc)
+                    }
+                },
+                upsert=True
+            )
+
 class StatsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -220,24 +270,26 @@ class StatsCog(commands.Cog):
 
     @commands.command(name="inviter")
     @check_access_decorator("inviter")
-    async def inviter_cmd(self, ctx: commands.Context, invited_id: int):
-        doc = invites_col.find_one({"invited_id": invited_id})
-        if not doc:
-            return ctx.send if False else await ctx.send(
-                embed=make_error_embed("Информация", f"За пользователя <@!{invited_id}> (`{invited_id}`) никто не получал награду в базе инвайтов.")
+    async def inviter_cmd(self, ctx: commands.Context, target: discord.User = None):
+        target = target or ctx.author
+        doc = invites_col.find_one({"invited_id": target.id})
+        
+        if not doc or "inviter_id" not in doc:
+            return await ctx.send(
+                embed=make_error_embed("Информация", f"Не удалось определить, кто пригласил пользователя <@!{target.id}> (возможно, он зашел по ссылке-приглашению ванна/другому способу без трекинга).")
             )
 
+        inviter_id = doc["inviter_id"]
         embed = discord.Embed(
             title="<:info:1522329987514892398> Информация об инвайте",
             color=config.EMBED_COLOR
         )
-        embed.add_field(name="Приглашенный", value=f"<@!{doc['invited_id']}> (`{doc['invited_id']}`)", inline=False)
-        embed.add_field(name="Кто пригласил", value=f"<@!{doc['inviter_id']}> (`{doc['inviter_id']}`)", inline=False)
-        embed.add_field(name="Приз", value=f"{doc['prize']} ({doc['amount']} шт.)", inline=True)
-        embed.add_field(name="Внес в базу (Staff)", value=f"<@!{doc['staff_id']}>", inline=True)
-        embed.add_field(name="Дата записи", value=discord.utils.format_dt(doc['created_at'], "f"), inline=False)
-        embed.set_footer(text=config.FOOTER_TEXT)
+        embed.add_field(name="Пользователь", value=f"<@!{target.id}> (`{target.id}`)", inline=False)
+        embed.add_field(name="Кто пригласил", value=f"<@!{inviter_id}> (`{inviter_id}`)", inline=False)
+        if "invite_code" in doc:
+            embed.add_field(name="Код приглашения", value=f"`{doc['invite_code']}`", inline=True)
         
+        embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
     @commands.command(name="loginvite")
