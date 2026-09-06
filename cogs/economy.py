@@ -402,7 +402,6 @@ def create_shop_embed(category_key: str, user: discord.User | discord.Member) ->
     
     cash, bank = get_user_balance(user.id)
     balance = f"{cash + bank:,}"
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
     embed.set_footer(text=f"Вызвано: {user.display_name} • Баланс: {balance} • {config.FOOTER_TEXT}")
     return embed
 
@@ -414,8 +413,6 @@ def create_shop_main_embed() -> discord.Embed:
                     "**Доступные вам категории**\n" +
                     "\n".join([f"{cat_info['emoji']} {cat_info['label']}" for cat_info in SHOP_DATA.values()])
     )
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1521823458101563502/2.png?ex=6a9de7ca&is=6a9c964a&hm=1954ec4045538cea287d7d739eb778b89a78090742a8c499ac889ebbce63fb21")
-    embed.set_footer(text=f"{config.FOOTER_TEXT}")
     return embed
 
 class ShopView(discord.ui.View):
