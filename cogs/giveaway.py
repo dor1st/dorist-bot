@@ -175,19 +175,10 @@ def build_giveaway_embeds(
         title=prize,
         color=config.EMBED_COLOR,
     )
-    
-    preview_embed = discord.Embed(
-        title="Предварительный просмотр розыгрыша",
-        color=config.EMBED_COLOR,
-    )
 
     formatted_claim = format_claim_time(claim_time)
 
     main_embed.set_author(
-        name="тусовка дориста",
-        icon_url=host.guild.icon.url if hasattr(host, "guild") and host.guild and host.guild.icon else None,
-    )
-    preview_embed.set_author(
         name="тусовка дориста",
         icon_url=host.guild.icon.url if hasattr(host, "guild") and host.guild and host.guild.icon else None,
     )
@@ -250,8 +241,7 @@ def build_giveaway_embeds(
             lines.append("<a:alert:1544047350345891851> Подходящих участников не найдено.")
 
     main_embed.description = "\n".join(lines)
-    preview_embed.description = main_embed.description
-    return main_embed, preview_embed
+    return main_embed
 
 
 class ParticipantsPaginatedView(discord.ui.View):
@@ -430,32 +420,6 @@ class GiveawaySetupView(discord.ui.View):
 
         self.setup_message: discord.Message | None = None
 
-    async def refresh_setup_message(self):
-        if self.setup_message:
-            try:
-                ends_at = utcnow() + self.duration
-                _, preview_embed = build_giveaway_embeds(
-                    prize=self.prize,
-                    host=self.ctx.author,
-                    ends_at=ends_at,
-                    winners_count=self.winners_count,
-                    participant_count=0,
-                    role_mode=self.role_mode,
-                    required_roles=self.required_roles,
-                    min_messages=self.min_messages,
-                    min_invites=self.min_invites,
-                    min_counting_messages=self.min_counting_messages,
-                    min_bumps=self.min_bumps,
-                    bonus_roles=self.bonus_roles,
-                    claim_time=self.claim_time,
-                )
-                await self.setup_message.edit(
-                    embeds=[self.setup_embed(), preview_embed],
-                    view=self,
-                )
-            except discord.HTTPException:
-                pass
-
     def setup_embed(self) -> discord.Embed:
         role_mode_text = "Все из списка" if self.role_mode == "all" else "Одна из"
 
@@ -598,7 +562,7 @@ class GiveawaySetupView(discord.ui.View):
 
         ends_at = utcnow() + self.duration
 
-        main_embed, preview_embed = build_giveaway_embeds(
+        main_embed = build_giveaway_embeds(
             prize=self.prize,
             host=self.ctx.author,
             ends_at=ends_at,
@@ -1193,27 +1157,6 @@ class GiveawayCog(commands.Cog):
         )
 
         dummy_ends = utcnow() + duration
-        main_prev, preview_prev = build_giveaway_embeds(
-            prize=prize,
-            host=ctx.author,
-            ends_at=dummy_ends,
-            winners_count=winners_count,
-            participant_count=0,
-            role_mode="all",
-            required_roles=[],
-            min_messages=0,
-            min_invites=0,
-            min_counting_messages=0,
-            min_bumps=0,
-            bonus_roles=view.bonus_roles,
-            claim_time=claim_time,
-        )
-
-        setup_message = await ctx.send(
-            embeds=[view.setup_embed(), preview_prev],
-            view=view,
-        )
-        view.setup_message = setup_message
 
     @giveaway_group.command(name="end")
     @check_access_decorator("giveaway")
@@ -1331,82 +1274,6 @@ class GiveawayCog(commands.Cog):
             f"       **<:arrow:1537827656043728956> Роль <@&{BONUS_TIME_ROLE_ID}> даёт +3 дополнительных часа на получение.**"
         )
 
-    @giveaway_group.command(name="refresh", aliases=["ref"])
-    @check_access_decorator("giveaway")
-    async def giveaway_refresh(self, ctx: commands.Context, message_id: str):
-        if not ctx.guild:
-            return
-
-        try:
-            message_id_int = int(message_id)
-        except ValueError:
-            await ctx.send(embed=make_error_embed("Ошибка", "ID сообщения должен быть числом."))
-            return
-
-        doc = giveaways_col.find_one(
-            {
-                "type": "giveaway",
-                "guild_id": ctx.guild.id,
-                "message_id": message_id_int,
-                "status": "active",
-            }
-        )
-
-        if not doc:
-            await ctx.send(
-                embed=make_error_embed(
-                    "Розыгрыш не найден",
-                    "Активный розыгрыш с таким ID не найден.",
-                )
-            )
-            return
-
-        message = await self._get_giveaway_message(doc)
-        if not message:
-            await ctx.send(
-                embed=make_error_embed(
-                    "Ошибка",
-                    "Не удалось найти сообщение розыгрыша в канале.",
-                )
-            )
-            return
-
-        guild = ctx.guild
-        host = guild.get_member(int(doc["host_id"])) or self.bot.user
-
-        main_embed, _ = build_giveaway_embeds(
-            prize=doc["prize"],
-            host=host,
-            ends_at=doc["ends_at"],
-            winners_count=doc["winners_count"],
-            participant_count=doc.get("participant_count", 0),
-            role_mode=doc.get("role_mode"),
-            required_roles=doc.get("required_roles", []),
-            min_messages=doc.get("min_messages", 0),
-            min_invites=doc.get("min_invites", 0),
-            min_counting_messages=doc.get("min_counting_messages", 0),
-            min_bumps=doc.get("min_bumps", 0),
-            bonus_roles={int(k): int(v) for k, v in doc.get("bonus_roles", {}).items()},
-            claim_time=doc.get("claim_time", "—"),
-        )
-
-        try:
-            await message.edit(embed=main_embed, view=GiveawayPublicView())
-            await ctx.send(
-                embed=make_status_embed(
-                    "Успешно",
-                    f"Розыгрыш `{message_id_int}` обновлен, лишний эмбед удален.",
-                    "success",
-                )
-            )
-        except discord.HTTPException:
-            await ctx.send(
-                embed=make_error_embed(
-                    "Ошибка",
-                    "Не удалось обновить сообщение розыгрыша.",
-                )
-            )
-
     @giveaway_group.command(name="delete", aliases=["del"])
     @check_access_decorator("giveaway")
     async def giveaway_delete(self, ctx: commands.Context, message_id: str):
@@ -1454,118 +1321,151 @@ class GiveawayCog(commands.Cog):
         )
 
     @commands.command(name="checktime", aliases=["ct"])
-    @check_access_decorator("giveaway")
-    async def check_time(
-        self,
-        ctx: commands.Context,
-        giveaway_msg_id: str,
-        user_msg_id: str,
-    ):
-        if not ctx.guild:
-            return
+@check_access_decorator("giveaway")
+async def check_time(
+    self,
+    ctx: commands.Context,
+    giveaway_msg_id: str,
+    message_identifier: str, # Может быть ID сообщения (в том же канале), ID ссылки или сама ссылка
+    channel: discord.TextChannel = None, # Необязательный аргумент: можно указать канал явно через меншн/ID
+):
+    if not ctx.guild:
+        return
 
+    try:
+        gw_id_int = int(giveaway_msg_id)
+    except ValueError:
+        await ctx.send(embed=make_error_embed("Ошибка", "ID розыгрыша должен быть числом."))
+        return
+
+    # Логика извлечения ID сообщения и канала (поддерживает ссылки вида https://discord.com/channels/...)
+    usr_id_int = None
+    target_channel = channel
+
+    if "discord.com/channels/" in message_identifier:
         try:
-            gw_id_int = int(giveaway_msg_id)
-            usr_id_int = int(user_msg_id)
+            parts = message_identifier.split("/")
+            guild_id_from_link = int(parts[-3])
+            channel_id_from_link = int(parts[-2])
+            usr_id_int = int(parts[-1])
+            
+            if guild_id_from_link != ctx.guild.id:
+                await ctx.send(embed=make_error_embed("Ошибка", "Ссылка ведет на другой сервер."))
+                return
+                
+            target_channel = ctx.guild.get_channel(channel_id_from_link)
+        except (ValueError, IndexError):
+            await ctx.send(embed=make_error_embed("Ошибка", "Неверный формат ссылки на сообщение."))
+            return
+    else:
+        try:
+            usr_id_int = int(message_identifier)
         except ValueError:
-            await ctx.send(embed=make_error_embed("Ошибка", "ID сообщений должны быть числами."))
+            await ctx.send(embed=make_error_embed("Ошибка", "ID сообщения игрока должен быть числом или ссылкой."))
             return
+        
+        # Если канал не передан явно, ищем в текущем канале
+        if target_channel is None:
+            target_channel = ctx.channel
 
-        doc = giveaways_col.find_one(
-            {
-                "type": "giveaway",
-                "guild_id": ctx.guild.id,
-                "message_id": gw_id_int,
-            }
-        )
+    if not target_channel:
+        await ctx.send(embed=make_error_embed("Ошибка", "Не удалось определить канал с сообщением игрока."))
+        return
 
-        if not doc:
-            await ctx.send(
-                embed=make_error_embed(
-                    "Розыгрыш не найден",
-                    "Розыгрыш с указанным ID сообщения не найден в базе данных.",
-                )
+    doc = giveaways_col.find_one(
+        {
+            "type": "giveaway",
+            "guild_id": ctx.guild.id,
+            "message_id": gw_id_int,
+        }
+    )
+
+    if not doc:
+        await ctx.send(
+            embed=make_error_embed(
+                "Розыгрыш не найден",
+                "Розыгрыш с указанным ID сообщения не найден в базе данных.",
             )
-            return
-
-        try:
-            user_msg = await ctx.channel.fetch_message(usr_id_int)
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-            await ctx.send(
-                embed=make_error_embed(
-                    "Сообщение не найдено",
-                    "Не удалось найти сообщение участника в текущем канале.",
-                )
-            )
-            return
-
-        ends_at = doc.get("ended_at") or doc["ends_at"]
-        if ends_at.tzinfo is None:
-            ends_at = ends_at.replace(tzinfo=timezone.utc)
-
-        claim_time_str = doc.get("claim_time", "—")
-        claim_td = parse_duration(claim_time_str) or timedelta(0)
-
-        # Проверка наличия роли с бонусом к времени ответа
-        extra_time = timedelta(0)
-        if isinstance(user_msg.author, discord.Member):
-            if any(role.id == BONUS_TIME_ROLE_ID for role in user_msg.author.roles):
-                extra_time = timedelta(hours=3)
-
-        deadline = ends_at + claim_td + extra_time
-        msg_created_at = user_msg.created_at
-
-        embed = discord.Embed(
-            title="<a:gifclock:1544347190984441858> Проверка времени ответа",
-            color=config.EMBED_COLOR,
         )
+        return
 
+    try:
+        user_msg = await target_channel.fetch_message(usr_id_int)
+    except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+        await ctx.send(
+            embed=make_error_embed(
+                "Сообщение не найдено",
+                f"Не удалось найти сообщение участника в канале {target_channel.mention}.",
+            )
+        )
+        return
+
+    ends_at = doc.get("ended_at") or doc["ends_at"]
+    if ends_at.tzinfo is None:
+        ends_at = ends_at.replace(tzinfo=timezone.utc)
+
+    claim_time_str = doc.get("claim_time", "—")
+    claim_td = parse_duration(claim_time_str) or timedelta(0)
+
+    extra_time = timedelta(0)
+    if isinstance(user_msg.author, discord.Member):
+        if any(role.id == BONUS_TIME_ROLE_ID for role in user_msg.author.roles):
+            extra_time = timedelta(hours=3)
+
+    deadline = ends_at + claim_td + extra_time
+    msg_created_at = user_msg.created_at
+
+    embed = discord.Embed(
+        title="<a:gifclock:1544347190984441858> Проверка времени ответа",
+        color=config.EMBED_COLOR,
+    )
+
+    embed.add_field(
+        name="Время завершения розыгрыша",
+        value=f"<t:{int(ends_at.timestamp())}:f>",
+        inline=False,
+    )
+    embed.add_field(
+        name="Базовое время на получение",
+        value=format_claim_time(claim_time_str),
+        inline=False,
+    )
+    if extra_time > timedelta(0):
         embed.add_field(
-            name="Время завершения розыгрыша",
-            value=f"<t:{int(ends_at.timestamp())}:f>",
+            name="Дополнительное время ролей",
+            value=f"+3 часа (<@&{BONUS_TIME_ROLE_ID}>)",
             inline=False,
         )
+    embed.add_field(
+        name="Крайний срок ответа",
+        value=f"<t:{int(deadline.timestamp())}:f>",
+        inline=False,
+    )
+    embed.add_field(
+        name="Время ответа игрока",
+        value=f"<t:{int(msg_created_at.timestamp())}:f> ({user_msg.author.mention} в {target_channel.mention})",
+        inline=False,
+    )
+
+    if msg_created_at <= deadline:
+        diff = deadline - msg_created_at
+        formatted_diff = format_timedelta(diff)
         embed.add_field(
-            name="Базовое время на получение",
-            value=format_claim_time(claim_time_str),
+            name="Результат",
+            value=f"<:verify:1522329028420173976> **Игрок успел!** Ответил до дедлайна (запас {formatted_diff}).",
             inline=False,
         )
-        if extra_time > timedelta(0):
-            embed.add_field(
-                name="Дополнительное время ролей",
-                value=f"+3 часа (<@&{BONUS_TIME_ROLE_ID}>)",
-                inline=False,
-            )
+    else:
+        diff = msg_created_at - deadline
+        formatted_diff = format_timedelta(diff)
         embed.add_field(
-            name="Крайний срок ответа",
-            value=f"<t:{int(deadline.timestamp())}:f>",
-            inline=False,
-        )
-        embed.add_field(
-            name="Время ответа игрока",
-            value=f"<t:{int(msg_created_at.timestamp())}:f> ({user_msg.author.mention})",
+            name="Результат",
+            value=f"<a:alert:1544047350345891851> **Игрок опоздал!** Опоздание составило: **{formatted_diff}**.",
             inline=False,
         )
 
-        if msg_created_at <= deadline:
-            diff = deadline - msg_created_at
-            formatted_diff = format_timedelta(diff)
-            embed.add_field(
-                name="Результат",
-                value=f"<:verify:1522329028420173976> **Игрок успел!** Ответил до дедлайна (запас {formatted_diff}).",
-                inline=False,
-            )
-        else:
-            diff = msg_created_at - deadline
-            formatted_diff = format_timedelta(diff)
-            embed.add_field(
-                name="Результат",
-                value=f"<a:alert:1544047350345891851> **Игрок опоздал!** Опоздание составило: **{formatted_diff}**.",
-                inline=False,
-            )
-
-        embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Розыгрыши"))
-        await ctx.send(embed=embed)
+    embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Розыгрыши"))
+    await ctx.send(embed=embed)
 
 
 async def setup(bot):
