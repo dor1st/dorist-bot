@@ -479,6 +479,13 @@ class GiveawaySetupView(discord.ui.View):
         embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Розыгрыши"))
         return embed
 
+    async def refresh_setup_message(self):
+        if self.setup_message:
+            try:
+                await self.setup_message.edit(embed=self.setup_embed(), view=self)
+            except discord.HTTPException:
+                pass
+
     @discord.ui.button(
         label="Канал",
         emoji="<:textchat:1522331990517616752>",
