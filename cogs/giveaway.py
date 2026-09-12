@@ -1321,151 +1321,151 @@ class GiveawayCog(commands.Cog):
         )
 
     @commands.command(name="checktime", aliases=["ct"])
-@check_access_decorator("giveaway")
-async def check_time(
-    self,
-    ctx: commands.Context,
-    giveaway_msg_id: str,
-    message_identifier: str, # Может быть ID сообщения (в том же канале), ID ссылки или сама ссылка
-    channel: discord.TextChannel = None, # Необязательный аргумент: можно указать канал явно через меншн/ID
-):
-    if not ctx.guild:
-        return
-
-    try:
-        gw_id_int = int(giveaway_msg_id)
-    except ValueError:
-        await ctx.send(embed=make_error_embed("Ошибка", "ID розыгрыша должен быть числом."))
-        return
-
-    # Логика извлечения ID сообщения и канала (поддерживает ссылки вида https://discord.com/channels/...)
-    usr_id_int = None
-    target_channel = channel
-
-    if "discord.com/channels/" in message_identifier:
-        try:
-            parts = message_identifier.split("/")
-            guild_id_from_link = int(parts[-3])
-            channel_id_from_link = int(parts[-2])
-            usr_id_int = int(parts[-1])
-            
-            if guild_id_from_link != ctx.guild.id:
-                await ctx.send(embed=make_error_embed("Ошибка", "Ссылка ведет на другой сервер."))
-                return
-                
-            target_channel = ctx.guild.get_channel(channel_id_from_link)
-        except (ValueError, IndexError):
-            await ctx.send(embed=make_error_embed("Ошибка", "Неверный формат ссылки на сообщение."))
+    @check_access_decorator("giveaway")
+    async def check_time(
+        self,
+        ctx: commands.Context,
+        giveaway_msg_id: str,
+        message_identifier: str, # Может быть ID сообщения (в том же канале), ID ссылки или сама ссылка
+        channel: discord.TextChannel = None, # Необязательный аргумент: можно указать канал явно через меншн/ID
+    ):
+        if not ctx.guild:
             return
-    else:
+
         try:
-            usr_id_int = int(message_identifier)
+            gw_id_int = int(giveaway_msg_id)
         except ValueError:
-            await ctx.send(embed=make_error_embed("Ошибка", "ID сообщения игрока должен быть числом или ссылкой."))
+            await ctx.send(embed=make_error_embed("Ошибка", "ID розыгрыша должен быть числом."))
             return
-        
-        # Если канал не передан явно, ищем в текущем канале
-        if target_channel is None:
-            target_channel = ctx.channel
 
-    if not target_channel:
-        await ctx.send(embed=make_error_embed("Ошибка", "Не удалось определить канал с сообщением игрока."))
-        return
+        # Логика извлечения ID сообщения и канала (поддерживает ссылки вида https://discord.com/channels/...)
+        usr_id_int = None
+        target_channel = channel
 
-    doc = giveaways_col.find_one(
-        {
-            "type": "giveaway",
-            "guild_id": ctx.guild.id,
-            "message_id": gw_id_int,
-        }
-    )
+        if "discord.com/channels/" in message_identifier:
+            try:
+                parts = message_identifier.split("/")
+                guild_id_from_link = int(parts[-3])
+                channel_id_from_link = int(parts[-2])
+                usr_id_int = int(parts[-1])
+                
+                if guild_id_from_link != ctx.guild.id:
+                    await ctx.send(embed=make_error_embed("Ошибка", "Ссылка ведет на другой сервер."))
+                    return
+                    
+                target_channel = ctx.guild.get_channel(channel_id_from_link)
+            except (ValueError, IndexError):
+                await ctx.send(embed=make_error_embed("Ошибка", "Неверный формат ссылки на сообщение."))
+                return
+        else:
+            try:
+                usr_id_int = int(message_identifier)
+            except ValueError:
+                await ctx.send(embed=make_error_embed("Ошибка", "ID сообщения игрока должен быть числом или ссылкой."))
+                return
+            
+            # Если канал не передан явно, ищем в текущем канале
+            if target_channel is None:
+                target_channel = ctx.channel
 
-    if not doc:
-        await ctx.send(
-            embed=make_error_embed(
-                "Розыгрыш не найден",
-                "Розыгрыш с указанным ID сообщения не найден в базе данных.",
+        if not target_channel:
+            await ctx.send(embed=make_error_embed("Ошибка", "Не удалось определить канал с сообщением игрока."))
+            return
+
+        doc = giveaways_col.find_one(
+            {
+                "type": "giveaway",
+                "guild_id": ctx.guild.id,
+                "message_id": gw_id_int,
+            }
+        )
+
+        if not doc:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Розыгрыш не найден",
+                    "Розыгрыш с указанным ID сообщения не найден в базе данных.",
+                )
             )
-        )
-        return
+            return
 
-    try:
-        user_msg = await target_channel.fetch_message(usr_id_int)
-    except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-        await ctx.send(
-            embed=make_error_embed(
-                "Сообщение не найдено",
-                f"Не удалось найти сообщение участника в канале {target_channel.mention}.",
+        try:
+            user_msg = await target_channel.fetch_message(usr_id_int)
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            await ctx.send(
+                embed=make_error_embed(
+                    "Сообщение не найдено",
+                    f"Не удалось найти сообщение участника в канале {target_channel.mention}.",
+                )
             )
+            return
+
+        ends_at = doc.get("ended_at") or doc["ends_at"]
+        if ends_at.tzinfo is None:
+            ends_at = ends_at.replace(tzinfo=timezone.utc)
+
+        claim_time_str = doc.get("claim_time", "—")
+        claim_td = parse_duration(claim_time_str) or timedelta(0)
+
+        extra_time = timedelta(0)
+        if isinstance(user_msg.author, discord.Member):
+            if any(role.id == BONUS_TIME_ROLE_ID for role in user_msg.author.roles):
+                extra_time = timedelta(hours=3)
+
+        deadline = ends_at + claim_td + extra_time
+        msg_created_at = user_msg.created_at
+
+        embed = discord.Embed(
+            title="<a:gifclock:1544347190984441858> Проверка времени ответа",
+            color=config.EMBED_COLOR,
         )
-        return
 
-    ends_at = doc.get("ended_at") or doc["ends_at"]
-    if ends_at.tzinfo is None:
-        ends_at = ends_at.replace(tzinfo=timezone.utc)
-
-    claim_time_str = doc.get("claim_time", "—")
-    claim_td = parse_duration(claim_time_str) or timedelta(0)
-
-    extra_time = timedelta(0)
-    if isinstance(user_msg.author, discord.Member):
-        if any(role.id == BONUS_TIME_ROLE_ID for role in user_msg.author.roles):
-            extra_time = timedelta(hours=3)
-
-    deadline = ends_at + claim_td + extra_time
-    msg_created_at = user_msg.created_at
-
-    embed = discord.Embed(
-        title="<a:gifclock:1544347190984441858> Проверка времени ответа",
-        color=config.EMBED_COLOR,
-    )
-
-    embed.add_field(
-        name="Время завершения розыгрыша",
-        value=f"<t:{int(ends_at.timestamp())}:f>",
-        inline=False,
-    )
-    embed.add_field(
-        name="Базовое время на получение",
-        value=format_claim_time(claim_time_str),
-        inline=False,
-    )
-    if extra_time > timedelta(0):
         embed.add_field(
-            name="Дополнительное время ролей",
-            value=f"+3 часа (<@&{BONUS_TIME_ROLE_ID}>)",
+            name="Время завершения розыгрыша",
+            value=f"<t:{int(ends_at.timestamp())}:f>",
             inline=False,
         )
-    embed.add_field(
-        name="Крайний срок ответа",
-        value=f"<t:{int(deadline.timestamp())}:f>",
-        inline=False,
-    )
-    embed.add_field(
-        name="Время ответа игрока",
-        value=f"<t:{int(msg_created_at.timestamp())}:f> ({user_msg.author.mention} в {target_channel.mention})",
-        inline=False,
-    )
-
-    if msg_created_at <= deadline:
-        diff = deadline - msg_created_at
-        formatted_diff = format_timedelta(diff)
         embed.add_field(
-            name="Результат",
-            value=f"<:verify:1522329028420173976> **Игрок успел!** Ответил до дедлайна (запас {formatted_diff}).",
+            name="Базовое время на получение",
+            value=format_claim_time(claim_time_str),
             inline=False,
         )
-    else:
-        diff = msg_created_at - deadline
-        formatted_diff = format_timedelta(diff)
+        if extra_time > timedelta(0):
+            embed.add_field(
+                name="Дополнительное время ролей",
+                value=f"+3 часа (<@&{BONUS_TIME_ROLE_ID}>)",
+                inline=False,
+            )
         embed.add_field(
-            name="Результат",
-            value=f"<a:alert:1544047350345891851> **Игрок опоздал!** Опоздание составило: **{formatted_diff}**.",
+            name="Крайний срок ответа",
+            value=f"<t:{int(deadline.timestamp())}:f>",
+            inline=False,
+        )
+        embed.add_field(
+            name="Время ответа игрока",
+            value=f"<t:{int(msg_created_at.timestamp())}:f> ({user_msg.author.mention} в {target_channel.mention})",
             inline=False,
         )
 
-    embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Розыгрыши"))
-    await ctx.send(embed=embed)
+        if msg_created_at <= deadline:
+            diff = deadline - msg_created_at
+            formatted_diff = format_timedelta(diff)
+            embed.add_field(
+                name="Результат",
+                value=f"<:verify:1522329028420173976> **Игрок успел!** Ответил до дедлайна (запас {formatted_diff}).",
+                inline=False,
+            )
+        else:
+            diff = msg_created_at - deadline
+            formatted_diff = format_timedelta(diff)
+            embed.add_field(
+                name="Результат",
+                value=f"<a:alert:1544047350345891851> **Игрок опоздал!** Опоздание составило: **{formatted_diff}**.",
+                inline=False,
+            )
+
+        embed.set_footer(text=getattr(config, "FOOTER_TEXT", "Розыгрыши"))
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
