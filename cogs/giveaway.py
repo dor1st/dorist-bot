@@ -1156,7 +1156,11 @@ class GiveawayCog(commands.Cog):
             claim_time,
         )
 
-        dummy_ends = utcnow() + duration
+        setup_message = await ctx.send(
+            embed=view.setup_embed(),
+            view=view,
+        )
+        view.setup_message = setup_message
 
     @giveaway_group.command(name="end")
     @check_access_decorator("giveaway")
