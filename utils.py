@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import config
 
-
 def is_owner_user(user: discord.Member | discord.User) -> bool:
     return user.id == config.OWNER_ID
 
@@ -38,6 +37,24 @@ def check_access_decorator(command_name: str | None = None):
 
     return commands.check(predicate)
 
+def get_user_cooldown(member: discord.Member, command_name: str) -> float:
+    default_cooldowns = getattr(config, "DEFAULT_COOLDOWNS", {})
+    if command_name not in default_cooldowns:
+        return 0.0
+
+    base_cooldown = default_cooldowns[command_name]
+    role_cooldowns = getattr(config, "ROLE_COOLDOWN_MULTIPLIERS", {})
+
+    total_discount = 0.0
+    for role in member.roles:
+        if role.id in role_cooldowns:
+            total_discount += role_cooldowns[role.id]
+
+    total_discount = min(1.0, total_discount)
+
+    final_cooldown = base_cooldown - (base_cooldown * total_discount)
+    
+    return max(0.0, final_cooldown)
 
 def make_error_embed(title: str, description: str) -> discord.Embed:
     embed = discord.Embed(

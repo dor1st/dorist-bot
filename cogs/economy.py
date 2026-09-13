@@ -6,10 +6,11 @@ from discord.ext import commands
 
 import config
 from database import users_col, shop_stock_col
-from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed
+from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed, get_user_cooldown
 
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 SHOP_DATA = config.SHOP_DATA
+LEVEL_ROLE = 1323358508900417627
 
 # -------------------------------------------------------------
 # НАСТРОЙКИ ЭКОНОМИКИ И ШАНСОВ
@@ -61,20 +62,19 @@ DISABLED_CHANNELS_INCOME = [
 ]
 
 # -------------------------------------------------------------
-# НАСТРОЙКИ ДОХОДА С РОЛЕЙ
+# НАСТРОЙКИ РОЛЕЙ
 # -------------------------------------------------------------
-# Формат: ID_РОЛИ: СУММА_ДОХОДА
 ROLE_INCOME_TABLE = {
     1437096779693686886: 15,
+    1528419077843058698: 15,
     1323358508900417627: 20,
-    1309460485082714144: 70,
-    1501508956961509436: 70,
-    1323359090243670088: 40,
-    1484517179780104243: 30,
-    1467961492275200296: 30,
     1537847767433617448: 25,
     1475808795757252609: 25,
-    1528419077843058698: 15,
+    1484517179780104243: 30,
+    1467961492275200296: 30,
+    1323359090243670088: 40,
+    1309460485082714144: 70,
+    1501508956961509436: 70,
     1528417549702660260: 100,
 }
 
@@ -450,6 +450,9 @@ class EconomyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.message_cooldowns = {}  # {user_id: last_timestamp}
+        self.work_cooldowns = {}
+        self.crime_cooldowns = {}
+        self.income_cooldowns = {}
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -704,6 +707,7 @@ class EconomyCog(commands.Cog):
 
     @commands.command(name="givemoney", aliases=["give"])
     @check_access_decorator("givemoney")
+    @commands.has_role(LEVEL_ROLE)
     async def givemoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
         if amount is None or target is None:
             return await ctx.send(embed=build_command_help_embed("givemoney"))
@@ -736,14 +740,37 @@ class EconomyCog(commands.Cog):
         )
         await ctx.send(embed=embed)
 
+    @givemoney.error
+    async def givemoney_error(self, ctx: commands.Context, error):
+        if isinstance(error, commands.MissingRole):
+            await ctx.send(embed=make_error_embed("Ошибка доступа", "У вас нет необходимой роли для использования этой команды."))
+        else:
+            raise error
+
     # -------------------------------------------------------------
     # Новые экономические команды и мини-игры
     # -------------------------------------------------------------
 
     @commands.command(name="work")
-    @commands.cooldown(1, WORK_COOLDOWN, commands.BucketType.user)  # 1.5 часа (5400 сек)
     @check_access_decorator("work")
     async def work(self, ctx: commands.Context):
+        current_time = time.time()
+        user_id = ctx.author.id
+        
+        dynamic_cooldown = get_user_cooldown(ctx.author, "work")
+        last_used = self.work_cooldowns.get(user_id, 0)
+        
+        if current_time - last_used < dynamic_cooldown:
+            retry_after = dynamic_cooldown - (current_time - last_used)
+            unban_timestamp = int(current_time + retry_after)
+            embed = discord.Embed(
+                description=f"<a:gifclock:1544347190984441858> Вы сможете снова работать <t:{unban_timestamp}:R>.",
+                color=config.EMBED_COLOR
+            )
+            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+            return await ctx.send(embed=embed)
+
+        self.work_cooldowns[user_id] = current_time
         is_success = random.random() < WORK_SUCCESS_CHANCE
 
         if is_success:
@@ -753,7 +780,6 @@ class EconomyCog(commands.Cog):
             embed = make_status_embed("Работа", phrase, "success")
         else:
             amount = random.randint(WORK_FAILURE_MIN_REWARD, WORK_FAILURE_MAX_REWARD)
-            # Списываем с налички (может уйти в минус)
             update_user_balance_delta(ctx.author.id, cash_delta=-amount)
             phrase = random.choice(WORK_FAILURE_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Работа", phrase, "error")
@@ -761,9 +787,25 @@ class EconomyCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="crime")
-    @commands.cooldown(1, CRIME_COOLDOWN, commands.BucketType.user)
     @check_access_decorator("crime")
     async def crime(self, ctx: commands.Context):
+        current_time = time.time()
+        user_id = ctx.author.id
+        
+        dynamic_cooldown = get_user_cooldown(ctx.author, "crime")
+        last_used = self.crime_cooldowns.get(user_id, 0)
+        
+        if current_time - last_used < dynamic_cooldown:
+            retry_after = dynamic_cooldown - (current_time - last_used)
+            unban_timestamp = int(current_time + retry_after)
+            embed = discord.Embed(
+                description=f"<a:gifclock:1544347190984441858> Вы сможете снова совершить преступление <t:{unban_timestamp}:R>.",
+                color=config.EMBED_COLOR
+            )
+            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+            return await ctx.send(embed=embed)
+
+        self.crime_cooldowns[user_id] = current_time
         is_success = random.random() < CRIME_SUCCESS_CHANCE
 
         if is_success:
@@ -773,7 +815,6 @@ class EconomyCog(commands.Cog):
             embed = make_status_embed("Преступление", phrase, "success")
         else:
             amount = random.randint(CRIME_FAILURE_MIN_REWARD, CRIME_FAILURE_MAX_REWARD)
-            # Списываем с налички (может уйти в минус)
             update_user_balance_delta(ctx.author.id, cash_delta=-amount)
             phrase = random.choice(CRIME_FAILURE_PHRASES).format(amount=f"{amount:,}")
             embed = make_status_embed("Преступление", phrase, "error")
@@ -781,12 +822,27 @@ class EconomyCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="income")
-    @commands.cooldown(1, INCOME_COOLDOWN, commands.BucketType.user)  # 1 день (86400 сек)
     @check_access_decorator("income")
     async def income(self, ctx: commands.Context):
         if not isinstance(ctx.author, discord.Member):
             await ctx.send(embed=make_error_embed("Ошибка", "Эту команду можно использовать только на сервере."))
             return
+
+        current_time = time.time()
+        user_id = ctx.author.id
+        
+        dynamic_cooldown = get_user_cooldown(ctx.author, "income")
+        last_used = self.income_cooldowns.get(user_id, 0)
+        
+        if current_time - last_used < dynamic_cooldown:
+            retry_after = dynamic_cooldown - (current_time - last_used)
+            unban_timestamp = int(current_time + retry_after)
+            embed = discord.Embed(
+                description=f"<a:gifclock:1544347190984441858> Вы сможете снова получить доход с ролей <t:{unban_timestamp}:R>.",
+                color=config.EMBED_COLOR
+            )
+            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+            return await ctx.send(embed=embed)
 
         collected_roles = []
         total_income = 0
@@ -798,10 +854,11 @@ class EconomyCog(commands.Cog):
                 collected_roles.append((role_id, reward))
 
         if total_income <= 0:
-            ctx.command.reset_cooldown(ctx)
             await ctx.send(embed=make_error_embed("Доход с ролей", "У вас нет ролей, приносящих доход."))
             return
 
+        # Фиксируем время использования только если роли действительно есть и доход начислен
+        self.income_cooldowns[user_id] = current_time
         update_user_balance_delta(ctx.author.id, cash_delta=total_income)
 
         coin_emoji = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
