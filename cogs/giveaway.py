@@ -948,6 +948,12 @@ class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.bot.add_view(GiveawayPublicView())
+        
+        giveaways_col.update_many(
+            {"status": "active"},
+            [{"$set": {"participant_count": {"$size": {"$ifNull": ["$participants", []]}}}}]
+        )
+        
         self.finish_loop.start()
 
     def cog_unload(self):
