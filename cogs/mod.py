@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.ui import View, Select
 import database
 import utils
+from utils import build_command_help_embed
 import config
 
 class DeleteVerbSelect(Select):
