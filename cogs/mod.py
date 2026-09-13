@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.ui import View, Select
 import database
 import utils
-from utils import build_command_help_embed
+from utils import build_command_help_embed, check_access_decorator
 import config
 
 class DeleteVerbSelect(Select):
@@ -77,11 +77,11 @@ class ModCog(commands.Cog):
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
         if isinstance(error, commands.MissingRequiredArgument):
             cmd_name = ctx.command.name
-            embed = utils.build_command_help_embed(cmd_name)
+            embed = build_command_help_embed(cmd_name)
             await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name="verbalwarn", aliases=["verb"])
-    @utils.check_access_decorator("verbalwarn")
+    @commands.command(name="verbalwarn", aliases=["verb"])
+    @check_access_decorator("verbalwarn")
     async def verbalwarn(self, ctx: commands.Context, member_id: int = None, *, reason: str = None):
         if member_id is None or reason is None:
             ctx.command.reset_cooldown(ctx)
@@ -115,8 +115,8 @@ class ModCog(commands.Cog):
         await ctx.send(embed=embed)
         await utils.log_action(ctx.guild, "verbalwarn", embed)
 
-    @commands.hybrid_command(name="verbals", aliases=["verbs"])
-    @utils.check_access_decorator("verbals")
+    @commands.command(name="verbals", aliases=["verbs"])
+    @check_access_decorator("verbals")
     async def verbals(self, ctx: commands.Context, member_id: int = None):
         if member_id is None:
             ctx.command.reset_cooldown(ctx)
@@ -153,8 +153,8 @@ class ModCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name="deleteverb")
-    @utils.check_access_decorator("deleteverb")
+    @commands.command(name="deleteverb")
+    @check_access_decorator("deleteverb")
     async def deleteverb(self, ctx: commands.Context, member_id: int = None):
         if member_id is None:
             ctx.command.reset_cooldown(ctx)
