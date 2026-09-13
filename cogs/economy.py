@@ -6,7 +6,7 @@ import discord
 import config
 
 from discord.ext import commands
-from database import users_col, shop_stock_col, transfers_col
+from database import users_col, shop_stock_col, transfers_col, transfer_limits_col
 from datetime import datetime, timedelta, timezone
 from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed
 
@@ -732,13 +732,22 @@ class EconomyCog(commands.Cog):
         result = list(transfers_col.aggregate(pipeline))
         total_sent_this_week = result[0]["total"] if result else 0
 
-        WEEKLY_LIMIT = 2500
-        if total_sent_this_week + amount > WEEKLY_LIMIT:
-            remaining = max(0, WEEKLY_LIMIT - total_sent_this_week)
+        limit_pipeline = [
+            {"$match": {"user_id": ctx.author.id, "time": {"$gte": one_week_ago}}},
+            {"$group": {"_id": None, "total": {"$sum": "$extra_limit"}}}
+        ]
+        limit_result = list(transfer_limits_col.aggregate(limit_pipeline))
+        extra_limit_this_week = limit_result[0]["total"] if limit_result else 0
+
+        BASE_WEEKLY_LIMIT = 2500
+        TOTAL_WEEKLY_LIMIT = BASE_WEEKLY_LIMIT + extra_limit_this_week
+
+        if total_sent_this_week + amount > TOTAL_WEEKLY_LIMIT:
+            remaining = max(0, TOTAL_WEEKLY_LIMIT - total_sent_this_week)
             await ctx.send(embed=make_error_embed(
                 "Лимит превышен", 
                 f"Вы исчерпали недельный лимит переводов.\n"
-                f"Доступно для отправки на этой неделе: **{remaining:,}** / {WEEKLY_LIMIT:,} коинов."
+                f"Доступно для отправки на этой неделе: **{remaining:,}** / {TOTAL_WEEKLY_LIMIT:,} коинов."
             ))
             return
 
@@ -762,6 +771,36 @@ class EconomyCog(commands.Cog):
             "Перевод выполнен",
             f"Вы перевели **{amount:,}** коинов пользователю {target.mention} с вашего банковского счёта.\n"
             f"Лимит на этой неделе использовано: `{total_sent_this_week + amount:,}` / `{WEEKLY_LIMIT:,}`",
+            "success"
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command(name="addlimit")
+    @check_access_decorator("addlimit")
+    async def addlimit(self, ctx: commands.Context, target: discord.Member | discord.User = None, extra_limit: int = None):
+        if not is_owner_user(ctx.author):
+            await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
+            return
+
+        if target is None or extra_limit is None:
+            return ctx.send(embed=build_command_help_embed("addlimit"))
+
+        if extra_limit <= 0:
+            await ctx.send(embed=make_error_embed("Ошибка", "Дополнительный лимит должен быть больше 0."))
+            return
+
+        now = datetime.now(timezone.utc)
+        
+        transfer_limits_col.insert_one({
+            "user_id": target.id,
+            "extra_limit": extra_limit,
+            "time": now,
+            "issuer_id": ctx.author.id
+        })
+
+        embed = make_status_embed(
+            "Лимит увеличен",
+            f"Пользователю {target.mention} успешно добавлен дополнительный лимит переводов на сумму **{extra_limit:,}** коинов.",
             "success"
         )
         await ctx.send(embed=embed)
