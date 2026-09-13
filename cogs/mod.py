@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.ui import View, Select
 import database
 import utils
-from utils import build_command_help_embed, check_access_decorator
+from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, build_command_help_embed
 import config
 
 class DeleteVerbSelect(Select):
@@ -28,12 +28,12 @@ class DeleteVerbSelect(Select):
         selected_verb = next((v for v in self.verb_list if v.get("verb_id") == selected_verb_id), None)
         
         if not selected_verb:
-            await interaction.response.send_message(embed=utils.make_error_embed("Ошибка", "Выбранный вербальный варн не найден."), ephemeral=True)
+            await interaction.response.send_message(embed=make_error_embed("Ошибка", "Выбранный вербальный варн не найден."), ephemeral=True)
             return
 
         view = DeleteVerbConfirmView(selected_verb)
         await interaction.response.send_message(
-            embed=utils.make_status_embed(
+            embed=make_status_embed(
                 "Подтверждение удаления",
                 f"Вы уверены, что хотите удалить вербальный варн?\n\n**Номер:** `{selected_verb.get('verb_id')}`\n**Причина:** {selected_verb.get('reason')}"
             ),
@@ -57,7 +57,7 @@ class DeleteVerbConfirmView(View):
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(
-            embed=utils.make_status_embed("Успешно", f"Вербальный варн №{self.verb_data.get('verb_id')} успешно удален."),
+            embed=make_status_embed("Успешно", f"Вербальный варн №{self.verb_data.get('verb_id')} успешно удален."),
             view=self
         )
 
@@ -66,7 +66,7 @@ class DeleteVerbConfirmView(View):
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(
-            embed=utils.make_status_embed("Отменено", "Действие отменено."),
+            embed=make_status_embed("Отменено", "Действие отменено."),
             view=self
         )
 
@@ -92,7 +92,7 @@ class ModCog(commands.Cog):
             try:
                 target = await self.bot.fetch_user(member_id)
             except discord.NotFound:
-                await ctx.send(embed=utils.make_error_embed("Ошибка", "Участник с таким ID не найден."))
+                await ctx.send(embed=make_error_embed("Ошибка", "Участник с таким ID не найден."))
                 return
 
         verb_id = database.get_next_sequence_value("verbal_warns")
@@ -113,7 +113,7 @@ class ModCog(commands.Cog):
         )
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
-        await utils.log_action(ctx.guild, "verbalwarn", embed)
+        await log_action(ctx.guild, "verbalwarn", embed)
 
     @commands.command(name="verbals", aliases=["verbs"])
     @check_access_decorator("verbals")
@@ -127,13 +127,13 @@ class ModCog(commands.Cog):
             try:
                 target = await self.bot.fetch_user(member_id)
             except discord.NotFound:
-                await ctx.send(embed=utils.make_error_embed("Ошибка", "Участник с таким ID не найден."))
+                await ctx.send(embed=make_error_embed("Ошибка", "Участник с таким ID не найден."))
                 return
 
         user_verbs = list(database.verbal_warnings_col.find({"user_id": target.id}))
 
         if not user_verbs:
-            await ctx.send(embed=utils.make_error_embed("Список пуст", f"У участника {target.mention} нет вербальных варнов."))
+            await ctx.send(embed=make_error_embed("Список пуст", f"У участника {target.mention} нет вербальных варнов."))
             return
 
         embed = discord.Embed(
@@ -163,12 +163,12 @@ class ModCog(commands.Cog):
         user_verbs = list(database.verbal_warnings_col.find({"user_id": member_id}))
 
         if not user_verbs:
-            await ctx.send(embed=utils.make_error_embed("Ошибка", "У данного участника нет вербальных варнов."))
+            await ctx.send(embed=make_error_embed("Ошибка", "У данного участника нет вербальных варнов."))
             return
 
         view = DeleteVerbView(user_verbs)
         await ctx.send(
-            embed=utils.make_status_embed("Управление вербальными варнами", "Выберите нужный вербальный варн из выпадающего списка ниже:"),
+            embed=make_status_embed("Управление вербальными варнами", "Выберите нужный вербальный варн из выпадающего списка ниже:"),
             view=view
         )
 

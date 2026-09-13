@@ -322,7 +322,7 @@ def build_command_help_embed(command_name: str) -> discord.Embed:
             "**Использование:**\n"
             "`.verbalwarn [ID участника] [причина]`\n\n"
             "**Пример:**\n"
-            "`.verbalwarn 851443344718430210 Нарушение правил общения`"
+            "`.verbalwarn 851443344718430210 Сбитие счета в считалке.`"
         )
     elif command_name == "verbals":
         embed.title = "Команда: verbals"
