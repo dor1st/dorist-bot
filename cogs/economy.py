@@ -725,19 +725,27 @@ class EconomyCog(commands.Cog):
         now = datetime.now(timezone.utc)
         one_week_ago = now - timedelta(days=7)
 
-        pipeline = [
-            {"$match": {"sender_id": ctx.author.id, "time": {"$gte": one_week_ago}}},
-            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
-        ]
-        result = list(transfers_col.aggregate(pipeline))
-        total_sent_this_week = result[0]["total"] if result else 0
+        try:
+            pipeline = [
+                {"$match": {"sender_id": ctx.author.id, "time": {"$gte": one_week_ago}}},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ]
+            result = list(transfers_col.aggregate(pipeline))
+            total_sent_this_week = result[0]["total"] if result and "total" in result[0] else 0
+        except Exception as e:
+            print(f"Ошибка агрегации transfers: {e}")
+            total_sent_this_week = 0
 
-        limit_pipeline = [
-            {"$match": {"user_id": ctx.author.id, "time": {"$gte": one_week_ago}}},
-            {"$group": {"_id": None, "total": {"$sum": "$extra_limit"}}}
-        ]
-        limit_result = list(transfer_limits_col.aggregate(limit_pipeline))
-        extra_limit_this_week = limit_result[0]["total"] if limit_result else 0
+        try:
+            limit_pipeline = [
+                {"$match": {"user_id": ctx.author.id, "time": {"$gte": one_week_ago}}},
+                {"$group": {"_id": None, "total": {"$sum": "$extra_limit"}}}
+            ]
+            limit_result = list(transfer_limits_col.aggregate(limit_pipeline))
+            extra_limit_this_week = limit_result[0]["total"] if limit_result and "total" in limit_result[0] else 0
+        except Exception as e:
+            print(f"Ошибка агрегации limits: {e}")
+            extra_limit_this_week = 0
 
         BASE_WEEKLY_LIMIT = 2500
         TOTAL_WEEKLY_LIMIT = BASE_WEEKLY_LIMIT + extra_limit_this_week
