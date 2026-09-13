@@ -28,8 +28,6 @@ giveaways_col = db["giveaways"]
 invites_col = db["invites"]
 users_col = db["users"]
 shop_stock_col = db["shop_stock"]
-transfers_col = db["transfers"]
-transfer_limits_col = db["transfer_limits"]
 
 tickets_col.create_index("transcript_url", unique=True, sparse=True)
 deleted_tickets_col.create_index("transcript_url", unique=True, sparse=True)
