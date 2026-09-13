@@ -805,6 +805,51 @@ class EconomyCog(commands.Cog):
         )
         await ctx.send(embed=embed)
 
+    @commands.command(name="checklimit")
+    @check_access_decorator("checklimit")
+    async def checklimit(self, ctx: commands.Context, target: discord.Member | discord.User = None):
+        if not is_owner_user(ctx.author):
+            await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
+            return
+
+        if target is None:
+            return ctx.send(embed=build_command_help_embed("checklimit"))
+
+        now = datetime.now(timezone.utc)
+        one_week_ago = now - timedelta(days=7)
+
+        pipeline = [
+            {"$match": {"sender_id": target.id, "time": {"$gte": one_week_ago}}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]
+        result = list(transfers_col.aggregate(pipeline))
+        total_sent_this_week = result[0]["total"] if result else 0
+
+        limit_pipeline = [
+            {"$match": {"user_id": target.id, "time": {"$gte": one_week_ago}}},
+            {"$group": {"_id": None, "total": {"$sum": "$extra_limit"}}}
+        ]
+        limit_result = list(transfer_limits_col.aggregate(limit_pipeline))
+        extra_limit_this_week = limit_result[0]["total"] if limit_result else 0
+
+        BASE_WEEKLY_LIMIT = 2500
+        total_weekly_limit = BASE_WEEKLY_LIMIT + extra_limit_this_week
+        remaining = max(0, total_weekly_limit - total_sent_this_week)
+
+        embed = discord.Embed(
+            title=f"📊 Статистика лимита: {target.display_name}",
+            color=config.EMBED_COLOR,
+            description=(
+                f"• Базовый лимит: **{BASE_WEEKLY_LIMIT:,}** {COIN_EMOJI}\n"
+                f"• Дополнительный лимит (за 7 дней): **{extra_limit_this_week:,}** {COIN_EMOJI}\n"
+                f"• **Общий лимит на неделю:** **{total_weekly_limit:,}** {COIN_EMOJI}\n\n"
+                f"• Использовано: **{total_sent_this_week:,}** {COIN_EMOJI}\n"
+                f"• **Осталось доступно:** **{remaining:,}** {COIN_EMOJI}"
+            )
+        )
+        embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+        await ctx.send(embed=embed)
+
     # -------------------------------------------------------------
     # Новые экономические команды и мини-игры
     # -------------------------------------------------------------
