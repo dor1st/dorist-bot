@@ -233,6 +233,42 @@ class HelpCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
+    @commands.command(name="verbalwarn_help")
+    async def verbalwarn_help(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title="Команда: verbalwarn",
+            description=(
+                "Выдать устное предупреждение пользователю за нарушение правил.\n\n"
+                "**Права / Доступ:**\n"
+                "Требуются права модератора (или специальный доступ к команде).\n\n"
+                "**Основы и правила:**\n"
+                "1. Устное предупреждение фиксируется в базе данных с привязкой к участнику.\n"
+                "2. Указывайте понятную и аргументированную причину.\n\n"
+                "**Использование:**\n"
+                "`.verbalwarn [упоминание / ID] [причина]`"
+            ),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
+    @commands.command(name="verbals_help")
+    async def verbals_help(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title="Команда: verbals",
+            description=(
+                "Посмотреть список устных предупреждений конкретного участника.\n\n"
+                "**Основы и правила:**\n"
+                "1. Отображает активные устные предупреждения, даты выдачи и никнеймы модераторов.\n"
+                "2. Если аргумент не указан, обычно показывает статистику по вам самим или подсказывает синтаксис.\n\n"
+                "**Использование:**\n"
+                "`.verbals [упоминание / ID]`"
+            ),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(HelpCog(bot))
