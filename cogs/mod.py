@@ -79,7 +79,6 @@ class ModCog(commands.Cog):
         if member_id is None or reason is None:
             return await ctx.send(embed=utils.build_command_help_embed("verbalwarn"))
 
-    async def verbalwarn(self, ctx: commands.Context, member_id: int, *, reason: str):
         target = ctx.guild.get_member(member_id)
         if not target:
             try:
@@ -116,7 +115,6 @@ class ModCog(commands.Cog):
         if member_id is None:
             return await ctx.send(embed=utils.build_command_help_embed("verbals"))
 
-    async def verbals(self, ctx: commands.Context, member_id: int):
         target = ctx.guild.get_member(member_id)
         if not target:
             try:
@@ -154,7 +152,6 @@ class ModCog(commands.Cog):
         if member_id is None:
             return await ctx.send(embed=utils.build_command_help_embed("deleteverb"))
 
-    async def deleteverb(self, ctx: commands.Context, member_id: int):
         user_verbs = list(database.verbal_warnings_col.find({"user_id": member_id}))
 
         if not user_verbs:
