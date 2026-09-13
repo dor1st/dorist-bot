@@ -324,11 +324,6 @@ class GiveawayPublicView(discord.ui.View):
                 {"_id": doc["_id"]},
                 {"$pull": {"participants": interaction.user.id}},
             )
-            updated_participants_count = len(doc.get("participants", [])) - 1
-            giveaways_col.update_one(
-                {"_id": doc["_id"]},
-                {"$set": {"participant_count": max(0, updated_participants_count)}}
-            )
             await interaction.response.send_message(
                 "<a:alert:1544047350345891851> Вы успешно вышли из розыгрыша.",
                 ephemeral=True,
@@ -338,24 +333,21 @@ class GiveawayPublicView(discord.ui.View):
                 {"_id": doc["_id"]},
                 {"$addToSet": {"participants": interaction.user.id}},
             )
-            updated_participants_count = len(doc.get("participants", []))
-            if interaction.user.id not in participants:
-                updated_participants_count += 1
-            
-            giveaways_col.update_one(
-                {"_id": doc["_id"]},
-                {"$set": {"participant_count": updated_participants_count}}
-            )
             await interaction.response.send_message(
                 "<:giveaway:1522331215976206446> Вы успешно приняли участие в розыгрыше! Чтобы выйти, нажмите кнопку ещё раз.",
                 ephemeral=True,
             )
 
         updated_doc = giveaways_col.find_one({"_id": doc["_id"]})
+        real_count = len(updated_doc.get("participants", []))
+        
+        giveaways_col.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"participant_count": real_count}}
+        )
+
         guild = interaction.guild
         host = guild.get_member(int(updated_doc["host_id"])) or interaction.client.user
-
-        real_count = len(updated_doc.get("participants", []))
 
         embeds = build_giveaway_embeds(
             prize=updated_doc["prize"],
@@ -949,11 +941,6 @@ class GiveawayCog(commands.Cog):
         self.bot = bot
         self.bot.add_view(GiveawayPublicView())
         
-        giveaways_col.update_many(
-            {"status": "active"},
-            [{"$set": {"participant_count": {"$size": {"$ifNull": ["$participants", []]}}}}]
-        )
-        
         self.finish_loop.start()
 
     def cog_unload(self):
@@ -1189,6 +1176,83 @@ class GiveawayCog(commands.Cog):
             view=view,
         )
         view.setup_message = setup_message
+
+    @giveaway_group.command(name="debug")
+    @check_access_decorator("giveaway")
+    async def giveaway_debug(self, ctx: commands.Context, message_id: str):
+        if not ctx.guild:
+            return
+
+        try:
+            message_id_int = int(message_id)
+        except ValueError:
+            await ctx.send(embed=make_error_embed("Ошибка", "ID сообщения должен быть числом."))
+            return
+
+        doc = giveaways_col.find_one(
+            {
+                "type": "giveaway",
+                "guild_id": ctx.guild.id,
+                "message_id": message_id_int,
+            }
+        )
+
+        if not doc:
+            await ctx.send(
+                embed=make_error_embed(
+                    "Розыгрыш не найден",
+                    "Розыгрыш с таким ID в базе данных не найден.",
+                )
+            )
+            return
+
+        participants = doc.get("participants", [])
+        real_count = len(participants)
+
+        giveaways_col.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"participant_count": real_count}}
+        )
+
+        message = await self._get_giveaway_message(doc)
+        if not message:
+            await ctx.send(embed=make_error_embed("Ошибка", "Сообщение розыгрыша не найдено в канале."))
+            return
+
+        guild = ctx.guild
+        host = guild.get_member(int(doc["host_id"])) or self.bot.user
+        is_ended = doc.get("status") == "ended"
+
+        winner_ids = doc.get("winner_ids") if is_ended else None
+
+        embeds = build_giveaway_embeds(
+            prize=doc["prize"],
+            host=host,
+            ends_at=doc["ends_at"],
+            winners_count=doc["winners_count"],
+            participant_count=real_count,
+            role_mode=doc.get("role_mode"),
+            required_roles=doc.get("required_roles", []),
+            min_messages=doc.get("min_messages", 0),
+            min_invites=doc.get("min_invites", 0),
+            bonus_roles={int(k): int(v) for k, v in doc.get("bonus_roles", {}).items()},
+            claim_time=doc.get("claim_time", "—"),
+            ended=is_ended,
+            winner_ids=winner_ids,
+        )
+
+        try:
+            await message.edit(embeds=list(embeds))
+        except discord.HTTPException:
+            pass
+
+        await ctx.send(
+            embed=make_status_embed(
+                "Успешный дебаг",
+                f"Розыгрыш `{message_id_int}` успешно обновлен.\nАктуальное количество участников: **{real_count}**.",
+                "success",
+            )
+        )
 
     @giveaway_group.command(name="end")
     @check_access_decorator("giveaway")
