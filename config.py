@@ -465,6 +465,12 @@ DEFAULT_COOLDOWNS = {
     "income": 86400,  # 24 часа
 }
 
+PROTECTED_ROLES_FROM_ROB = [
+    1309460485082714144,
+    1521863674829078659,
+    1501508956961509436,
+]
+
 CONFIG = {
     "embed_color": 0x212121,
     "footer_text": "ТУСОВКА ДОРИСТА",
