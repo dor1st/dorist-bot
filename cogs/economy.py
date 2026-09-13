@@ -260,7 +260,7 @@ class ItemTakeSelect(discord.ui.Select):
         )
 
         await interaction.response.edit_message(
-            content=f"<:verify:1522329028420173976> Предмет **{removed_item['name']}** (`{removed_item['id']}`) успешно изъят из инвентаря пользователя <@:{self.target_id}>.",
+            content=f"<:verify:1522329028420173976> Предмет **{removed_item['name']}** (`{removed_item['id']}`) успешно изъят из инвентаря пользователя.",
             view=None
         )
 

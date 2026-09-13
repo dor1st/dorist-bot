@@ -533,7 +533,7 @@ class GiveawaySetupView(discord.ui.View):
         )
 
     @discord.ui.button(
-        label="Требования",
+        label="Условия",
         emoji="<:logs:1522340749998428160>",
         style=discord.ButtonStyle.secondary,
         row=0,
