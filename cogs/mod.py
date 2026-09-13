@@ -73,6 +73,12 @@ class ModCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def cog_command_error(self, ctx: commands.Context, error: Exception):
+        if isinstance(error, commands.MissingRequiredArgument):
+            cmd_name = ctx.command.name
+            embed = utils.build_command_help_embed(cmd_name)
+            await ctx.send(embed=embed)
+
     @commands.hybrid_command(name="verbalwarn", aliases=["verb"])
     @utils.check_access_decorator("verbalwarn")
     async def verbalwarn(self, ctx: commands.Context, member_id: int = None, *, reason: str = None):
