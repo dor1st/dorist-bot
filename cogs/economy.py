@@ -1,11 +1,13 @@
 import random
 import time
 import re
+import datetime
 import discord
-from discord.ext import commands
-
 import config
-from database import users_col, shop_stock_col
+
+from discord.ext import commands
+from database import users_col, shop_stock_col, transfers_col
+from datetime import datetime, timedelta, timezone
 from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed
 
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
@@ -720,18 +722,46 @@ class EconomyCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Ошибка", "Сумма перевода должна быть больше 0."))
             return
 
+        now = datetime.now(timezone.utc)
+        one_week_ago = now - timedelta(days=7)
+
+        pipeline = [
+            {"$match": {"sender_id": ctx.author.id, "time": {"$gte": one_week_ago}}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]
+        result = list(transfers_col.aggregate(pipeline))
+        total_sent_this_week = result[0]["total"] if result else 0
+
+        WEEKLY_LIMIT = 2500
+        if total_sent_this_week + amount > WEEKLY_LIMIT:
+            remaining = max(0, WEEKLY_LIMIT - total_sent_this_week)
+            await ctx.send(embed=make_error_embed(
+                "Лимит превышен", 
+                f"Вы исчерпали недельный лимит переводов.\n"
+                f"Доступно для отправки на этой неделе: **{remaining:,}** / {WEEKLY_LIMIT:,} коинов."
+            ))
+            return
+
         _, sender_bank = get_user_balance(ctx.author.id)
 
         if sender_bank < amount:
             await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно средств на банковском счёте для перевода."))
             return
 
+        transfers_col.insert_one({
+            "sender_id": ctx.author.id,
+            "receiver_id": target.id,
+            "amount": amount,
+            "time": now
+        })
+
         update_user_balance_delta(ctx.author.id, bank_delta=-amount)
         update_user_balance_delta(target.id, bank_delta=amount)
 
         embed = make_status_embed(
             "Перевод выполнен",
-            f"Вы перевели **{amount:,}** коинов пользователю {target.mention} с вашего банковского счёта.",
+            f"Вы перевели **{amount:,}** коинов пользователю {target.mention} с вашего банковского счёта.\n"
+            f"Лимит на этой неделе использовано: `{total_sent_this_week + amount:,}` / `{WEEKLY_LIMIT:,}`",
             "success"
         )
         await ctx.send(embed=embed)
