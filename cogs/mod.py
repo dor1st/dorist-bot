@@ -15,7 +15,7 @@ class DeleteVerbSelect(Select):
             truncated_reason = reason if len(reason) <= 90 else reason[:87] + "..."
             options.append(
                 discord.SelectOption(
-                    label=f"Верб №{verb_id}",
+                    label=f"Вербальный варн №{verb_id}",
                     description=truncated_reason,
                     value=str(verb_id)
                 )
@@ -73,12 +73,6 @@ class DeleteVerbConfirmView(View):
 class ModCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    async def cog_command_error(self, ctx: commands.Context, error: Exception):
-        if isinstance(error, commands.MissingRequiredArgument):
-            cmd_name = ctx.command.name
-            embed = build_command_help_embed(cmd_name)
-            await ctx.send(embed=embed)
 
     @commands.command(name="verbalwarn", aliases=["verb"])
     @check_access_decorator("verbalwarn")

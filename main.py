@@ -24,6 +24,7 @@ INITIAL_EXTENSIONS = [
     "cogs.giveaway",
     "cogs.economy",
     "cogs.streak",
+    "cogs.mod",
 ]
 
 @bot.event
