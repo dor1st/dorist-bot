@@ -349,7 +349,7 @@ class GiveawayPublicView(discord.ui.View):
         guild = interaction.guild
         host = guild.get_member(int(updated_doc["host_id"])) or interaction.client.user
 
-        embeds = build_giveaway_embeds(
+        embed = build_giveaway_embeds(
             prize=updated_doc["prize"],
             host=host,
             ends_at=updated_doc["ends_at"],
@@ -363,7 +363,7 @@ class GiveawayPublicView(discord.ui.View):
             claim_time=updated_doc.get("claim_time", "—"),
         )
         try:
-            await interaction.message.edit(embeds=list(embeds))
+            await interaction.message.edit(embed=embed)
         except discord.HTTPException:
             pass
 
@@ -1226,7 +1226,7 @@ class GiveawayCog(commands.Cog):
 
         winner_ids = doc.get("winner_ids") if is_ended else None
 
-        embeds = build_giveaway_embeds(
+        embed = build_giveaway_embeds(
             prize=doc["prize"],
             host=host,
             ends_at=doc["ends_at"],
@@ -1243,7 +1243,7 @@ class GiveawayCog(commands.Cog):
         )
 
         try:
-            await message.edit(embeds=list(embeds))
+            await message.edit(embed=embed)
         except discord.HTTPException:
             pass
 
