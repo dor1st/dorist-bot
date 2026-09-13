@@ -162,6 +162,7 @@ PERMISSION_GROUPS_DEFAULT = {
             "deletegiveaway", 
             "deleteinvite", 
             "restock",
+            "addlimit"
         ],
     },
 }
