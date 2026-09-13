@@ -1104,6 +1104,7 @@ class GiveawayCog(commands.Cog):
                 "• `.giveaway end [ID]` - Завершить розыгрыш\n"
                 "• `.giveaway reroll [ID]` - Перевыбрать победителя (реролл)\n"
                 "• `.giveaway delete [ID]` - Удалить розыгрыш\n"
+                "• `.giveaway debug [ID]` - Пофиксить неполадки с розыгрышем\n"
             ),
             color=config.EMBED_COLOR,
         )

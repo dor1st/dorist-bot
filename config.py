@@ -296,7 +296,12 @@ HELP_CATEGORIES = {
     "staff": {
         "name": "Персонал",
         "emoji": "<:mod:1522343179205087363>",
-        "allowed_groups": ["staff", "admin", "owner"]
+        "allowed_groups": ["staff", "admin", "owner"],
+        "commands": [
+            "> `.verbalwarn` - *Внести вербальный варн в базу.*",
+            "> `.verbals` - *Посмотреть список вербальных варнов участника.*",
+            "> `.deleteverb` - *Удалить вербальный варн из базы.*",
+        ]
     }
 }
 
