@@ -347,7 +347,5 @@ def build_command_help_embed(command_name: str) -> discord.Embed:
             "`.deleteverb 851443344718430210`"
         )
 
-    return embed
-
     embed.set_footer(text=config.FOOTER_TEXT)
     return embed

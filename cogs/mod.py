@@ -77,7 +77,9 @@ class ModCog(commands.Cog):
     @utils.check_access_decorator("verbalwarn")
     async def verbalwarn(self, ctx: commands.Context, member_id: int = None, *, reason: str = None):
         if member_id is None or reason is None:
-            return await ctx.send(embed=utils.build_command_help_embed("verbalwarn"))
+            embed = utils.build_command_help_embed("verbalwarn")
+            await ctx.send(embed=embed)
+            return
 
         target = ctx.guild.get_member(member_id)
         if not target:
@@ -96,7 +98,6 @@ class ModCog(commands.Cog):
             "reason": reason
         }
         
-        database.verbal_warnings_col.insert_index = [("verb_id", 1)]
         database.verbal_warnings_col.insert_one(warn_doc)
 
         embed = discord.Embed(
@@ -106,14 +107,15 @@ class ModCog(commands.Cog):
         )
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
-
         await utils.log_action(ctx.guild, "verbalwarn", embed)
 
     @commands.hybrid_command(name="verbals", aliases=["verbs"])
     @utils.check_access_decorator("verbals")
     async def verbals(self, ctx: commands.Context, member_id: int = None):
         if member_id is None:
-            return await ctx.send(embed=utils.build_command_help_embed("verbals"))
+            embed = utils.build_command_help_embed("verbals")
+            await ctx.send(embed=embed)
+            return
 
         target = ctx.guild.get_member(member_id)
         if not target:
@@ -150,7 +152,9 @@ class ModCog(commands.Cog):
     @utils.check_access_decorator("deleteverb")
     async def deleteverb(self, ctx: commands.Context, member_id: int = None):
         if member_id is None:
-            return await ctx.send(embed=utils.build_command_help_embed("deleteverb"))
+            embed = utils.build_command_help_embed("deleteverb")
+            await ctx.send(embed=embed)
+            return
 
         user_verbs = list(database.verbal_warnings_col.find({"user_id": member_id}))
 
