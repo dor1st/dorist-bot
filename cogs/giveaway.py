@@ -322,7 +322,12 @@ class GiveawayPublicView(discord.ui.View):
         if interaction.user.id in participants:
             giveaways_col.update_one(
                 {"_id": doc["_id"]},
-                {"$pull": {"participants": interaction.user.id}, "$inc": {"participant_count": -1}},
+                {"$pull": {"participants": interaction.user.id}},
+            )
+            updated_participants_count = len(doc.get("participants", [])) - 1
+            giveaways_col.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"participant_count": max(0, updated_participants_count)}}
             )
             await interaction.response.send_message(
                 "<a:alert:1544047350345891851> Вы успешно вышли из розыгрыша.",
@@ -331,7 +336,15 @@ class GiveawayPublicView(discord.ui.View):
         else:
             giveaways_col.update_one(
                 {"_id": doc["_id"]},
-                {"$addToSet": {"participants": interaction.user.id}, "$inc": {"participant_count": 1}},
+                {"$addToSet": {"participants": interaction.user.id}},
+            )
+            updated_participants_count = len(doc.get("participants", []))
+            if interaction.user.id not in participants:
+                updated_participants_count += 1
+            
+            giveaways_col.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"participant_count": updated_participants_count}}
             )
             await interaction.response.send_message(
                 "<:giveaway:1522331215976206446> Вы успешно приняли участие в розыгрыше! Чтобы выйти, нажмите кнопку ещё раз.",
@@ -342,12 +355,14 @@ class GiveawayPublicView(discord.ui.View):
         guild = interaction.guild
         host = guild.get_member(int(updated_doc["host_id"])) or interaction.client.user
 
+        real_count = len(updated_doc.get("participants", []))
+
         embeds = build_giveaway_embeds(
             prize=updated_doc["prize"],
             host=host,
             ends_at=updated_doc["ends_at"],
             winners_count=updated_doc["winners_count"],
-            participant_count=updated_doc.get("participant_count", 0),
+            participant_count=real_count,
             role_mode=updated_doc.get("role_mode"),
             required_roles=updated_doc.get("required_roles", []),
             min_messages=updated_doc.get("min_messages", 0),
