@@ -312,6 +312,40 @@ def build_command_help_embed(command_name: str) -> discord.Embed:
             "**Пример:**\n"
             "`.checktime 134567890123456789 134567890987654321`"
         )
+    elif command_name in ("verbalwarn", "verb"):
+        embed.title = "Команда: verbalwarn"
+        embed.description = (
+            "Выдать вербальное предупреждение участнику\n\n"
+            "**Правила аргументов:**\n"
+            "1. Укажите ID участника.\n"
+            "2. Обязательно укажите причину выдачи варна.\n\n"
+            "**Использование:**\n"
+            "`.verbalwarn [ID участника] [причина]`\n\n"
+            "**Пример:**\n"
+            "`.verbalwarn 851443344718430210 Нарушение правил общения`"
+        )
+    elif command_name == "verbals":
+        embed.title = "Команда: verbals"
+        embed.description = (
+            "Просмотреть список вербальных варнов участника\n\n"
+            "**Правила аргументов:**\n"
+            "1. Укажите ID участника.\n\n"
+            "**Использование:**\n"
+            "`.verbals [ID участника]`\n\n"
+            "**Пример:**\n"
+            "`.verbals 851443344718430210`"
+        )
+    elif command_name == "deleteverb":
+        embed.title = "Команда: deleteverb"
+        embed.description = (
+            "Удалить вербальный варн участника через интерактивное меню\n\n"
+            "**Правила аргументов:**\n"
+            "1. Укажите ID участника, у которого нужно удалить варн.\n\n"
+            "**Использование:**\n"
+            "`.deleteverb [ID участника]`\n\n"
+            "**Пример:**\n"
+            "`.deleteverb 851443344718430210`"
+        )
 
     return embed
 

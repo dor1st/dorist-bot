@@ -110,7 +110,7 @@ class ModCog(commands.Cog):
 
         await utils.log_action(ctx.guild, "verbalwarn", embed)
 
-    @commands.hybrid_command(name="verbals")
+    @commands.hybrid_command(name="verbals", aliases=["verbs"])
     @utils.check_access_decorator("verbals")
     async def verbals(self, ctx: commands.Context, member_id: int = None):
         if member_id is None:
