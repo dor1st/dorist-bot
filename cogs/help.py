@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 import config
-from utils import make_error_embed, is_owner_user
+from utils import make_error_embed, is_owner_user, build_command_help_embed
 
 
 def get_user_groups(user: discord.Member | discord.User) -> list[str]:
@@ -103,7 +103,19 @@ class HelpCog(commands.Cog):
         self.bot = bot
 
     @commands.command(name="help")
-    async def help_cmd(self, ctx: commands.Context):
+    async def help_cmd(self, ctx: commands.Context, category_or_cmd: str = None):
+        """Вывод главного меню справки или справки по конкретной категории/команде."""
+        if category_or_cmd:
+            cat_key = category_or_cmd.lower()
+            help_cats = getattr(config, "HELP_CATEGORIES", {})
+
+            if cat_key in help_cats:
+                embed = build_help_embed(cat_key, ctx.author)
+                return await ctx.send(embed=embed)
+
+            if cat_key in getattr(config, "COMMAND_USAGE_HELP", {}):
+                return await ctx.send(embed=build_command_help_embed(cat_key))
+
         embed = build_help_embed("main", ctx.author)
         view = HelpView(ctx.author.id, ctx.author)
         await ctx.send(embed=embed, view=view)
@@ -111,6 +123,54 @@ class HelpCog(commands.Cog):
     # -------------------------------------------------------------
     # Справка по отдельным командам экономики и мини-игр
     # -------------------------------------------------------------
+
+    @commands.command(name="warn_help")
+    async def warn_help(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title="Команда: warn",
+            description=(
+                "Выдать официальное предупреждение (варн) участнику.\n\n"
+                "**Права / Доступ:**\n"
+                "Модераторы и выше.\n\n"
+                "**Использование:**\n"
+                "`.warn [ID / упоминание] [причина]`"
+            ),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
+    @commands.command(name="mute_help")
+    async def mute_help(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title="Команда: mute",
+            description=(
+                "Отправить участника в мьют (тайм-аут).\n\n"
+                "**Форматы времени:**\n"
+                "`10m` — 10 минут, `2h` — 2 часа, `1d` — 1 день.\n\n"
+                "**Использование:**\n"
+                "`.mute [ID / упоминание] [длительность] [причина]`"
+            ),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
+    @commands.command(name="ban_help")
+    async def ban_help(self, ctx: commands.Context):
+        embed = discord.Embed(
+            title="Команда: ban",
+            description=(
+                "Навсегда забанить участника на сервере.\n\n"
+                "**Права / Доступ:**\n"
+                "Старшие модераторы и Администрация.\n\n"
+                "**Использование:**\n"
+                "`.ban [ID / упоминание] [причина]`"
+            ),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
 
     @commands.command(name="work_help")
     async def work_help(self, ctx: commands.Context):

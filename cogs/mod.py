@@ -538,7 +538,7 @@ class ModCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
-    @commands.command(name="modstats")
+    @commands.command(name="modstats", aliases=["ms"])
     @check_access_decorator("modstats")
     async def modstats(self, ctx: commands.Context, member_id: int = None):
         target_id = member_id if member_id else ctx.author.id
