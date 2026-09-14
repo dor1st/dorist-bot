@@ -17,7 +17,7 @@ from database import (
     get_next_sequence_value,
 
 )
-from utils import check_access_decorator, make_error_embed, make_status_embed, log_action
+from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, send_error_embed
 
 BUMP_REMINDER_MESSAGE = "**<a:gifclock:1544347190984441858> <@&1501943871960125461> Пришло время бампа! (/bump)**"
 ALERT_EMOJI = config.ALERT_EMOJI if hasattr(config, "ALERT_EMOJI") else "<a:alert:1544047350345891851>"
@@ -278,9 +278,7 @@ class StatsCog(commands.Cog):
         doc = invites_col.find_one({"invited_id": target.id})
         
         if not doc or "inviter_id" not in doc:
-            return await ctx.send(
-                embed=make_error_embed("Информация", f"Не удалось определить, кто пригласил пользователя <@!{target.id}> (возможно, он зашел по ссылке-приглашению ванна/другому способу без трекинга).")
-            )
+            return await send_error_embed(ctx, "Информация", f"Не удалось определить, кто пригласил пользователя <@!{target.id}> (возможно, он зашел по ссылке-приглашению ванна/другому способу без трекинга).")
 
         inviter_id = doc["inviter_id"]
         embed = discord.Embed(
@@ -307,11 +305,11 @@ class StatsCog(commands.Cog):
     ):
         if prize not in config.VALID_PRIZES:
             cats = ", ".join(f"`{c}`" for c in config.VALID_PRIZES)
-            return await ctx.send(embed=make_error_embed("Ошибка", f"Неверная категория приза. Допустимые: {cats}"))
+            return await send_error_embed(ctx, "Ошибка", f"Неверная категория приза. Допустимые: {cats}")
 
         existing = invites_col.find_one({"invited_id": invited_id})
         if existing:
-            return await ctx.send(embed=make_error_embed("Ошибка", f"За пользователя <@!{invited_id}> уже забирали награду."))
+            return await send_error_embed(ctx, "Ошибка", f"За пользователя <@!{invited_id}> уже забирали награду.")
 
         log_id = get_next_sequence_value("invites_seq")
         now = datetime.now(timezone.utc)
@@ -371,7 +369,7 @@ class StatsCog(commands.Cog):
     async def loggiveaway_cmd(self, ctx: commands.Context, hoster_id: int, prize: str, amount: int):
         if prize not in config.VALID_PRIZES:
             cats = ", ".join(f"`{c}`" for c in config.VALID_PRIZES)
-            return await ctx.send(embed=make_error_embed("Ошибка", f"Неверная категория приза. Допустимые: {cats}"))
+            return await send_error_embed(ctx, "Ошибка", f"Неверная категория приза. Допустимые: {cats}")
 
         log_id = get_next_sequence_value("giveaways_seq")
         now = datetime.now(timezone.utc)
@@ -404,7 +402,7 @@ class StatsCog(commands.Cog):
     async def giveawaylogs_id(self, ctx: commands.Context, user_id: int):
         docs = list(giveaways_col.find({"hoster_id": user_id}).sort("created_at", 1))
         if not docs:
-            return await ctx.send(embed=make_error_embed("Логи", "У этого пользователя нет проведенных розыгрышей."))
+            return await send_error_embed(ctx, "Логи", "У этого пользователя нет проведенных розыгрышей.")
 
         embed = discord.Embed(title=f"<:giveaway:1522331215976206446> Розыгрыши: хостер", color=config.EMBED_COLOR)
         embed.description = f"`{user_id}`\n" + "----------------------------------------"
@@ -423,7 +421,7 @@ class StatsCog(commands.Cog):
     async def invitelogs_id(self, ctx: commands.Context, user_id: int):
         docs = list(invites_col.find({"inviter_id": user_id}).sort("created_at", 1))
         if not docs:
-            return await ctx.send(embed=make_error_embed("Логи", "У этого пользователя нет записанных приглашений."))
+            return await send_error_embed(ctx, "Логи", "У этого пользователя нет записанных приглашений.")
 
         embed = discord.Embed(title=f"<:logs:1522340749998428160> Приглашения", color=config.EMBED_COLOR)
         embed.description = f"`{user_id}`\n" + "----------------------------------------"
@@ -442,7 +440,7 @@ class StatsCog(commands.Cog):
     async def deletegiveaway_cmd(self, ctx: commands.Context, log_id: int):
         doc = giveaways_col.find_one_and_delete({"_id": log_id})
         if not doc:
-            return await ctx.send(embed=make_error_embed("Ошибка", f"Розыгрыш с ID No{log_id} не найден в базе."))
+            return await send_error_embed(ctx, "Ошибка", f"Розыгрыш с ID No{log_id} не найден в базе.")
 
         embed = discord.Embed(
             title="Удаление розыгрыша",
@@ -460,7 +458,7 @@ class StatsCog(commands.Cog):
     async def deleteinvite_cmd(self, ctx: commands.Context, log_id: int):
         doc = invites_col.find_one_and_delete({"_id": log_id})
         if not doc:
-            return await ctx.send(embed=make_error_embed("Ошибка", f"Инвайт с ID No{log_id} не найден в базе."))
+            return await send_error_embed(ctx, "Ошибка", f"Инвайт с ID No{log_id} не найден в базе.")
 
         embed = discord.Embed(
             title="Удаление инвайта",

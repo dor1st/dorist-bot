@@ -279,12 +279,16 @@ class ModerationsView(View):
     def __init__(self, target: discord.User, items: list, guild: discord.Guild, timeout: int = 180):
         super().__init__(timeout=timeout)
         self.target = target
-        # Сортируем наказания по убыванию даты (свежие вверху)
-        self.items = sorted(
-            items,
-            key=lambda x: x.get("timestamp") or datetime.min.replace(tzinfo=timezone.utc),
-            reverse=True
-        )
+        
+        def get_item_ts(item):
+            ts = item.get("timestamp")
+            if ts is None:
+                return datetime.min.replace(tzinfo=timezone.utc)
+            if ts.tzinfo is None:
+                return ts.replace(tzinfo=timezone.utc)
+            return ts
+
+        self.items = sorted(items, key=get_item_ts, reverse=True)
         self.guild = guild
         self.current_page = 0
         self.total_pages = math.ceil(len(self.items) / LOGS_PER_PAGE)
@@ -494,18 +498,10 @@ class ModCog(commands.Cog):
 
     @commands.command(name="verbalwarn", aliases=["verb"])
     @check_access_decorator("verbalwarn")
-    async def verbalwarn(self, ctx: commands.Context, member_id: int = None, *, reason: str = None):
-        if member_id is None or reason is None:
+    async def verbalwarn(self, ctx: commands.Context, target: discord.User = None, *, reason: str = None):
+        if target is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("verbalwarn"))
-
-        target = ctx.guild.get_member(member_id)
-        if not target:
-            try:
-                target = await self.bot.fetch_user(member_id)
-            except discord.NotFound:
-                await ctx.send(embed=make_error_embed("Ошибка", "Участник с таким ID не найден."))
-                return
 
         verb_id = database.get_next_sequence_value("verbal_warns")
         
@@ -529,23 +525,15 @@ class ModCog(commands.Cog):
 
     @commands.command(name="verbals", aliases=["verbs"])
     @check_access_decorator("verbals")
-    async def verbals(self, ctx: commands.Context, member_id: int = None):
-        if member_id is None:
+    async def verbals(self, ctx: commands.Context, target: discord.User = None):
+        if target is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("verbals"))
-
-        target = ctx.guild.get_member(member_id)
-        if not target:
-            try:
-                target = await self.bot.fetch_user(member_id)
-            except discord.NotFound:
-                await ctx.send(embed=make_error_embed("Ошибка", "Участник с таким ID не найден."))
-                return
 
         user_verbs = list(database.verbal_warnings_col.find({"user_id": target.id}))
 
         if not user_verbs:
-            await ctx.send(embed=make_error_embed("Список пуст", f"У участника {target.mention} нет вербальных варнов."))
+            await utils.send_error(ctx, "Список пуст", f"У участника {target.mention} нет вербальных варнов.")
             return
 
         view = VerbalsView(target=target, verbs=user_verbs, guild=ctx.guild)
@@ -558,15 +546,15 @@ class ModCog(commands.Cog):
 
     @commands.command(name="deleteverb")
     @check_access_decorator("deleteverb")
-    async def deleteverb(self, ctx: commands.Context, member_id: int = None):
-        if member_id is None:
+    async def deleteverb(self, ctx: commands.Context, target: discord.User = None):
+        if target is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("deleteverb"))
 
-        user_verbs = list(database.verbal_warnings_col.find({"user_id": member_id}))
+        user_verbs = list(database.verbal_warnings_col.find({"user_id": target.id}))
 
         if not user_verbs:
-            await ctx.send(embed=make_error_embed("Ошибка", "У данного участника нет вербальных варнов."))
+            await utils.send_error(ctx, "Ошибка", "У данного участника нет вербальных варнов.")
             return
 
         view = DeleteVerbView(user_verbs)
@@ -577,17 +565,10 @@ class ModCog(commands.Cog):
 
     @commands.command(name="warn")
     @check_access_decorator("warn")
-    async def warn(self, ctx: commands.Context, member_id: int = None, *, reason: str = None):
-        if member_id is None or reason is None:
+    async def warn(self, ctx: commands.Context, target: discord.User = None, *, reason: str = None):
+        if target is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("warn"))
-
-        target = ctx.guild.get_member(member_id)
-        if not target:
-            try:
-                target = await self.bot.fetch_user(member_id)
-            except discord.NotFound:
-                return await ctx.send(embed=make_error_embed("Ошибка", "Участник с таким ID не найден."))
 
         case_id = database.get_next_sequence_value("cases")
         case_doc = {
@@ -614,14 +595,14 @@ class ModCog(commands.Cog):
 
     @commands.command(name="delwarn")
     @check_access_decorator("delwarn")
-    async def delwarn(self, ctx: commands.Context, member_id: int = None):
-        if member_id is None:
+    async def delwarn(self, ctx: commands.Context, target: discord.User = None):
+        if target is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("delwarn"))
 
-        user_warns = list(database.cases_col.find({"user_id": member_id, "type": "Варн"}))
+        user_warns = list(database.cases_col.find({"user_id": target.id, "type": "Варн"}))
         if not user_warns:
-            return await ctx.send(embed=make_error_embed("Ошибка", "У данного участника нет активных варнов."))
+            return await utils.send_error(ctx, "Ошибка", "У данного участника нет активных варнов.")
 
         view = DeleteWarnView(user_warns)
         await ctx.send(
@@ -631,14 +612,13 @@ class ModCog(commands.Cog):
 
     @commands.command(name="mute")
     @check_access_decorator("mute")
-    async def mute(self, ctx: commands.Context, member_id: int = None, duration: str = None, *, reason: str = None):
-        if member_id is None or duration is None or reason is None:
+    async def mute(self, ctx: commands.Context, target: discord.Member = None, duration: str = None, *, reason: str = None):
+        if target is None or duration is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("mute"))
 
-        target = ctx.guild.get_member(member_id)
         if not target:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Участник не найден на сервере."))
+            return await utils.send_error(ctx, "Ошибка", "Участник не найден на сервере.")
 
         td = parse_duration(duration)
         if not td:
@@ -674,12 +654,11 @@ class ModCog(commands.Cog):
 
     @commands.command(name="unmute")
     @check_access_decorator("unmute")
-    async def unmute(self, ctx: commands.Context, member_id: int = None, *, reason: str = None): # Убрали дефолтную причину
-        if member_id is None or reason is None: # Причина теперь обязательна
+    async def unmute(self, ctx: commands.Context, target: discord.Member = None, *, reason: str = None):
+        if target is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("unmute"))
 
-        target = ctx.guild.get_member(member_id)
         if not target:
             return await ctx.send(embed=make_error_embed("Ошибка", "Участник не найден на сервере."))
 
@@ -702,21 +681,14 @@ class ModCog(commands.Cog):
 
     @commands.command(name="ban")
     @check_senior_mod()
-    async def ban(self, ctx: commands.Context, member_id: int = None, *, reason: str = None):
-        if member_id is None or reason is None:
+    async def ban(self, ctx: commands.Context, target: discord.User = None, *, reason: str = None):
+        if target is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("ban"))
 
         first_word = reason.split()[0]
         if parse_duration(first_word):
             return await ctx.send(embed=make_error_embed("Ошибка", "Баны выдаются навсегда! Указание длительности запрещено."))
-
-        target = ctx.guild.get_member(member_id)
-        if not target:
-            try:
-                target = await self.bot.fetch_user(member_id)
-            except discord.NotFound:
-                return await ctx.send(embed=make_error_embed("Ошибка", "Участник с таким ID не найден."))
 
         case_id = database.get_next_sequence_value("cases")
         case_doc = {
@@ -734,13 +706,13 @@ class ModCog(commands.Cog):
         try:
             await ctx.guild.ban(target, reason=f"[{ctx.author}] {reason}")
         except discord.Forbidden:
-            return await ctx.send(embed=make_error_embed("Ошибка", "У бота недостаточно прав для бана данного пользователя."))
+            return await utils.send_error(ctx, "Ошибка", "У бота недостаточно прав для бана данного пользователя.")
 
         database.cases_col.insert_one(case_doc)
 
         embed = discord.Embed(
             title="Участник забанен",
-            description=f"**Участник:** {target.mention if isinstance(target, discord.Member) else target.name} (`{target.id}`)\n**Модератор:** {ctx.author.mention}\n**Причина:** {reason}\n**Дело №:** `{case_id}`",
+            description=f"**Участник:** {target.mention} (`{target.id}`)\n**Модератор:** {ctx.author.mention}\n**Причина:** {reason}\n**Дело №:** `{case_id}`",
             color=config.EMBED_COLOR
         )
         embed.set_footer(text=config.FOOTER_TEXT)
@@ -749,26 +721,20 @@ class ModCog(commands.Cog):
 
     @commands.command(name="unban")
     @check_senior_mod()
-    async def unban(self, ctx: commands.Context, member_id: int = None, *, reason: str = "Разбан"):
-        if member_id is None or reason is None:
+    async def unban(self, ctx: commands.Context, target: discord.User = None, *, reason: str = "Разбан"):
+        if target is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("unban"))
 
         try:
-            user = await self.bot.fetch_user(member_id)
-            
-            # Уведомление в ЛС
-            await send_punishment_dm(user, "Разбан", ctx.guild.name, reason)
-            
-            await ctx.guild.unban(user, reason=f"[{ctx.author}] {reason}")
-        except discord.NotFound:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Пользователь с таким ID не найден."))
+            await send_punishment_dm(target, "Разбан", ctx.guild.name, reason)
+            await ctx.guild.unban(target, reason=f"[{ctx.author}] {reason}")
         except discord.HTTPException:
             return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось разбанить пользователя. Проверьте, находится ли он в бане."))
 
         embed = discord.Embed(
             title="Участник разбанен",
-            description=f"**Участник:** {user.mention} (`{user.id}`)\n**Модератор:** {ctx.author.mention}\n**Причина:** {reason}",
+            description=f"**Участник:** {target.mention} (`{target.id}`)\n**Модератор:** {ctx.author.mention}\n**Причина:** {reason}",
             color=config.EMBED_COLOR
         )
         embed.set_footer(text=config.FOOTER_TEXT)
@@ -777,12 +743,8 @@ class ModCog(commands.Cog):
 
     @commands.command(name="modlogs")
     @check_access_decorator("modlogs")
-    async def modlogs(self, ctx: commands.Context, member_id: int = None):
-        target_id = member_id if member_id else ctx.author.id
-        try:
-            target = await self.bot.fetch_user(target_id)
-        except discord.NotFound:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Участник не найден."))
+    async def modlogs(self, ctx: commands.Context, target: discord.User = None):
+        target = target or ctx.author
 
         cases = list(database.cases_col.find({"user_id": target.id}))
         if not cases:
@@ -798,12 +760,8 @@ class ModCog(commands.Cog):
 
     @commands.command(name="modstats", aliases=["ms"])
     @check_access_decorator("modstats")
-    async def modstats(self, ctx: commands.Context, member_id: int = None):
-        target_id = member_id if member_id else ctx.author.id
-        try:
-            target = await self.bot.fetch_user(target_id)
-        except discord.NotFound:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Участник не найден."))
+    async def modstats(self, ctx: commands.Context, target: discord.User = None):
+        target = target or ctx.author
 
         now = datetime.now(timezone.utc)
         d7 = now - timedelta(days=7)
@@ -852,8 +810,15 @@ class ModCog(commands.Cog):
 
     @commands.command(name="moderations", aliases=["moders"])
     @check_access_decorator("moderations")
-    async def moderations(self, ctx: commands.Context, target: discord.User = None):
-        target = target or ctx.author
+    async def moderations(self, ctx: commands.Context, *, target: discord.User | int | str = None):
+        if target is None:
+            target = ctx.author
+        elif not isinstance(target, discord.User):
+            try:
+                user_id = int(re.sub(r"\D", "", str(target)))
+                target = await self.bot.fetch_user(user_id)
+            except (ValueError, discord.NotFound):
+                return await ctx.send(embed=make_error_embed("Ошибка", "Модератор не найден."))
 
         cases = list(database.cases_col.find({"moderator_id": target.id}))
         verbs = list(database.verbal_warnings_col.find({"moderator_id": target.id}))

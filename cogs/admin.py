@@ -3,7 +3,7 @@ from discord.ext import commands
 
 import config
 from database import tickets_col, deleted_tickets_col
-from utils import check_access_decorator, make_error_embed, make_status_embed, is_owner_user, log_action
+from utils import check_access_decorator, make_error_embed, make_status_embed, is_owner_user, log_action, send_error_embed
 
 
 class ConfigSelect(discord.ui.Select):
@@ -109,8 +109,7 @@ class AdminCog(commands.Cog):
     @check_access_decorator("deletelog")
     async def deletelog_cmd(self, ctx: commands.Context, log_id: int = None):
         if log_id is None:
-            embed = make_error_embed("Недостаточно аргументов", config.COMMAND_USAGE_HELP["deletelog"])
-            return await ctx.send(embed=embed)
+            return await send_error_embed(ctx, "Недостаточно аргументов", config.COMMAND_USAGE_HELP["deletelog"])
 
         res = tickets_col.delete_one({"_id": log_id})
         if res.deleted_count > 0:
@@ -118,15 +117,13 @@ class AdminCog(commands.Cog):
             await ctx.send(embed=embed)
             await log_action(ctx.guild, "deletelog", embed)
         else:
-            embed = make_error_embed("Ошибка", f"Лог с номером **№{log_id}** не найден.")
-            await ctx.send(embed=embed)
+            return await send_error_embed(ctx, "Ошибка", f"Лог с номером **№{log_id}** не найден.")
 
     @commands.command(name="resetlogs")
     @check_access_decorator("resetlogs")
     async def resetlogs_cmd(self, ctx: commands.Context, target: discord.User = None):
         if not target:
-            embed = make_error_embed("Недостаточно аргументов", config.COMMAND_USAGE_HELP["resetlogs"])
-            return await ctx.send(embed=embed)
+            return await send_error_embed(ctx, "Недостаточно аргументов", config.COMMAND_USAGE_HELP["resetlogs"])
 
         res1 = tickets_col.delete_many({"staff_id": target.id})
         res2 = deleted_tickets_col.delete_many({"staff_id": target.id})
@@ -142,8 +139,7 @@ class AdminCog(commands.Cog):
     @commands.command(name="config", aliases=["cfg"])
     async def config_cmd(self, ctx: commands.Context):
         if not is_owner_user(ctx.author):
-            embed = make_error_embed("Недостаточно прав", "Эта команда доступна только владельцу бота.")
-            return await ctx.send(embed=embed)
+            return await send_error_embed(ctx, "Недостаточно прав", "Эта команда доступна только владельцу бота.")
 
         embed = build_config_embed()
         view = ConfigMainView(ctx.author.id)

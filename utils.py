@@ -56,6 +56,11 @@ def get_user_cooldown(member: discord.Member, command_name: str) -> float:
     
     return max(0.0, final_cooldown)
 
+async def send_error_embed(ctx, title: str, description: str, delay: int = 3):
+    """Отправляет error embed и удаляет его через указанное количество секунд."""
+    embed = make_error_embed(title, description)
+    return await ctx.send(embed=embed, delete_after=delay)
+
 def make_error_embed(title: str, description: str) -> discord.Embed:
     embed = discord.Embed(
         title=f"<a:alert:1544047350345891851> {title}",

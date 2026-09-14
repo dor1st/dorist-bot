@@ -5,7 +5,7 @@ from discord.ext import commands
 
 import config
 from database import tickets_col, deleted_tickets_col, get_next_sequence_value
-from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, build_command_help_embed
+from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, build_command_help_embed, send_error_embed
 
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
@@ -183,33 +183,33 @@ class TicketsCog(commands.Cog):
             return await ctx.send(embed=build_command_help_embed("addticket"))
 
         if staff.id == ctx.author.id:
-            embed = make_error_embed(
+            return await send_error_embed(
+                ctx,
                 "Ошибка аргумента",
                 "Вы **не можете** указать свой собственный ID / аккаунт!"
             )
-            return await ctx.send(embed=embed)
-
+        
         if not transcript_url.startswith("https://discord.com/"):
-            embed = make_error_embed(
+            return await send_error_embed(
+                ctx,
                 "Неверная ссылка",
                 "Ссылка на транскрипт должна начинаться с `https://discord.com/`!"
             )
-            return await ctx.send(embed=embed)
 
         if tickets_col.find_one({"transcript_url": transcript_url}):
-            embed = make_error_embed(
+            return await send_error_embed(
+                ctx,
                 "Дубликат транскрипта",
                 "Этот транскрипт уже был внесен в базу данных ранее!"
             )
-            return await ctx.send(embed=embed)
 
         if category not in config.VALID_CATEGORIES:
             cats = ", ".join(f"`{c}`" for c in config.VALID_CATEGORIES)
-            embed = make_error_embed(
+            return await send_error_embed(
+                ctx,
                 "Неверная категория",
                 f"Указана недопустимая категория!\nРазрешенные категории: {cats}",
             )
-            return await ctx.send(embed=embed)
 
         log_id = get_next_sequence_value("ticket_id")
         now = datetime.now(timezone.utc)
@@ -278,12 +278,19 @@ class TicketsCog(commands.Cog):
             )
             return await ctx.send(embed=embed)
 
+        if not transcript_url.startswith("https://discord.com/"):
+            return await send_error_embed(
+                ctx,
+                "Неверная ссылка",
+                "Ссылка на транскрипт должна начинаться с `https://discord.com/`!"
+            )
+
         if deleted_tickets_col.find_one({"transcript_url": transcript_url}):
-            embed = make_error_embed(
+            return await send_error_embed(
+                ctx,
                 "Дубликат удаления",
                 "Этот транскрипт уже использовался для удаления тикета ранее!"
             )
-            return await ctx.send(embed=embed)
 
         now = datetime.now(timezone.utc)
         deleted_id = get_next_sequence_value("deleted_ticket_id")
