@@ -45,9 +45,6 @@ async def send_punishment_dm(user, action_title: str, guild_name: str, reason: s
             description=desc,
             color=config.EMBED_COLOR
         )
-        if case_id:
-            embed.add_field(name="Номер дела", value=f"`№{case_id}`", inline=False)
-        embed.add_field(name="Причина", value=reason, inline=False)
         if duration:
             embed.add_field(name="Длительность", value=duration, inline=False)
         embed.set_footer(text=f"Сообщение от сервера: {guild_name}")
