@@ -36,7 +36,7 @@ def check_senior_mod():
         raise commands.CheckFailure("Эта команда доступна только старшим модераторам.")
     return commands.check(predicate)
 
-async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None):
+async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None, case_id: int = None):
     """Отправка уведомления в личные сообщения участнику"""
     try:
         desc = f"Вы получили **{action_title}** на сервере **{guild_name}**."
@@ -45,6 +45,8 @@ async def send_punishment_dm(user, action_title: str, guild_name: str, reason: s
             description=desc,
             color=config.EMBED_COLOR
         )
+        if case_id:
+            embed.add_field(name="Номер дела", value=f"`№{case_id}`", inline=False)
         embed.add_field(name="Причина", value=reason, inline=False)
         if duration:
             embed.add_field(name="Длительность", value=duration, inline=False)
