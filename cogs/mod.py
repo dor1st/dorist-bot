@@ -42,14 +42,17 @@ def check_senior_mod():
 async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None):
     """Отправка уведомления в личные сообщения участнику"""
     try:
-        desc = f"Вам было выдано **{action_title}**\n\nПричина: **{reason}**."
+        desc = f"Вам было выдано **{action_title}**\nПричина: **{reason}**."
         embed = discord.Embed(
             title=guild_name,
             description=desc,
             color=config.EMBED_COLOR
         )
+
         if duration:
             embed.add_field(name="Длительность", value=duration, inline=False)
+        embed.set_image(url=config.GRAY_LINE_URL)
+        
         await user.send(embed=embed)
     except (discord.Forbidden, discord.HTTPException):
         pass
