@@ -486,6 +486,8 @@ class StatsCog(commands.Cog):
             return await ctx.invoke(self.lb_tickets)
         elif category in ["economy", "ec", "bal", "coins", "экономика"]:
             return await ctx.invoke(self.lb_economy)
+        elif category in ["mods", "mod", "модераторы"]:
+            return await ctx.invoke(self.lb_mods)
 
         embed = discord.Embed(
             title="<:trophy:1522340749998428160> Меню таблиц лидеров",
@@ -494,6 +496,7 @@ class StatsCog(commands.Cog):
                 "• `.lb messages` - Топ 5 по сообщениям\n"
                 "• `.lb invites` - Топ 5 по приглашениям\n"
                 "• `.lb tickets` - Лидерборд тикетов, транскриптов и удалений\n"
+                "• `.lb mods` - Топ модераторов (варны, мьюты, вербы, баны)\n"
                 "• `.lb economy` - Топ 5 самых богатых участников"
             ),
             color=config.EMBED_COLOR,
@@ -685,6 +688,15 @@ class StatsCog(commands.Cog):
         embed.description = "\n".join(lines)
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
+    @leaderboard_group.command(name="mods", aliases=["mod"])
+    @check_access_decorator("modstats")
+    async def lb_mods(self, ctx: commands.Context):
+        mod_cog = self.bot.get_cog("ModCog")
+        if mod_cog and hasattr(mod_cog, "build_mods_leaderboard_embed"):
+            embed = await mod_cog.build_mods_leaderboard_embed()
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=make_error_embed("Ошибка", "Модуль модерации недоступен."))
 
 async def setup(bot):
     await bot.add_cog(StatsCog(bot))
