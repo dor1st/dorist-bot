@@ -115,7 +115,6 @@ class DeleteWarnConfirmView(View):
             view=self
         )
         
-        # Логирование в мод-лог
         log_embed = discord.Embed(
             title="Варн удален",
             description=f"**Модератор:** {interaction.user.mention}\n**Дело №:** `{self.warn_data.get('case_id')}`",
@@ -194,7 +193,6 @@ class DeleteVerbConfirmView(View):
             view=self
         )
         
-        # Логирование в мод-лог
         log_embed = discord.Embed(
             title="Варн удален",
             description=f"**Модератор:** {interaction.user.mention}\n**Дело №:** `{self.warn_data.get('case_id')}`",

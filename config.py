@@ -79,7 +79,7 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "streak": False,
 
     # Модерация
-    "verbalwarn": False,
+    "verbalwarn": True,
     "verbals": False,
     "deleteverb": True,
     "warn": True,
@@ -130,9 +130,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "commands": [
             "verbalwarn",
             "verbals",
-            "deleteverb",
             "warn",
-            "delwarn",
             "mute",
             "unmute",
             "ban",
@@ -140,8 +138,6 @@ PERMISSION_GROUPS_DEFAULT = {
             "modlogs",
             "modstats",
             "moderations",
-            "delcase",
-            "addcase",
         ],
     },
     "support": {
@@ -191,6 +187,10 @@ PERMISSION_GROUPS_DEFAULT = {
             "deletegiveaway", 
             "deleteinvite", 
             "restock",
+            "delcase",
+            "addcase",
+            "deleteverb",
+            "delwarn",
         ],
     },
 }
