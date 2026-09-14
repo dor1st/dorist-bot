@@ -3,13 +3,15 @@ from discord.ext import commands
 from discord.ui import View, Select
 
 import utils
-from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, build_command_help_embed
+from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, log_mod_action, build_command_help_embed
 
 import database
 import config
 
 import re
 from datetime import datetime, timedelta, timezone
+
+SENIOR_MOD_ROLE_ID = config.SENIOR_MOD_ROLE_ID if hasattr(config, "SENIOR_MOD_ROLE_ID") else 1501500735316164710
 
 def parse_duration(time_str: str) -> timedelta | None:
     """Парсер длительности вида 10m, 2h, 1d, 7d"""
@@ -22,15 +24,26 @@ def parse_duration(time_str: str) -> timedelta | None:
     units = {'s': 'seconds', 'm': 'minutes', 'h': 'hours', 'd': 'days'}
     return timedelta(**{units[unit]: val})
 
-async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None, case_id: int = None):
+def check_senior_mod():
+    async def predicate(ctx):
+        if not isinstance(ctx.author, discord.Member):
+            return False
+        if ctx.author.id == config.OWNER_ID or ctx.author.guild_permissions.administrator:
+            return True
+        role = ctx.guild.get_role(SENIOR_MOD_ROLE_ID)
+        if role and role in ctx.author.roles:
+            return True
+        raise commands.CheckFailure("Эта команда доступна только старшим модераторам.")
+    return commands.check(predicate)
+
+async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None):
     """Отправка уведомления в личные сообщения участнику"""
     try:
-        case_info = f" (Дело №{case_id})" if case_id else ""
-        desc = f"Вы получили **{action_title}**{case_info} на сервере **{guild_name}**."
+        desc = f"Вы получили **{action_title}** на сервере **{guild_name}**."
         embed = discord.Embed(
             title="Уведомление о наказании",
             description=desc,
-            color=discord.Color.red()
+            color=config.EMBED_COLOR
         )
         embed.add_field(name="Причина", value=reason, inline=False)
         if duration:
@@ -88,12 +101,27 @@ class DeleteWarnConfirmView(View):
     @discord.ui.button(label="Подтвердить", style=discord.ButtonStyle.green)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         database.cases_col.delete_one({"case_id": self.warn_data.get("case_id")})
+        
+        # Уведомление в ЛС
+        user_id = self.warn_data.get("user_id")
+        user = interaction.guild.get_member(user_id)
+        if user:
+            await send_punishment_dm(user, "Снятие варна", interaction.guild.name, "Ваше предупреждение было удалено модератором.")
+
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(
             embed=make_status_embed("Успешно", f"Варн по делу №{self.warn_data.get('case_id')} успешно удален."),
             view=self
         )
+        
+        # Логирование в мод-лог
+        log_embed = discord.Embed(
+            title="Варн удален",
+            description=f"**Модератор:** {interaction.user.mention}\n**Дело №:** `{self.warn_data.get('case_id')}`",
+            color=config.EMBED_COLOR
+        )
+        await log_mod_action(interaction.guild, "delwarn", log_embed)
 
     @discord.ui.button(label="Отменить", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -151,13 +179,28 @@ class DeleteVerbConfirmView(View):
 
     @discord.ui.button(label="Подтвердить", style=discord.ButtonStyle.green)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        database.verbal_warnings_col.delete_one({"verb_id": self.verb_data.get("verb_id")})
+        database.cases_col.delete_one({"case_id": self.warn_data.get("case_id")})
+        
+        # Уведомление в ЛС
+        user_id = self.warn_data.get("user_id")
+        user = interaction.guild.get_member(user_id)
+        if user:
+            await send_punishment_dm(user, "Снятие варна", interaction.guild.name, "Ваше предупреждение было удалено модератором.")
+
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(
-            embed=make_status_embed("Успешно", f"Вербальный варн №{self.verb_data.get('verb_id')} успешно удален."),
+            embed=make_status_embed("Успешно", f"Варн по делу №{self.warn_data.get('case_id')} успешно удален."),
             view=self
         )
+        
+        # Логирование в мод-лог
+        log_embed = discord.Embed(
+            title="Варн удален",
+            description=f"**Модератор:** {interaction.user.mention}\n**Дело №:** `{self.warn_data.get('case_id')}`",
+            color=config.EMBED_COLOR
+        )
+        await log_mod_action(interaction.guild, "delwarn", log_embed)
 
     @discord.ui.button(label="Отменить", style=discord.ButtonStyle.red)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -363,8 +406,8 @@ class ModCog(commands.Cog):
 
     @commands.command(name="unmute")
     @check_access_decorator("unmute")
-    async def unmute(self, ctx: commands.Context, member_id: int = None, *, reason: str = "Снятие мьюта"):
-        if member_id is None:
+    async def unmute(self, ctx: commands.Context, member_id: int = None, *, reason: str = None): # Убрали дефолтную причину
+        if member_id is None or reason is None: # Причина теперь обязательна
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("unmute"))
 
@@ -377,6 +420,9 @@ class ModCog(commands.Cog):
         except discord.Forbidden:
             return await ctx.send(embed=make_error_embed("Ошибка", "У бота недостаточно прав для снятия тайм-аута."))
 
+        # Отправляем в ЛС уведомление
+        await send_punishment_dm(target, "Снятие мьюта", ctx.guild.name, reason)
+
         embed = discord.Embed(
             title="Мьют снят",
             description=f"**Участник:** {target.mention} (`{target.id}`)\n**Модератор:** {ctx.author.mention}\n**Причина:** {reason}",
@@ -384,10 +430,10 @@ class ModCog(commands.Cog):
         )
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
-        await log_action(ctx.guild, "unmute", embed)
+        await log_mod_action(ctx.guild, "unmute", embed)
 
     @commands.command(name="ban")
-    @check_access_decorator("ban")
+    @check_senior_mod()
     async def ban(self, ctx: commands.Context, member_id: int = None, *, reason: str = None):
         if member_id is None or reason is None:
             ctx.command.reset_cooldown(ctx)
@@ -415,8 +461,8 @@ class ModCog(commands.Cog):
             "timestamp": datetime.now(timezone.utc)
         }
 
-        await send_punishment_dm(target, "Бан", ctx.guild.name, reason, case_id=case_id)
-
+        await send_punishment_dm(target, "Бан", ctx.guild.name, reason)
+        
         try:
             await ctx.guild.ban(target, reason=f"[{ctx.author}] {reason}")
         except discord.Forbidden:
@@ -431,17 +477,21 @@ class ModCog(commands.Cog):
         )
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
-        await log_action(ctx.guild, "ban", embed)
+        await log_mod_action(ctx.guild, "ban", embed)
 
     @commands.command(name="unban")
-    @check_access_decorator("unban")
+    @check_senior_mod()
     async def unban(self, ctx: commands.Context, member_id: int = None, *, reason: str = "Разбан"):
-        if member_id is None:
+        if member_id is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("unban"))
 
         try:
             user = await self.bot.fetch_user(member_id)
+            
+            # Уведомление в ЛС
+            await send_punishment_dm(user, "Разбан", ctx.guild.name, reason)
+            
             await ctx.guild.unban(user, reason=f"[{ctx.author}] {reason}")
         except discord.NotFound:
             return await ctx.send(embed=make_error_embed("Ошибка", "Пользователь с таким ID не найден."))
@@ -455,7 +505,7 @@ class ModCog(commands.Cog):
         )
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
-        await log_action(ctx.guild, "unban", embed)
+        await log_mod_action(ctx.guild, "unban", embed)
 
     @commands.command(name="modlogs")
     @check_access_decorator("modlogs")
@@ -503,8 +553,8 @@ class ModCog(commands.Cog):
         d7 = now - timedelta(days=7)
         d30 = now - timedelta(days=30)
 
-        all_cases = list(database.cases_col.find({"user_id": target.id}))
-        all_verbs = list(database.verbal_warnings_col.find({"user_id": target.id}))
+        all_cases = list(database.cases_col.find({"moderator_id": target.id}))
+        all_verbs = list(database.verbal_warnings_col.find({"moderator_id": target.id}))
 
         def count_items(items, item_type=None, days=None):
             cnt = 0
@@ -715,6 +765,13 @@ class ModCog(commands.Cog):
             embed.add_field(name="Длительность", value=duration)
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
+
+        log_embed = discord.Embed(
+            title="Дело удалено",
+            description=f"**Модератор:** {ctx.author.mention}\n**Дело №:** `{case_id}`",
+            color=config.EMBED_COLOR
+        )
+        await log_mod_action(ctx.guild, "delcase", log_embed)
 
 async def setup(bot):
     if "verbal_warnings" not in database.db.list_collection_names():

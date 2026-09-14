@@ -75,6 +75,15 @@ def make_status_embed(title: str, message: str, kind: str = "info") -> discord.E
     embed.set_footer(text=config.FOOTER_TEXT)
     return embed
 
+async def log_mod_action(guild: discord.Guild, command_name: str, embed: discord.Embed):
+    log_toggles = config.CONFIG.get("log_toggles", config.LOGGABLE_COMMANDS_DEFAULT)
+    if not log_toggles.get(command_name, False):
+        return
+    
+    MOD_LOG_CHANNEL_ID = 1457798302425940140 
+    channel = guild.get_channel(MOD_LOG_CHANNEL_ID)
+    if channel:
+        await channel.send(embed=embed)
 
 async def log_action(guild: discord.Guild, command_name: str, embed: discord.Embed):
     log_toggles = config.CONFIG.get("log_toggles", config.LOGGABLE_COMMANDS_DEFAULT)
