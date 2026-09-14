@@ -799,7 +799,7 @@ class ModCog(commands.Cog):
         )
 
         categories = [
-            ("{ALERT_EMOJI} Варнов", "Варн", all_cases),
+            (f"{ALERT_EMOJI} Варнов", "Варн", all_cases),
             ("<:timeout:1549111000437882961> Мьютов", "Мьют", all_cases),
             ("<:ban:1549111135742070926> Банов", "Бан", all_cases),
             ("<:warn:1549111094121992322> Верб. варнов", None, all_verbs)
