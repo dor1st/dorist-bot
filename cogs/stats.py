@@ -20,6 +20,7 @@ from database import (
 from utils import check_access_decorator, make_error_embed, make_status_embed, log_action
 
 BUMP_REMINDER_MESSAGE = "**<a:gifclock:1544347190984441858> <@&1501943871960125461> Пришло время бампа! (/bump)**"
+ALERT_EMOJI = config.ALERT_EMOJI if hasattr(config, "ALERT_EMOJI") else "<a:alert:1544047350345891851>"
 
 
 def utc_day(dt=None):
@@ -738,9 +739,9 @@ class StatsCog(commands.Cog):
             color=config.EMBED_COLOR
         )
         
-        embed.add_field(name="{<:alert:1544047350345891851>} Варны (7 дн.)", value=format_top(get_top_cases("Варн", d7)), inline=True)
-        embed.add_field(name="<:alert:1544047350345891851> Варны (30 дн.)", value=format_top(get_top_cases("Варн", d30)), inline=True)
-        embed.add_field(name="<:alert:1544047350345891851> Варны (Все время)", value=format_top(get_top_cases("Варн")), inline=True)
+        embed.add_field(name="{ALERT_EMOJI} Варны (7 дн.)", value=format_top(get_top_cases("Варн", d7)), inline=True)
+        embed.add_field(name="{ALERT_EMOJI} Варны (30 дн.)", value=format_top(get_top_cases("Варн", d30)), inline=True)
+        embed.add_field(name="{ALERT_EMOJI} Варны (Все время)", value=format_top(get_top_cases("Варн")), inline=True)
         
         embed.add_field(name="<:timeout:1549111000437882961> Мьюты (7 дн.)", value=format_top(get_top_cases("Мьют", d7)), inline=True)
         embed.add_field(name="<:timeout:1549111000437882961> Мьюты (30 дн.)", value=format_top(get_top_cases("Мьют", d30)), inline=True)
