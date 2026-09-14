@@ -6,7 +6,7 @@ from discord.ext import commands
 
 import config
 from database import users_col, shop_stock_col
-from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed, get_user_cooldown
+from utils import check_access_decorator, is_owner_user, make_error_embed, make_status_embed, build_command_help_embed, get_user_cooldown, send_error_embed
 
 COIN_EMOJI = getattr(config, "COIN_EMOJI", "<:coin:1545425273686597742>")
 SHOP_DATA = config.SHOP_DATA
@@ -533,11 +533,11 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("restock")
     async def restock(self, ctx: commands.Context, category: str = None):
         if not is_owner_user(ctx.author):
-            return await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
+            return await send_error_embed(ctx, "Отказ в доступе", "Эта команда доступна только владельцу.")
 
         if not category or category.lower() not in SHOP_DATA:
             valid_cats = ", ".join([f"`{cat}`" for cat in SHOP_DATA.keys()])
-            return await ctx.send(embed=make_error_embed("Ошибка", f"Укажите корректную категорию.\nДоступные категории: {valid_cats}"))
+            return await send_error_embed(ctx, "Ошибка", f"Укажите корректную категорию.\nДоступные категории: {valid_cats}")
 
         cat_key = category.lower()
         view = RestockView(cat_key)
@@ -570,7 +570,7 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("itemtake")
     async def itemtake(self, ctx: commands.Context, target: discord.Member | discord.User = None):
         if not is_owner_user(ctx.author):
-            return await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
+            return await send_error_embed(ctx, "Отказ в доступе", "Эта команда доступна только владельцу.")
 
         if target is None:
             return await ctx.send(embed=build_command_help_embed("itemtake"))
@@ -579,7 +579,7 @@ class EconomyCog(commands.Cog):
         inventory = user_doc.get("inventory", [])
 
         if not inventory:
-            return await ctx.send(embed=make_error_embed("Ошибка", f"У пользователя {target.mention} инвентарь пуст."))
+            return await send_error_embed(ctx, "Ошибка", f"У пользователя {target.mention} инвентарь пуст.")
 
         view = ItemTakeView(target.id)
         await ctx.send(f"Выберите предмет, который хотите забрать у {target.mention}:", view=view, ephemeral=True)
@@ -636,8 +636,7 @@ class EconomyCog(commands.Cog):
         cash, bank = get_user_balance(ctx.author.id)
 
         if bank <= 0:
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас нет денег на банковском счёте."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "У вас нет денег на банковском счёте.")
 
         if amount.lower() == "all":
             withdraw_amount = bank
@@ -647,12 +646,10 @@ class EconomyCog(commands.Cog):
                 if withdraw_amount <= 0:
                     raise ValueError
             except ValueError:
-                await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть целым положительным числом."))
-                return
+                return await send_error_embed(ctx, "Ошибка", "Сумма должна быть целым положительным числом.")
 
         if withdraw_amount > bank:
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно средств на банковском счёте."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "У вас недостаточно средств на банковском счёте.")
 
         new_cash = cash + withdraw_amount
         new_bank = bank - withdraw_amount
@@ -675,8 +672,7 @@ class EconomyCog(commands.Cog):
         cash, bank = get_user_balance(ctx.author.id)
 
         if cash <= 0:
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас нет наличных денег."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "У вас нет наличных денег.")
 
         if amount.lower() == "all":
             deposit_amount = cash
@@ -686,12 +682,10 @@ class EconomyCog(commands.Cog):
                 if deposit_amount <= 0:
                     raise ValueError
             except ValueError:
-                await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть целым положительным числом."))
-                return
+                return await send_error_embed(ctx, "Ошибка", "Сумма должна быть целым положительным числом.")
 
         if deposit_amount > cash:
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно наличных средств."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "У вас недостаточно наличных средств.")
 
         new_cash = cash - deposit_amount
         new_bank = bank + deposit_amount
@@ -713,22 +707,18 @@ class EconomyCog(commands.Cog):
             return await ctx.send(embed=build_command_help_embed("givemoney"))
 
         if target.id == ctx.author.id:
-            await ctx.send(embed=make_error_embed("Ошибка", "Вы не можете переводить деньги самому себе."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Вы не можете переводить деньги самому себе.")
 
         if target.bot:
-            await ctx.send(embed=make_error_embed("Ошибка", "Нельзя переводить деньги ботам."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Нельзя переводить деньги ботам.")
 
         if amount <= 0:
-            await ctx.send(embed=make_error_embed("Ошибка", "Сумма перевода должна быть больше 0."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Сумма перевода должна быть больше 0.")
 
         _, sender_bank = get_user_balance(ctx.author.id)
 
         if sender_bank < amount:
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно средств на банковском счёте для перевода."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "У вас недостаточно средств на банковском счёте для перевода.")
 
         update_user_balance_delta(ctx.author.id, bank_delta=-amount)
         update_user_balance_delta(target.id, bank_delta=amount)
@@ -743,7 +733,7 @@ class EconomyCog(commands.Cog):
     @givemoney.error
     async def givemoney_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingRole):
-            await ctx.send(embed=make_error_embed("Ошибка доступа", "У вас нет необходимой роли для использования этой команды."))
+            await send_error_embed(ctx, "Ошибка доступа", "У вас нет необходимой роли для использования этой команды.")
         else:
             raise error
 
@@ -825,8 +815,7 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("income")
     async def income(self, ctx: commands.Context):
         if not isinstance(ctx.author, discord.Member):
-            await ctx.send(embed=make_error_embed("Ошибка", "Эту команду можно использовать только на сервере."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Эту команду можно использовать только на сервере.")
 
         current_time = time.time()
         user_id = ctx.author.id
@@ -854,8 +843,7 @@ class EconomyCog(commands.Cog):
                 collected_roles.append((role_id, reward))
 
         if total_income <= 0:
-            await ctx.send(embed=make_error_embed("Доход с ролей", "У вас нет ролей, приносящих доход."))
-            return
+            return await send_error_embed(ctx, "Доход с ролей", "У вас нет ролей, приносящих доход.")
 
         # Фиксируем время использования только если роли действительно есть и доход начислен
         self.income_cooldowns[user_id] = current_time
@@ -889,13 +877,11 @@ class EconomyCog(commands.Cog):
 
         if target.id == ctx.author.id:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "Вы не можете ограбить самого себя."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Вы не можете ограбить самого себя.")
 
         if target.bot:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "Нельзя грабить ботов."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Нельзя грабить ботов.")
 
         if isinstance(target, discord.Member):
             protected_roles = getattr(config, "PROTECTED_ROLES_FROM_ROB", [])
@@ -903,8 +889,7 @@ class EconomyCog(commands.Cog):
             
             if has_protected_role:
                 ctx.command.reset_cooldown(ctx)
-                await ctx.send(embed=make_error_embed("Ошибка", "Этого пользователя нельзя ограбить (у него иммунитет)."))
-                return
+                return await send_error_embed(ctx, "Ошибка", "Этого пользователя нельзя ограбить (у него иммунитет).")
 
         target_cash, _ = get_user_balance(target.id)
 
@@ -918,8 +903,7 @@ class EconomyCog(commands.Cog):
         user_cash, _ = get_user_balance(ctx.author.id)
         if user_cash < amount:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно **наличных** средств для этой ставки."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "У вас недостаточно **наличных** средств для этой ставки.")
 
         is_win = random.random() < SLOT_WIN_CHANCE
 
@@ -955,15 +939,12 @@ class EconomyCog(commands.Cog):
 
         if number is None or number < 1 or number > 6:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "Укажите число от 1 до 6."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Укажите число от 1 до 6.")
 
-        # Проверка баланса строго наличных средств (банк не учитывается)
         user_cash, _ = get_user_balance(ctx.author.id)
         if user_cash < amount:
             ctx.command.reset_cooldown(ctx)
-            await ctx.send(embed=make_error_embed("Ошибка", "У вас недостаточно **наличных** средств для этой ставки."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "У вас недостаточно **наличных** средств для этой ставки.")
 
         is_win = random.random() < ROLL_WIN_CHANCE
 
@@ -1003,15 +984,13 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("addmoney")
     async def addmoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
         if not is_owner_user(ctx.author):
-            await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
-            return
+            return await send_error_embed(ctx, "Отказ в доступе", "Эта команда доступна только владельцу.")
 
         if amount is None or target is None:
             return await ctx.send(embed=build_command_help_embed("addmoney"))
 
         if amount <= 0:
-            await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть положительной."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Сумма должна быть положительной.")
 
         _, bank = get_user_balance(target.id)
         new_bank = bank + amount
@@ -1029,15 +1008,13 @@ class EconomyCog(commands.Cog):
     @check_access_decorator("removemoney")
     async def removemoney(self, ctx: commands.Context, target: discord.Member | discord.User = None, amount: int = None):
         if not is_owner_user(ctx.author):
-            await ctx.send(embed=make_error_embed("Отказ в доступе", "Эта команда доступна только владельцу."))
-            return
+            return await send_error_embed(ctx, "Отказ в доступе", "Эта команда доступна только владельцу.")
 
         if amount is None or target is None:
             return await ctx.send(embed=build_command_help_embed("removemoney"))
 
         if amount <= 0:
-            await ctx.send(embed=make_error_embed("Ошибка", "Сумма должна быть положительной."))
-            return
+            return await send_error_embed(ctx, "Ошибка", "Сумма должна быть положительной.")
 
         cash, _ = get_user_balance(target.id)
         deduct_amount = min(cash, amount)

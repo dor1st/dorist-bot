@@ -4,7 +4,7 @@ from discord.ext import commands
 from discord.ui import View, Select, Button
 
 import utils
-from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, log_mod_action, build_command_help_embed
+from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, log_mod_action, build_command_help_embed, send_error_embed
 
 import database
 import config
@@ -533,7 +533,7 @@ class ModCog(commands.Cog):
         user_verbs = list(database.verbal_warnings_col.find({"user_id": target.id}))
 
         if not user_verbs:
-            await utils.send_error(ctx, "Список пуст", f"У участника {target.mention} нет вербальных варнов.")
+            await send_error_embed(ctx, "Список пуст", f"У участника {target.mention} нет вербальных варнов.")
             return
 
         view = VerbalsView(target=target, verbs=user_verbs, guild=ctx.guild)
@@ -554,7 +554,7 @@ class ModCog(commands.Cog):
         user_verbs = list(database.verbal_warnings_col.find({"user_id": target.id}))
 
         if not user_verbs:
-            await utils.send_error(ctx, "Ошибка", "У данного участника нет вербальных варнов.")
+            await send_error_embed(ctx, "Ошибка", "У данного участника нет вербальных варнов.")
             return
 
         view = DeleteVerbView(user_verbs)
@@ -602,7 +602,7 @@ class ModCog(commands.Cog):
 
         user_warns = list(database.cases_col.find({"user_id": target.id, "type": "Варн"}))
         if not user_warns:
-            return await utils.send_error(ctx, "Ошибка", "У данного участника нет активных варнов.")
+            return await send_error_embed(ctx, "Ошибка", "У данного участника нет активных варнов.")
 
         view = DeleteWarnView(user_warns)
         await ctx.send(
@@ -618,16 +618,16 @@ class ModCog(commands.Cog):
             return await ctx.send(embed=build_command_help_embed("mute"))
 
         if not target:
-            return await utils.send_error(ctx, "Ошибка", "Участник не найден на сервере.")
+            return await send_error_embed(ctx, "Ошибка", "Участник не найден на сервере.")
 
         td = parse_duration(duration)
         if not td:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Неверный формат длительности (примеры: 10m, 2h, 1d)."))
+            return await send_error_embed(ctx, "Ошибка", "Неверный формат длительности (примеры: 10m, 2h, 1d)."))
 
         try:
             await target.timeout(td, reason=f"[{ctx.author}] {reason}")
         except discord.Forbidden:
-            return await ctx.send(embed=make_error_embed("Ошибка", "У бота недостаточно прав для выдачи тайм-аута."))
+            return await send_error_embed(ctx, "Ошибка", "У бота недостаточно прав для выдачи тайм-аута.")
 
         case_id = database.get_next_sequence_value("cases")
         case_doc = {
@@ -660,12 +660,12 @@ class ModCog(commands.Cog):
             return await ctx.send(embed=build_command_help_embed("unmute"))
 
         if not target:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Участник не найден на сервере."))
+            return await send_error_embed(ctx, "Ошибка", "Участник не найден на сервере.")
 
         try:
             await target.timeout(None, reason=f"[{ctx.author}] {reason}")
         except discord.Forbidden:
-            return await ctx.send(embed=make_error_embed("Ошибка", "У бота недостаточно прав для снятия тайм-аута."))
+            return await send_error_embed(ctx, "Ошибка", "У бота недостаточно прав для снятия тайм-аута.")
 
         # Отправляем в ЛС уведомление
         await send_punishment_dm(target, "Снятие мьюта", ctx.guild.name, reason)
@@ -688,7 +688,7 @@ class ModCog(commands.Cog):
 
         first_word = reason.split()[0]
         if parse_duration(first_word):
-            return await ctx.send(embed=make_error_embed("Ошибка", "Баны выдаются навсегда! Указание длительности запрещено."))
+            return await send_error_embed(ctx, "Ошибка", "Баны выдаются навсегда! Указание длительности запрещено.")
 
         case_id = database.get_next_sequence_value("cases")
         case_doc = {
@@ -706,7 +706,7 @@ class ModCog(commands.Cog):
         try:
             await ctx.guild.ban(target, reason=f"[{ctx.author}] {reason}")
         except discord.Forbidden:
-            return await utils.send_error(ctx, "Ошибка", "У бота недостаточно прав для бана данного пользователя.")
+            return await send_error_embed(ctx, "Ошибка", "У бота недостаточно прав для бана данного пользователя.")
 
         database.cases_col.insert_one(case_doc)
 
@@ -730,7 +730,7 @@ class ModCog(commands.Cog):
             await send_punishment_dm(target, "Разбан", ctx.guild.name, reason)
             await ctx.guild.unban(target, reason=f"[{ctx.author}] {reason}")
         except discord.HTTPException:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось разбанить пользователя. Проверьте, находится ли он в бане."))
+            return await send_error_embed(ctx, "Ошибка", "Не удалось разбанить пользователя. Проверьте, находится ли он в бане.")
 
         embed = discord.Embed(
             title="Участник разбанен",
@@ -748,7 +748,7 @@ class ModCog(commands.Cog):
 
         cases = list(database.cases_col.find({"user_id": target.id}))
         if not cases:
-            return await ctx.send(embed=make_error_embed("Список пуст", f"У участника {target.mention} нет зафиксированных нарушений."))
+            return await send_error_embed(ctx, "Список пуст", f"У участника {target.mention} нет зафиксированных нарушений.")
 
         view = ModLogsView(target=target, cases=cases, guild=ctx.guild)
         embed = view.build_page_embed()
@@ -818,18 +818,13 @@ class ModCog(commands.Cog):
                 user_id = int(re.sub(r"\D", "", str(target)))
                 target = await self.bot.fetch_user(user_id)
             except (ValueError, discord.NotFound):
-                return await ctx.send(embed=make_error_embed("Ошибка", "Модератор не найден."))
+                return await send_error_embed(ctx, "Ошибка", "Модератор не найден.")
 
         cases = list(database.cases_col.find({"moderator_id": target.id}))
         verbs = list(database.verbal_warnings_col.find({"moderator_id": target.id}))
 
         if not cases and not verbs:
-            return await ctx.send(
-                embed=make_error_embed(
-                    "Список пуст", 
-                    f"Модератор {target.mention} ещё не выдавал наказаний."
-                )
-            )
+            return await send_error_embed(ctx, "Список пуст", f"Модератор {target.mention} ещё не выдавал наказаний.")
 
         all_items = cases + verbs
 
@@ -850,7 +845,7 @@ class ModCog(commands.Cog):
 
         case = database.cases_col.find_one({"case_id": case_id})
         if not case:
-            return await ctx.send(embed=make_error_embed("Ошибка", f"Дело №{case_id} не найдено."))
+            return await send_error_embed(ctx, "Ошибка", f"Дело №{case_id} не найдено.")
 
         database.cases_col.delete_one({"case_id": case_id})
         await ctx.send(embed=make_status_embed("Успешно", f"Дело №{case_id} былo успешно удалено из базы данных."))
@@ -896,15 +891,15 @@ class ModCog(commands.Cog):
                     pass
 
         if not target_msg:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Сообщение с таким ID не найдено ни в канале наказаний, ни в текущем канале."))
+            return await send_error_embed(ctx, "Ошибка", "Сообщение с таким ID не найдено ни в канале наказаний, ни в текущем канале.")
 
         content = target_msg.content.strip()
         if not content:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Выбранное сообщение не содержит текста."))
+            return await send_error_embed(ctx, "Ошибка", "Выбранное сообщение не содержит текста.")
 
         parts = content.split()
         if len(parts) < 3:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось распознать формат команды в сообщении."))
+            return await send_error_embed(ctx, "Ошибка", "Не удалось распознать формат команды в сообщении.")
 
         cmd_raw = parts[0].lower()
         cmd_clean = re.sub(r"^[^\w]+", "", cmd_raw)
@@ -919,11 +914,11 @@ class ModCog(commands.Cog):
 
         p_type = type_map.get(cmd_clean)
         if not p_type:
-            return await ctx.send(embed=make_error_embed("Ошибка", f"Не удалось определить тип наказания из команды `{parts[0]}`. Допустимы команды: warn, mute, ban."))
+            return await send_error_embed(ctx, "Ошибка", f"Не удалось определить тип наказания из команды `{parts[0]}`. Допустимы команды: warn, mute, ban.")
 
         user_id_match = re.search(r"\d+", parts[1])
         if not user_id_match:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось найти ID нарушителя в сообщении."))
+            return await send_error_embed(ctx, "Ошибка", "Не удалось найти ID нарушителя в сообщении.")
         user_id = int(user_id_match.group(0))
 
         rest_parts = parts[2:]
