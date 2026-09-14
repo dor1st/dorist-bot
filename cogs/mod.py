@@ -622,7 +622,7 @@ class ModCog(commands.Cog):
 
         td = parse_duration(duration)
         if not td:
-            return await send_error_embed(ctx, "Ошибка", "Неверный формат длительности (примеры: 10m, 2h, 1d)."))
+            return await send_error_embed(ctx, "Ошибка", "Неверный формат длительности (примеры: 10m, 2h, 1d).")
 
         try:
             await target.timeout(td, reason=f"[{ctx.author}] {reason}")
