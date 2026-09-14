@@ -607,20 +607,45 @@ class ModCog(commands.Cog):
     @commands.command(name="addcase")
     @check_access_decorator("addcase")
     async def addcase(self, ctx: commands.Context, message_id: int = None):
-        # Поддержка указания ID сообщения или ответа (реплая) на нужное сообщение
+        LOG_CHANNEL_ID = 1466886479396737024
+        target_msg = None
+
         if message_id is None:
             if ctx.message.reference and ctx.message.reference.message_id:
                 message_id = ctx.message.reference.message_id
+                ref_channel_id = ctx.message.reference.channel_id
+                try:
+                    ref_channel = ctx.guild.get_channel(ref_channel_id) or await self.bot.fetch_channel(ref_channel_id)
+                    target_msg = await ref_channel.fetch_message(message_id)
+                except (discord.NotFound, discord.HTTPException):
+                    pass
             else:
                 ctx.command.reset_cooldown(ctx)
                 return await ctx.send(embed=build_command_help_embed("addcase"))
 
-        try:
-            target_msg = await ctx.channel.fetch_message(message_id)
-        except discord.NotFound:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Сообщение с таким ID не найдено в этом канале."))
-        except discord.HTTPException:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось получить сообщение."))
+        # Поиск сообщения по ID: сначала в канале наказаний, затем в текущем
+        if not target_msg and message_id:
+            log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
+            if not log_channel:
+                try:
+                    log_channel = await self.bot.fetch_channel(LOG_CHANNEL_ID)
+                except (discord.NotFound, discord.HTTPException):
+                    log_channel = None
+
+            if log_channel:
+                try:
+                    target_msg = await log_channel.fetch_message(message_id)
+                except (discord.NotFound, discord.HTTPException):
+                    pass
+
+            if not target_msg:
+                try:
+                    target_msg = await ctx.channel.fetch_message(message_id)
+                except (discord.NotFound, discord.HTTPException):
+                    pass
+
+        if not target_msg:
+            return await ctx.send(embed=make_error_embed("Ошибка", "Сообщение с таким ID не найдено ни в канале наказаний, ни в текущем канале."))
 
         content = target_msg.content.strip()
         if not content:
@@ -630,7 +655,6 @@ class ModCog(commands.Cog):
         if len(parts) < 3:
             return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось распознать формат команды в сообщении."))
 
-        # Определение типа наказания из текста (?mute, ?warn, ?ban и т.д.)
         cmd_raw = parts[0].lower()
         cmd_clean = re.sub(r"^[^\w]+", "", cmd_raw)
 
@@ -646,7 +670,6 @@ class ModCog(commands.Cog):
         if not p_type:
             return await ctx.send(embed=make_error_embed("Ошибка", f"Не удалось определить тип наказания из команды `{parts[0]}`. Допустимы команды: warn, mute, ban."))
 
-        # Извлечение ID нарушителя
         user_id_match = re.search(r"\d+", parts[1])
         if not user_id_match:
             return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось найти ID нарушителя в сообщении."))
@@ -655,7 +678,6 @@ class ModCog(commands.Cog):
         rest_parts = parts[2:]
         duration = None
 
-        # Разбор длительности для мьюта (если она указана)
         if p_type == "Мьют" and rest_parts:
             if parse_duration(rest_parts[0]):
                 duration = rest_parts[0]
