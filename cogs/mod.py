@@ -42,7 +42,26 @@ def check_senior_mod():
 async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None):
     """Отправка уведомления в личные сообщения участнику"""
     try:
-        desc = f"Вам было выдано **{action_title}**\nПричина: **{reason}**."
+
+        if action_title == "Мьют" or action_title == "Варн" or action_title == "Бан":
+            desc = f"Вам было выдано: **{action_title}**\nПричина: **{reason}**"
+            view = View()
+            button = Button(
+                label = "Апелляция Банов",
+                url = "https://forms.gle/2uwEAg1c4JnpB5166",
+                style = discord.ButtonStyle.link
+            )
+            view.add_item(button)
+
+            button2 = Button(
+                label = "Апелляция Мютов",
+                url = "https://forms.gle/XVcVdtJzbMTjRJFr7",
+                style = discord.ButtonStyle.link
+            )
+            view.add_item(button2)
+        else:
+            desc = desc = f"Вы получили: **{action_title}**\nПричина: **{reason}**"
+
         embed = discord.Embed(
             title=guild_name,
             description=desc,
@@ -52,14 +71,6 @@ async def send_punishment_dm(user, action_title: str, guild_name: str, reason: s
         if duration:
             embed.add_field(name="Длительность", value=duration, inline=False)
         embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1549140982967050341/80eeab2a32c78ae9.png?ex=6aa99d77&is=6aa84bf7&hm=397b6d3f9ac91bebee1e7c733428d1b4bd4dc3cb77bd28bbb2432f0b57231536")
-
-        view = View()
-        button = Button(
-            label = "Апелляция",
-            url = "https://google.com",
-            style = discord.ButtonStyle.link
-        )
-        view.add_item(button)
         
         await user.send(embed=embed, view=view)
     except (discord.Forbidden, discord.HTTPException):
