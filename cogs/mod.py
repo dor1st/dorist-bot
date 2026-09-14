@@ -36,7 +36,7 @@ def check_senior_mod():
         raise commands.CheckFailure("Эта команда доступна только старшим модераторам.")
     return commands.check(predicate)
 
-async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None, case_id: int = None):
+async def send_punishment_dm(user, action_title: str, guild_name: str, reason: str, duration: str = None):
     """Отправка уведомления в личные сообщения участнику"""
     try:
         desc = f"Вы получили **{action_title}** на сервере **{guild_name}**."
@@ -330,7 +330,7 @@ class ModCog(commands.Cog):
         }
         database.cases_col.insert_one(case_doc)
 
-        await send_punishment_dm(target, "Варн", ctx.guild.name, reason, case_id=case_id)
+        await send_punishment_dm(target, "Варн", ctx.guild.name, reason)
 
         embed = discord.Embed(
             title="Выдано предупреждение",
@@ -390,7 +390,7 @@ class ModCog(commands.Cog):
         }
         database.cases_col.insert_one(case_doc)
 
-        await send_punishment_dm(target, "Мьют", ctx.guild.name, reason, duration=duration, case_id=case_id)
+        await send_punishment_dm(target, "Мьют", ctx.guild.name, reason, duration=duration)
 
         embed = discord.Embed(
             title="Участник отправлен в мьют",
