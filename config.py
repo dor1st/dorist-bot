@@ -11,6 +11,11 @@ SENIOR_MOD_ROLE_ID = 1501500735316164710
 VALID_CATEGORIES = ["Помощь по серверу", "Получение призов", "Получение роли", "Покупка рекламы"]
 VALID_PRIZES = ["Робуксы", "Коины", "Геймпасс", "Годли"]
 
+ALERT_EMOJI = "<a:alert:1544047350345891851>"
+CLOCK_EMOJI = "<a:gifclock:1544347190984441858>"
+KITTY_EMOJI = "<a:kitty:1543707159748157561>"
+
+
 GIVEAWAY_EMOJI = "<:giveaway:1522331215976206446>"
 COIN_EMOJI = "<:coin:1545425273686597742>"
 MAX_DURATION = timedelta(days=31)

@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 
 SENIOR_MOD_ROLE_ID = config.SENIOR_MOD_ROLE_ID if hasattr(config, "SENIOR_MOD_ROLE_ID") else 1501500735316164710
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
+ALERT_EMOJI = config.ALERT_EMOJI if hasattr(config, "ALERT_EMOJI")
 
 def parse_duration(time_str: str) -> timedelta | None:
     """Парсер длительности вида 10m, 2h, 1d, 7d"""
@@ -239,17 +240,21 @@ class ModLogsView(View):
                 embed=self.build_page_embed(), view=self
             )
 
-
 class ModerationsView(View):
     """Пагинация для выданных модератором наказаний (cases + verbs)."""
 
-    def __init__(self, target, items: list, guild: discord.Guild, timeout: int = 180):
+    def __init__(self, target: discord.User, items: list, guild: discord.Guild, timeout: int = 180):
         super().__init__(timeout=timeout)
         self.target = target
-        self.items = items
+        # Сортируем наказания по убыванию даты (свежие вверху)
+        self.items = sorted(
+            items,
+            key=lambda x: x.get("timestamp") or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True
+        )
         self.guild = guild
         self.current_page = 0
-        self.total_pages = math.ceil(len(items) / LOGS_PER_PAGE)
+        self.total_pages = math.ceil(len(self.items) / LOGS_PER_PAGE)
         self.update_buttons()
 
     def update_buttons(self):
@@ -270,17 +275,18 @@ class ModerationsView(View):
             user = self.guild.get_member(item.get("user_id"))
             user_text = user.mention if user else f"<@{item.get('user_id')}>"
 
-            # Различие между стандартным делом и вербальным варном
+            ts = item.get("timestamp")
+            if isinstance(ts, datetime):
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                time_str = f" | **Дата:** <t:{int(ts.timestamp())}:f>"
+            else:
+                time_str = ""
+
             if "case_id" in item:
                 duration_text = (
-                    f" | **Длит.:** {item.get('duration')}"
+                    f" | **Длительность:** {item.get('duration')}"
                     if item.get("duration")
-                    else ""
-                )
-                ts = item.get("timestamp")
-                time_str = (
-                    f" | **Дата:** <t:{int(ts.timestamp())}:f>"
-                    if isinstance(ts, datetime)
                     else ""
                 )
                 embed.add_field(
@@ -291,7 +297,7 @@ class ModerationsView(View):
             else:
                 embed.add_field(
                     name=f"Вербальный варн №{item.get('verb_id')}",
-                    value=f"**Нарушитель:** {user_text}\n**Причина:** {item.get('reason')}",
+                    value=f"**Нарушитель:** {user_text}{time_str}\n**Причина:** {item.get('reason')}",
                     inline=False,
                 )
 
@@ -793,10 +799,10 @@ class ModCog(commands.Cog):
         )
 
         categories = [
-            ("⚠️ Варнов", "Варн", all_cases),
-            ("🔇 Мьютов", "Мьют", all_cases),
-            ("🔨 Банов", "Бан", all_cases),
-            ("💬 Верб. варнов", None, all_verbs)
+            ("{ALERT_EMOJI} Варнов", "Варн", all_cases),
+            ("<:timeout:1549111000437882961> Мьютов", "Мьют", all_cases),
+            ("<:ban:1549111135742070926> Банов", "Бан", all_cases),
+            ("<:warn:1549111094121992322> Верб. варнов", None, all_verbs)
         ]
 
         for label, t_type, source in categories:
@@ -813,20 +819,20 @@ class ModCog(commands.Cog):
 
     @commands.command(name="moderations", aliases=["moders"])
     @check_access_decorator("moderations")
-    async def moderations(self, ctx: commands.Context, moderator_id: int = None):
-        target_id = moderator_id if moderator_id else ctx.author.id
-        try:
-            target = await self.bot.fetch_user(target_id)
-        except discord.NotFound:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Модератор не найден."))
+    async def moderations(self, ctx: commands.Context, target: discord.User = None):
+        target = target or ctx.author
 
         cases = list(database.cases_col.find({"moderator_id": target.id}))
         verbs = list(database.verbal_warnings_col.find({"moderator_id": target.id}))
 
         if not cases and not verbs:
-            return await ctx.send(embed=make_error_embed("Список пуст", f"Модератор {target.mention} ещё не выдавал наказаний."))
+            return await ctx.send(
+                embed=make_error_embed(
+                    "Список пуст", 
+                    f"Модератор {target.mention} ещё не выдавал наказаний."
+                )
+            )
 
-        # Объединяем списки дел и вербальных варнов
         all_items = cases + verbs
 
         view = ModerationsView(target=target, items=all_items, guild=ctx.guild)
