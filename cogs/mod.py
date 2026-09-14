@@ -44,7 +44,7 @@ async def send_punishment_dm(user, action_title: str, guild_name: str, reason: s
     try:
         desc = f"Вам было выдано **{action_title}**\n\nПричина: **{reason}**."
         embed = discord.Embed(
-            title=f"Вы получили уведомление от сервера: {guild_name}",
+            title=guild_name,
             description=desc,
             color=config.EMBED_COLOR
         )
