@@ -606,44 +606,69 @@ class ModCog(commands.Cog):
 
     @commands.command(name="addcase")
     @check_access_decorator("addcase")
-    async def addcase(
-        self, 
-        ctx: commands.Context, 
-        user_id: int = None, 
-        mod_id: int = None, 
-        timestamp_val: int = None, 
-        punishment_type: str = None, 
-        *, 
-        rest: str = None
-    ):
-        if not user_id or not mod_id or not timestamp_val or not punishment_type or not rest:
-            ctx.command.reset_cooldown(ctx)
-            return await ctx.send(embed=build_command_help_embed("addcase"))
-
-        p_type = punishment_type.lower().capitalize()
-        allowed_types = ["Мьют", "Варн", "Бан"]
-        if p_type not in allowed_types:
-            return await ctx.send(embed=make_error_embed("Ошибка", "Нарушение не найдено. Допустимы только категории: `мьют`, `варн`, `бан`."))
+    async def addcase(self, ctx: commands.Context, message_id: int = None):
+        # Поддержка указания ID сообщения или ответа (реплая) на нужное сообщение
+        if message_id is None:
+            if ctx.message.reference and ctx.message.reference.message_id:
+                message_id = ctx.message.reference.message_id
+            else:
+                ctx.command.reset_cooldown(ctx)
+                return await ctx.send(embed=build_command_help_embed("addcase"))
 
         try:
-            issue_date = datetime.fromtimestamp(timestamp_val, tz=timezone.utc)
-        except (ValueError, OverflowError, OSError):
-            return await ctx.send(embed=make_error_embed("Ошибка", "Указан некорректный UNIX timestamp."))
+            target_msg = await ctx.channel.fetch_message(message_id)
+        except discord.NotFound:
+            return await ctx.send(embed=make_error_embed("Ошибка", "Сообщение с таким ID не найдено в этом канале."))
+        except discord.HTTPException:
+            return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось получить сообщение."))
 
+        content = target_msg.content.strip()
+        if not content:
+            return await ctx.send(embed=make_error_embed("Ошибка", "Выбранное сообщение не содержит текста."))
+
+        parts = content.split()
+        if len(parts) < 3:
+            return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось распознать формат команды в сообщении."))
+
+        # Определение типа наказания из текста (?mute, ?warn, ?ban и т.д.)
+        cmd_raw = parts[0].lower()
+        cmd_clean = re.sub(r"^[^\w]+", "", cmd_raw)
+
+        type_map = {
+            "warn": "Варн",
+            "warning": "Варн",
+            "mute": "Мьют",
+            "timeout": "Мьют",
+            "ban": "Бан"
+        }
+
+        p_type = type_map.get(cmd_clean)
+        if not p_type:
+            return await ctx.send(embed=make_error_embed("Ошибка", f"Не удалось определить тип наказания из команды `{parts[0]}`. Допустимы команды: warn, mute, ban."))
+
+        # Извлечение ID нарушителя
+        user_id_match = re.search(r"\d+", parts[1])
+        if not user_id_match:
+            return await ctx.send(embed=make_error_embed("Ошибка", "Не удалось найти ID нарушителя в сообщении."))
+        user_id = int(user_id_match.group(0))
+
+        rest_parts = parts[2:]
         duration = None
-        reason = rest
 
-        if p_type == "Мьют":
-            parts = rest.split(" ", 1)
-            if parse_duration(parts[0]):
-                duration = parts[0]
-                reason = parts[1] if len(parts) > 1 else "Не указана"
+        # Разбор длительности для мьюта (если она указана)
+        if p_type == "Мьют" and rest_parts:
+            if parse_duration(rest_parts[0]):
+                duration = rest_parts[0]
+                rest_parts = rest_parts[1:]
 
+        reason = " ".join(rest_parts) if rest_parts else "Причина не указана"
+        issue_date = target_msg.created_at
         case_id = database.get_next_sequence_value("cases")
+
         case_doc = {
             "case_id": case_id,
             "user_id": user_id,
-            "moderator_id": mod_id,
+            "moderator_id": target_msg.author.id,
             "type": p_type,
             "reason": reason,
             "duration": duration,
@@ -651,15 +676,15 @@ class ModCog(commands.Cog):
         }
         database.cases_col.insert_one(case_doc)
 
-        ts_formatted = f"<t:{timestamp_val}:f>"
+        ts_int = int(issue_date.timestamp())
         embed = discord.Embed(
             title="Дело импортировано",
             description=(
                 f"**Дело №:** `{case_id}`\n"
                 f"**Нарушитель:** <@{user_id}>\n"
-                f"**Модератор:** <@{mod_id}>\n"
+                f"**Модератор:** {target_msg.author.mention}\n"
                 f"**Тип:** {p_type}\n"
-                f"**Дата и время:** {ts_formatted}\n"
+                f"**Дата и время:** <t:{ts_int}:f>\n"
                 f"**Причина:** {reason}"
             ),
             color=config.EMBED_COLOR
