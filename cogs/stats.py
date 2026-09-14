@@ -693,77 +693,69 @@ class StatsCog(commands.Cog):
     @leaderboard_group.command(name="mods", aliases=["mod"])
     @check_access_decorator("modstats")
     async def lb_mods(self, ctx: commands.Context):
-        mod_cog = self.bot.get_cog("ModCog")
-        if mod_cog and hasattr(mod_cog, "build_mods_leaderboard_embed"):
-            now = datetime.now(timezone.utc)
-            d7 = now - timedelta(days=7)
-            d30 = now - timedelta(days=30)
-            
-            def get_top_cases(case_type: str, min_date=None):
-                match_stage = {"type": case_type}
-                if min_date:
-                    match_stage["timestamp"] = {"$gte": min_date}
-            
-                pipeline = [
-                    {"$match": match_stage},
-                    {"$group": {"_id": "$moderator_id", "cnt": {"$sum": 1}}},
-                    {"$sort": {"cnt": -1}},
-                    {"$limit": 3}
-                ]
-                return [(doc["_id"], doc["cnt"]) for doc in database.cases_col.aggregate(pipeline)]
-            
-            def get_top_verbs(min_date=None):
-                match_stage = {}
-                if min_date:
-                    match_stage["timestamp"] = {"$gte": min_date}
-            
-                pipeline = [
-                    {"$match": match_stage} if match_stage else {"$match": {"moderator_id": {"$exists": True}}},
-                    {"$group": {"_id": "$moderator_id", "cnt": {"$sum": 1}}},
-                    {"$sort": {"cnt": -1}},
-                    {"$limit": 3}
-                ]
-                return [(doc["_id"], doc["cnt"]) for doc in database.verbal_warnings_col.aggregate(pipeline)]
-            
-            def format_top(top_list):
-                lines = []
-                for i in range(1, 4):
-                    if i <= len(top_list) and top_list[i - 1][0]:
-                        mod_id, count = top_list[i - 1]
-                        lines.append(f"`{i}.` <@{mod_id}> - **{count}**")
-                    else:
-                        lines.append(f"`{i}.` —")
-                return "\n".join(lines)
-            
-            embed = discord.Embed(
-                title="<:leaderboard:1544301200894070844> Лидерборд Модерации",
-                color=config.EMBED_COLOR
-            )
-            
-            # 1. Варны
-            embed.add_field(name="{<:alert:1544047350345891851>} Варны (7 дн.)", value=format_top(get_top_cases("Варн", d7)), inline=True)
-            embed.add_field(name="<:alert:1544047350345891851> Варны (30 дн.)", value=format_top(get_top_cases("Варн", d30)), inline=True)
-            embed.add_field(name="<:alert:1544047350345891851> Варны (Все время)", value=format_top(get_top_cases("Варн")), inline=True)
-            
-            # 2. Мьюты
-            embed.add_field(name="<:timeout:1549111000437882961> Мьюты (7 дн.)", value=format_top(get_top_cases("Мьют", d7)), inline=True)
-            embed.add_field(name="<:timeout:1549111000437882961> Мьюты (30 дн.)", value=format_top(get_top_cases("Мьют", d30)), inline=True)
-            embed.add_field(name="<:timeout:1549111000437882961> Мьюты (Все время)", value=format_top(get_top_cases("Мьют")), inline=True)
-            
-            # 3. Вербальные варны
-            embed.add_field(name="<:warn:1549111094121992322> Верб. варны (7 дн.)", value=format_top(get_top_verbs(d7)), inline=True)
-            embed.add_field(name="<:warn:1549111094121992322> Верб. варны (30 дн.)", value=format_top(get_top_verbs(d30)), inline=True)
-            embed.add_field(name="<:warn:1549111094121992322> Верб. варны (Все время)", value=format_top(get_top_verbs()), inline=True)
-            
-            # 4. Баны
-            embed.add_field(name="<:ban:1549111135742070926> Баны (7 дн.)", value=format_top(get_top_cases("Бан", d7)), inline=True)
-            embed.add_field(name="<:ban:1549111135742070926> Баны (30 дн.)", value=format_top(get_top_cases("Бан", d30)), inline=True)
-            embed.add_field(name="<:ban:1549111135742070926> Баны (Все время)", value=format_top(get_top_cases("Бан")), inline=True)
-            
-            embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
-            await ctx.send(embed=embed)
-        else:
-            await ctx.send(embed=make_error_embed("Ошибка", "Модуль модерации недоступен."))
+        now = datetime.now(timezone.utc)
+        d7 = now - timedelta(days=7)
+        d30 = now - timedelta(days=30)
+        
+        def get_top_cases(case_type: str, min_date=None):
+            match_stage = {"type": case_type}
+            if min_date:
+                match_stage["timestamp"] = {"$gte": min_date}
+        
+            pipeline = [
+                {"$match": match_stage},
+                {"$group": {"_id": "$moderator_id", "cnt": {"$sum": 1}}},
+                {"$sort": {"cnt": -1}},
+                {"$limit": 3}
+            ]
+            return [(doc["_id"], doc["cnt"]) for doc in database.cases_col.aggregate(pipeline)]
+        
+        def get_top_verbs(min_date=None):
+            match_stage = {}
+            if min_date:
+                match_stage["timestamp"] = {"$gte": min_date}
+        
+            pipeline = [
+                {"$match": match_stage} if match_stage else {"$match": {"moderator_id": {"$exists": True}}},
+                {"$group": {"_id": "$moderator_id", "cnt": {"$sum": 1}}},
+                {"$sort": {"cnt": -1}},
+                {"$limit": 3}
+            ]
+            return [(doc["_id"], doc["cnt"]) for doc in database.verbal_warnings_col.aggregate(pipeline)]
+        
+        def format_top(top_list):
+            lines = []
+            for i in range(1, 4):
+                if i <= len(top_list) and top_list[i - 1][0]:
+                    mod_id, count = top_list[i - 1]
+                    lines.append(f"`{i}.` <@{mod_id}> - **{count}**")
+                else:
+                    lines.append(f"`{i}.` —")
+            return "\n".join(lines)
+        
+        embed = discord.Embed(
+            title="<:leaderboard:1544301200894070844> Лидерборд Модерации",
+            color=config.EMBED_COLOR
+        )
+        
+        embed.add_field(name="{<:alert:1544047350345891851>} Варны (7 дн.)", value=format_top(get_top_cases("Варн", d7)), inline=True)
+        embed.add_field(name="<:alert:1544047350345891851> Варны (30 дн.)", value=format_top(get_top_cases("Варн", d30)), inline=True)
+        embed.add_field(name="<:alert:1544047350345891851> Варны (Все время)", value=format_top(get_top_cases("Варн")), inline=True)
+        
+        embed.add_field(name="<:timeout:1549111000437882961> Мьюты (7 дн.)", value=format_top(get_top_cases("Мьют", d7)), inline=True)
+        embed.add_field(name="<:timeout:1549111000437882961> Мьюты (30 дн.)", value=format_top(get_top_cases("Мьют", d30)), inline=True)
+        embed.add_field(name="<:timeout:1549111000437882961> Мьюты (Все время)", value=format_top(get_top_cases("Мьют")), inline=True)
+        
+        embed.add_field(name="<:warn:1549111094121992322> Верб. варны (7 дн.)", value=format_top(get_top_verbs(d7)), inline=True)
+        embed.add_field(name="<:warn:1549111094121992322> Верб. варны (30 дн.)", value=format_top(get_top_verbs(d30)), inline=True)
+        embed.add_field(name="<:warn:1549111094121992322> Верб. варны (Все время)", value=format_top(get_top_verbs()), inline=True)
+        
+        embed.add_field(name="<:ban:1549111135742070926> Баны (7 дн.)", value=format_top(get_top_cases("Бан", d7)), inline=True)
+        embed.add_field(name="<:ban:1549111135742070926> Баны (30 дн.)", value=format_top(get_top_cases("Бан", d30)), inline=True)
+        embed.add_field(name="<:ban:1549111135742070926> Баны (Все время)", value=format_top(get_top_cases("Бан")), inline=True)
+        
+        embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(StatsCog(bot))
