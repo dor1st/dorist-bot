@@ -1,4 +1,5 @@
 import discord
+import math
 from discord.ext import commands
 from discord.ui import View, Select
 
@@ -12,6 +13,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 SENIOR_MOD_ROLE_ID = config.SENIOR_MOD_ROLE_ID if hasattr(config, "SENIOR_MOD_ROLE_ID") else 1501500735316164710
+LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 
 def parse_duration(time_str: str) -> timedelta | None:
     """Парсер длительности вида 10m, 2h, 1d, 7d"""
@@ -86,6 +88,245 @@ class DeleteWarnSelect(Select):
             view=view,
             ephemeral=True
         )
+
+class VerbalsView(View):
+    """Пагинация для списка вербальных варнов участника."""
+
+    def __init__(self, target, verbs: list, guild: discord.Guild, timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.target = target
+        self.verbs = verbs
+        self.guild = guild
+        self.current_page = 0
+        self.total_pages = math.ceil(len(verbs) / LOGS_PER_PAGE)
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+
+    def build_page_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"Вербальные варны участника {self.target.name}",
+            color=config.EMBED_COLOR,
+        )
+
+        start_idx = self.current_page * LOGS_PER_PAGE
+        end_idx = start_idx + LOGS_PER_PAGE
+        page_verbs = self.verbs[start_idx:end_idx]
+
+        for v in page_verbs:
+            mod = self.guild.get_member(v.get("moderator_id"))
+            mod_text = mod.mention if mod else f"<@{v.get('moderator_id')}>"
+            embed.add_field(
+                name=f"Верб №{v.get('verb_id')}",
+                value=f"**Модератор:** {mod_text}\n**Причина:** {v.get('reason')}",
+                inline=False,
+            )
+
+        embed.set_footer(
+            text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.verbs)} варнов) • {config.FOOTER_TEXT}"
+        )
+        return embed
+
+    @discord.ui.button(
+        emoji="<:darkleft:1543989641751957565>",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def prev_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+    @discord.ui.button(
+        emoji="<:darkright:1543990036129783948>",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def next_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+
+class ModLogsView(View):
+    """Пагинация для истории нарушений участника."""
+
+    def __init__(self, target, cases: list, guild: discord.Guild, timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.target = target
+        self.cases = cases
+        self.guild = guild
+        self.current_page = 0
+        self.total_pages = math.ceil(len(cases) / LOGS_PER_PAGE)
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+
+    def build_page_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"История нарушений: {self.target.name}",
+            color=config.EMBED_COLOR,
+        )
+
+        start_idx = self.current_page * LOGS_PER_PAGE
+        end_idx = start_idx + LOGS_PER_PAGE
+        page_cases = self.cases[start_idx:end_idx]
+
+        for c in page_cases:
+            mod = self.guild.get_member(c.get("moderator_id"))
+            mod_text = mod.mention if mod else f"<@{c.get('moderator_id')}>"
+            duration_text = (
+                f"\n**Длительность:** {c.get('duration')}"
+                if c.get("duration")
+                else ""
+            )
+
+            ts = c.get("timestamp")
+            time_str = (
+                f"\n**Дата:** <t:{int(ts.timestamp())}:f>"
+                if isinstance(ts, datetime)
+                else ""
+            )
+
+            embed.add_field(
+                name=f"{c.get('type')} (Дело №{c.get('case_id')})",
+                value=f"**Модератор:** {mod_text}{time_str}\n**Причина:** {c.get('reason')}{duration_text}",
+                inline=False,
+            )
+
+        embed.set_footer(
+            text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.cases)} нарушений) • {config.FOOTER_TEXT}"
+        )
+        return embed
+
+    @discord.ui.button(
+        emoji="<:darkleft:1543989641751957565>",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def prev_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+    @discord.ui.button(
+        emoji="<:darkright:1543990036129783948>",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def next_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+
+class ModerationsView(View):
+    """Пагинация для выданных модератором наказаний (cases + verbs)."""
+
+    def __init__(self, target, items: list, guild: discord.Guild, timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.target = target
+        self.items = items
+        self.guild = guild
+        self.current_page = 0
+        self.total_pages = math.ceil(len(items) / LOGS_PER_PAGE)
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+
+    def build_page_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"Наказания, выданные модератором {self.target.name}",
+            color=config.EMBED_COLOR,
+        )
+
+        start_idx = self.current_page * LOGS_PER_PAGE
+        end_idx = start_idx + LOGS_PER_PAGE
+        page_items = self.items[start_idx:end_idx]
+
+        for item in page_items:
+            user = self.guild.get_member(item.get("user_id"))
+            user_text = user.mention if user else f"<@{item.get('user_id')}>"
+
+            # Различие между стандартным делом и вербальным варном
+            if "case_id" in item:
+                duration_text = (
+                    f" | **Длит.:** {item.get('duration')}"
+                    if item.get("duration")
+                    else ""
+                )
+                ts = item.get("timestamp")
+                time_str = (
+                    f" | **Дата:** <t:{int(ts.timestamp())}:f>"
+                    if isinstance(ts, datetime)
+                    else ""
+                )
+                embed.add_field(
+                    name=f"{item.get('type')} (Дело №{item.get('case_id')})",
+                    value=f"**Нарушитель:** {user_text}{time_str}\n**Причина:** {item.get('reason')}{duration_text}",
+                    inline=False,
+                )
+            else:
+                embed.add_field(
+                    name=f"Вербальный варн №{item.get('verb_id')}",
+                    value=f"**Нарушитель:** {user_text}\n**Причина:** {item.get('reason')}",
+                    inline=False,
+                )
+
+        embed.set_footer(
+            text=f"Страница {self.current_page + 1}/{self.total_pages} ({len(self.items)} выданных) • {config.FOOTER_TEXT}"
+        )
+        return embed
+
+    @discord.ui.button(
+        emoji="<:darkleft:1543989641751957565>",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def prev_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
+
+    @discord.ui.button(
+        emoji="<:darkright:1543990036129783948>",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def next_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            await interaction.response.edit_message(
+                embed=self.build_page_embed(), view=self
+            )
 
 class DeleteWarnView(View):
     def __init__(self, warn_list):
@@ -268,22 +509,13 @@ class ModCog(commands.Cog):
             await ctx.send(embed=make_error_embed("Список пуст", f"У участника {target.mention} нет вербальных варнов."))
             return
 
-        embed = discord.Embed(
-            title=f"Вербальные варны участника {target.name}",
-            color=config.EMBED_COLOR
-        )
-        
-        for v in user_verbs:
-            mod = ctx.guild.get_member(v.get("moderator_id"))
-            mod_text = mod.mention if mod else f"<@{v.get('moderator_id')}>"
-            embed.add_field(
-                name=f"Верб №{v.get('verb_id')}",
-                value=f"**Модератор:** {mod_text}\n**Причина:** {v.get('reason')}",
-                inline=False
-            )
+        view = VerbalsView(target=target, verbs=user_verbs, guild=ctx.guild)
+        embed = view.build_page_embed()
 
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
+        if len(user_verbs) <= LOGS_PER_PAGE:
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed, view=view)
 
     @commands.command(name="deleteverb")
     @check_access_decorator("deleteverb")
@@ -517,25 +749,13 @@ class ModCog(commands.Cog):
         if not cases:
             return await ctx.send(embed=make_error_embed("Список пуст", f"У участника {target.mention} нет зафиксированных нарушений."))
 
-        embed = discord.Embed(
-            title=f"История нарушений: {target.name}",
-            color=config.EMBED_COLOR
-        )
-        for c in cases:
-            mod = ctx.guild.get_member(c.get("moderator_id"))
-            mod_text = mod.mention if mod else f"<@{c.get('moderator_id')}>"
-            duration_text = f"\n**Длительность:** {c.get('duration')}" if c.get("duration") else ""
-            
-            ts = c.get("timestamp")
-            time_str = f"\n**Дата:** <t:{int(ts.timestamp())}:f>" if isinstance(ts, datetime) else ""
+        view = ModLogsView(target=target, cases=cases, guild=ctx.guild)
+        embed = view.build_page_embed()
 
-            embed.add_field(
-                name=f"{c.get('type')} (Дело №{c.get('case_id')})",
-                value=f"**Модератор:** {mod_text}{time_str}\n**Причина:** {c.get('reason')}{duration_text}",
-                inline=False
-            )
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
+        if len(cases) <= LOGS_PER_PAGE:
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed, view=view)
 
     @commands.command(name="modstats", aliases=["ms"])
     @check_access_decorator("modstats")
@@ -591,7 +811,7 @@ class ModCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
-    @commands.command(name="moderations")
+    @commands.command(name="moderations", aliases=["moders"])
     @check_access_decorator("moderations")
     async def moderations(self, ctx: commands.Context, moderator_id: int = None):
         target_id = moderator_id if moderator_id else ctx.author.id
@@ -606,36 +826,16 @@ class ModCog(commands.Cog):
         if not cases and not verbs:
             return await ctx.send(embed=make_error_embed("Список пуст", f"Модератор {target.mention} ещё не выдавал наказаний."))
 
-        embed = discord.Embed(
-            title=f"Наказания, выданные модератором {target.name}",
-            color=config.EMBED_COLOR
-        )
+        # Объединяем списки дел и вербальных варнов
+        all_items = cases + verbs
 
-        for c in cases:
-            user = ctx.guild.get_member(c.get("user_id"))
-            user_text = user.mention if user else f"<@{c.get('user_id')}>"
-            duration_text = f" | **Длит.:** {c.get('duration')}" if c.get("duration") else ""
-            
-            ts = c.get("timestamp")
-            time_str = f" | **Дата:** <t:{int(ts.timestamp())}:f>" if isinstance(ts, datetime) else ""
+        view = ModerationsView(target=target, items=all_items, guild=ctx.guild)
+        embed = view.build_page_embed()
 
-            embed.add_field(
-                name=f"{c.get('type')} (Дело №{c.get('case_id')})",
-                value=f"**Нарушитель:** {user_text}{time_str}\n**Причина:** {c.get('reason')}{duration_text}",
-                inline=False
-            )
-
-        for v in verbs:
-            user = ctx.guild.get_member(v.get("user_id"))
-            user_text = user.mention if user else f"<@{v.get('user_id')}>"
-            embed.add_field(
-                name=f"Вербальный варн №{v.get('verb_id')}",
-                value=f"**Нарушитель:** {user_text}\n**Причина:** {v.get('reason')}",
-                inline=False
-            )
-
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
+        if len(all_items) <= LOGS_PER_PAGE:
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed, view=view)
 
     @commands.command(name="delcase")
     @check_access_decorator("delcase")
