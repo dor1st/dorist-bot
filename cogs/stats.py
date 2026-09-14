@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 
 import config
+import database
 from database import (
     bump_stats_col,
     deleted_tickets_col,
@@ -14,6 +15,7 @@ from database import (
     users_col,
     giveaways_col,
     get_next_sequence_value,
+
 )
 from utils import check_access_decorator, make_error_embed, make_status_embed, log_action
 
@@ -723,12 +725,12 @@ class StatsCog(commands.Cog):
                 ]
                 return [(doc["_id"], doc["cnt"]) for doc in database.verbal_warnings_col.aggregate(pipeline)]
             
-            def format_top(top_list, unit_label="выдан."):
+            def format_top(top_list):
                 lines = []
                 for i in range(1, 4):
                     if i <= len(top_list) and top_list[i - 1][0]:
                         mod_id, count = top_list[i - 1]
-                        lines.append(f"`{i}.` <@{mod_id}> - **{count}** {unit_label}")
+                        lines.append(f"`{i}.` <@{mod_id}> - **{count}**")
                     else:
                         lines.append(f"`{i}.` —")
                 return "\n".join(lines)
