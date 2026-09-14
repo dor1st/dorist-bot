@@ -56,7 +56,7 @@ async def send_punishment_dm(user, action_title: str, guild_name: str, reason: s
         view = View()
         button = Button(
             label = "Апелляция",
-            url = "google.com",
+            url = "https://google.com",
             style = discord.ButtonStyle.link
         )
         view.add_item(button)
