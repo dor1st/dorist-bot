@@ -1,7 +1,7 @@
 import discord
 import math
 from discord.ext import commands
-from discord.ui import View, Select
+from discord.ui import View, Select, Button
 
 import utils
 from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, log_mod_action, build_command_help_embed
@@ -51,9 +51,17 @@ async def send_punishment_dm(user, action_title: str, guild_name: str, reason: s
 
         if duration:
             embed.add_field(name="Длительность", value=duration, inline=False)
-        embed.set_image(url=config.GRAY_LINE_URL)
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1521823293169205258/1549140982967050341/80eeab2a32c78ae9.png?ex=6aa99d77&is=6aa84bf7&hm=397b6d3f9ac91bebee1e7c733428d1b4bd4dc3cb77bd28bbb2432f0b57231536")
+
+        view = View()
+        button = Button(
+            label = "Апелляция",
+            url = "google.com",
+            style = discord.ButtonStyle.link
+        )
+        view.add_item(button)
         
-        await user.send(embed=embed)
+        await user.send(embed=embed, view=view)
     except (discord.Forbidden, discord.HTTPException):
         pass
 
