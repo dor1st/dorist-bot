@@ -245,6 +245,9 @@ class LevelsCog(commands.Cog):
         old_lvl, _, _ = calculate_level_from_xp(current_xp)
         new_lvl, _, _ = calculate_level_from_xp(new_xp)
 
+        if isinstance(target, discord.Member):
+            await check_and_assign_level_roles(target, new_lvl)
+
         embed = discord.Embed(
             title="<:success:1544301200894070844> Изменение опыта",
             description=(
@@ -262,9 +265,8 @@ class LevelsCog(commands.Cog):
     @check_access_decorator("setrank")
     async def setrank_cmd(self, ctx: commands.Context, target: discord.Member | discord.User, target_level: int):
         if target_level < 1:
-            return await send_error_embed(ctx, "Уровень не может быть меньше 1.")
+            return await send_error_embed(ctx, "Ошибка", "Уровень не может быть меньше 1.")
 
-        # Вычисляем минимальный XP для достижения указанного уровня
         target_xp = 0
         for lvl in range(1, target_level):
             target_xp += get_xp_for_next_level(lvl)
@@ -274,6 +276,9 @@ class LevelsCog(commands.Cog):
             {"$set": {"xp": target_xp}},
             upsert=True
         )
+
+        if isinstance(target, discord.Member):
+            await check_and_assign_level_roles(target, target_level)
 
         embed = discord.Embed(
             title="<:success:1544301200894070844> Изменение уровня",
