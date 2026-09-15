@@ -4,7 +4,15 @@ from discord.ext import commands
 from discord.ui import View, Select, Button
 
 import utils
-from utils import check_access_decorator, make_error_embed, make_status_embed, log_action, log_mod_action, build_command_help_embed, send_error_embed
+from utils import (
+    check_access_decorator, 
+    make_error_embed, 
+    make_status_embed, 
+    log_action, 
+    log_mod_action, 
+    build_command_help_embed, 
+    send_error_embed
+    )
 
 import database
 import config

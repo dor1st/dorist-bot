@@ -5,7 +5,6 @@ import config
 def is_owner_user(user: discord.Member | discord.User) -> bool:
     return user.id == config.OWNER_ID
 
-
 def check_access(user: discord.Member | discord.User, channel_id: int, command_name: str) -> tuple[bool, str]:
     if not isinstance(user, discord.Member):
         return False, "Команды работают только на сервере."
@@ -36,6 +35,21 @@ def check_access_decorator(command_name: str | None = None):
         return True
 
     return commands.check(predicate)
+
+def is_staff(user: discord.Member | discord.User) -> bool:
+    """Проверяет, является ли пользователь частью персонала/защищённым участником."""
+    if is_owner_user(user):
+        return True
+
+    if isinstance(user, discord.Member):
+        if user.guild_permissions.administrator:
+            return True
+
+        protected_roles = getattr(config, "PROTECTED_ROLE_IDS", [])
+        if any(role.id in protected_roles for role in user.roles):
+            return True
+
+    return False
 
 def get_user_cooldown(member: discord.Member, command_name: str) -> float:
     default_cooldowns = getattr(config, "DEFAULT_COOLDOWNS", {})

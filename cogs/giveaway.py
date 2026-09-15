@@ -1034,7 +1034,7 @@ class GiveawayCog(commands.Cog):
         )
 
         try:
-            await message.edit(embeds=list(ended_embeds), view=None)
+            await message.edit(embed=ended_embeds, view=None)
         except discord.HTTPException:
             pass
 
