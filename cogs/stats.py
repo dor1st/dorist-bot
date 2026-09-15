@@ -142,7 +142,7 @@ class StatsCog(commands.Cog):
                 asyncio.create_task(self.schedule_bump_reminder(message.channel))
 
     @commands.command(name="summaries", aliases=["sum"])
-    @check_access_decorator("sum")
+    @check_access_decorator("summaries")
     async def summaries_cmd(self, ctx: commands.Context, mode: str = None):
         limit = 10 if mode and mode.lower() in ["ex", "extended"] else 3
 

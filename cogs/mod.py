@@ -21,6 +21,15 @@ import config
 
 import re
 from datetime import datetime, timedelta, timezone
+from collections import defaultdict
+
+# ----------------- Anti-Nuke Settings -----------------
+QUARANTINE_ROLE_ID = 1504132412777693385  # Замените на ID вашей роли карантина
+BAN_LIMIT = 2                             # Максимальное количество банов в час без предупреждения
+QUARANTINE_WINDOW = 3600                  # Окно отслеживания в секундах (3600 сек = 1 час)
+
+moderator_ban_tracker = defaultdict(list)
+ban_counter = defaultdict(list)
 
 SENIOR_MOD_ROLE_ID = config.SENIOR_MOD_ROLE_ID if hasattr(config, "SENIOR_MOD_ROLE_ID") else 1501500735316164710
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
@@ -766,13 +775,13 @@ class ModCog(commands.Cog):
             return await ctx.send(embed=build_command_help_embed("ban"))
 
         if ctx.author.id == target.id:
-                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+            return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
     
         if is_staff(target):
             return await send_error_embed(
-            ctx, 
-            "Отказ в доступе", 
-            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+                ctx, 
+                "Отказ в доступе", 
+                f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
             )
     
         if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
@@ -785,6 +794,67 @@ class ModCog(commands.Cog):
         first_word = reason.split()[0]
         if parse_duration(first_word):
             return await send_error_embed(ctx, "Ошибка", "Баны выдаются навсегда! Указание длительности запрещено.")
+
+        # ==================== ANTI-NUKE SYSTEM ====================
+        if not is_owner_user(ctx.author):
+            now = datetime.now(timezone.utc)
+            now_ts = now.timestamp()
+            mod_id = ctx.author.id
+
+            # Очищаем метки банов, которые были сделаны больше часа (3600 сек) назад
+            ban_counter[mod_id] = [ts for ts in ban_counter[mod_id] if now_ts - ts < 3600]
+            recent_bans_count = len(ban_counter[mod_id])
+
+            # 5-я попытка за час -> КАРАНТИН (Снятие ролей)
+            if recent_bans_count >= 4:
+                quarantine_role_id = getattr(config, "QUARANTINE_ROLE_ID", 0)
+                quarantine_role = ctx.guild.get_role(quarantine_role_id)
+
+                roles_to_remove = [r for r in ctx.author.roles if r.is_assignable() and not r.is_default()]
+                if roles_to_remove:
+                    try:
+                        await ctx.author.remove_roles(*roles_to_remove, reason="[Anti-Nuke] Карантин за попытку слива")
+                    except discord.Forbidden:
+                        pass
+
+                if quarantine_role:
+                    try:
+                        await ctx.author.add_roles(quarantine_role, reason="[Anti-Nuke] Роль карантина")
+                    except discord.Forbidden:
+                        pass
+
+                embed = discord.Embed(
+                    title="🚨 АНТИНЮК: Карантин!",
+                    description=(
+                        f"Модератор {ctx.author.mention} проигнорировал предупреждение и попытался забанить участников снова.\n\n"
+                        f"**Принятые меры:**\n"
+                        f"• С модератора сняты все роли.\n"
+                        f"• Выдана роль карантина {quarantine_role.mention if quarantine_role else ''}.\n"
+                        f"• Пользователь {target.mention} **не забанен**."
+                    ),
+                    color=discord.Color.red()
+                )
+                embed.set_footer(text=config.FOOTER_TEXT)
+                await ctx.send(embed=embed)
+                return await log_mod_action(ctx.guild, "anti_nuke", embed)
+
+            if recent_bans_count == 3:
+                ban_counter[mod_id].append(now_ts)
+
+                embed = discord.Embed(
+                    title="⚠️ АНТИНЮК: Превышение лимита банов!",
+                    description=(
+                        f"{ctx.author.mention}, вы достигли лимита **2 бана в час**!\n\n"
+                        f"**Игрок {target.mention} НЕ забанен.**\n"
+                        f"Если вы попытаетесь забанить кого-то еще раз в течение часа, с вас будут **сняты все роли** и вы будете отправлены в **карантин**."
+                    ),
+                    color=discord.Color.gold()
+                )
+                embed.set_footer(text=config.FOOTER_TEXT)
+                return await ctx.send(embed=embed)
+
+            ban_counter[mod_id].append(now_ts)
+        # ==========================================================
 
         case_id = database.get_next_sequence_value("cases")
         case_doc = {
