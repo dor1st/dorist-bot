@@ -112,7 +112,7 @@ def calculate_level_from_xp(total_xp: int) -> tuple[int, int, int]:
     return level, total_xp, xp_needed
 
 def create_progress_bar(current_xp: int, needed_xp: int, length: int = 10) -> str:
-    """Генерирует красивый прогресс-бар из символов ▫️◽◻️⬜🟩."""
+    """Генерирует прогресс-бар с плавным заполнением квадратов."""
     if needed_xp <= 0:
         return "🟩" * length
 
@@ -120,18 +120,19 @@ def create_progress_bar(current_xp: int, needed_xp: int, length: int = 10) -> st
     total_steps = length * 4
     filled_steps = int(round(ratio * total_steps))
 
+    # 0 = ▫️, 1 = ◽, 2 = ◻️, 3 = ⬜, 4 = 🟩
     blocks = ["▫️", "◽", "◻️", "⬜", "🟩"]
     bar = []
 
     for _ in range(length):
         if filled_steps >= 4:
-            bar.append(blocks[4])
+            bar.append(blocks[4])  # Полный зеленый
             filled_steps -= 4
         elif filled_steps > 0:
-            bar.append(blocks[filled_steps])
-            filled_steps = 0
+            bar.append(blocks[filled_steps])  # Промежуточный квадрат по остатку
+            filled_steps = 0  # Все следующие будут 0 (blocks[0] -> ▫️)
         else:
-            bar.append(blocks[0])
+            bar.append(blocks[0])  # Минимальный квадрат
 
     return "".join(bar)
 
@@ -192,7 +193,7 @@ class LevelsCog(commands.Cog):
         percent = int((current_xp / needed_xp) * 100) if needed_xp > 0 else 100
 
         embed = discord.Embed(
-            title=f"📊 Уровень пользователя — {target.display_name}",
+            title=f"📊 Уровень {target.display_name}",
             color=config.EMBED_COLOR
         )
         if hasattr(target, "avatar") and target.avatar:
@@ -201,7 +202,7 @@ class LevelsCog(commands.Cog):
         embed.add_field(
             name="Информация",
             value=(
-                f"• Уровень: **{level}**\name"
+                f"• Уровень: **{level}**\n"
                 f"• Место в топе: **{rank_position}**\n"
                 f"• Всего опыта: **{total_xp:,}** XP"
             ),
