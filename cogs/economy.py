@@ -1166,14 +1166,20 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     @check_access_decorator("mines")
     async def mines(self, ctx: commands.Context, amount: int = None):
-        if amount is None or amount <= 0:
-            return await ctx.send(embed=build_command_help_embed("mines"))
+        if amount is None:
+            ctx.command.reset_cooldown(ctx)
+            return await send_error_embed(ctx, "Ошибка", "Укажите сумму ставки для игры.")
+
+        if amount <= 0:
+            ctx.command.reset_cooldown(ctx)
+            return await send_error_embed(ctx, "Ошибка", "Сумма ставки должна быть больше 0.")
 
         user_cash, _ = get_user_balance(ctx.author.id)
         if user_cash < amount:
             ctx.command.reset_cooldown(ctx)
             return await send_error_embed(ctx, "Ошибка", "У вас недостаточно **наличных** средств для этой ставки.")
 
+        # Сразу списываем ставку из наличных
         update_user_balance_delta(ctx.author.id, cash_delta=-amount)
 
         view = MinesView(author_id=ctx.author.id, bet=amount)
