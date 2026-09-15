@@ -3,6 +3,7 @@ import math
 from datetime import datetime, timedelta, timezone
 import discord
 from discord.ext import commands
+from level import process_message_xp, calculate_level_from_xp
 
 import config
 import database
@@ -95,6 +96,8 @@ class StatsCog(commands.Cog):
             return
 
         if not message.author.bot:
+            await process_message_xp(message)
+
             users_col.update_one(
                 {"_id": message.author.id},
                 {"$inc": {"messages_count": 1}},
@@ -481,6 +484,8 @@ class StatsCog(commands.Cog):
     async def leaderboard_group(self, ctx: commands.Context, category: str = None):
         if category in ["messages", "m", "msgs", "сообщения"]:
             return await ctx.invoke(self.lb_messages)
+        elif category in ["level", "levels", "lvl", "xp", "уровень"]:
+            return await ctx.invoke(self.lb_level)
         elif category in ["invites", "i", "приглашения"]:
             return await ctx.invoke(self.lb_invites)
         elif category in ["tickets", "t", "тикеты"]:
@@ -754,6 +759,35 @@ class StatsCog(commands.Cog):
         embed.add_field(name="<:ban:1549111135742070926> Баны (Все время)", value=format_top(get_top_cases("Бан")), inline=True)
         
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
+        await ctx.send(embed=embed)
+    @leaderboard_group.command(name="level", aliases=["lvl", "xp"])
+    @check_access_decorator("leaderboard")
+    async def lb_level(self, ctx: commands.Context):
+        pipeline = [
+            {"$project": {"_id": "$_id", "xp": {"$ifNull": ["$xp", 0]}}},
+            {"$match": {"xp": {"$gt": 0}}},
+            {"$sort": {"xp": -1}},
+            {"$limit": 5}
+        ]
+        top_data = list(users_col.aggregate(pipeline))
+
+        embed = discord.Embed(
+            title="<:leaderboard:1544301200894070844> Топ 5 по уровню",
+            color=config.EMBED_COLOR
+        )
+
+        lines = []
+        for i in range(1, 6):
+            if i <= len(top_data):
+                doc = top_data[i - 1]
+                total_xp = doc.get("xp", 0)
+                level, _, _ = calculate_level_from_xp(total_xp)
+                lines.append(f"`{i}.` <@{doc['_id']}> - **{level}** уровень")
+            else:
+                lines.append(f"`{i}.` -")
+
+        embed.description = "\n".join(lines)
+        embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
 
 async def setup(bot):

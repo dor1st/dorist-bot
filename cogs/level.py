@@ -1,0 +1,142 @@
+import math
+import time
+import discord
+from discord.ext import commands
+
+import config
+from database import users_col
+from utils import check_access_decorator, make_error_embed, send_error_embed
+
+XP_COOLDOWN = 60
+_xp_cooldowns = {}
+
+def get_xp_for_next_level(level: int) -> int:
+    """Возвращает сколько ВСЕГО опыта требуется для достижения уровня level + 1."""
+    return 5 * (level ** 2) + 275 * level + 40
+
+def calculate_level_from_xp(total_xp: int) -> tuple[int, int, int]:
+    """
+    По суммарному опыту вычисляет:
+    (текущий уровень, опыт на текущем уровне, необходимо опыта для следующего уровня)
+    """
+    level = 1
+    xp_needed = get_xp_for_next_level(level)
+    
+    while total_xp >= xp_needed:
+        total_xp -= xp_needed
+        level += 1
+        xp_needed = get_xp_for_next_level(level)
+        
+    return level, total_xp, xp_needed
+
+def create_progress_bar(current_xp: int, needed_xp: int, length: int = 10) -> str:
+    """Генерирует красивый прогресс-бар из символов ▫️◽◻️⬜🟩."""
+    if needed_xp <= 0:
+        return "🟩" * length
+
+    ratio = max(0.0, min(1.0, current_xp / needed_xp))
+    total_steps = length * 4
+    filled_steps = int(round(ratio * total_steps))
+
+    blocks = ["▫️", "◽", "◻️", "⬜", "🟩"]
+    bar = []
+
+    for _ in range(length):
+        if filled_steps >= 4:
+            bar.append(blocks[4])
+            filled_steps -= 4
+        elif filled_steps > 0:
+            bar.append(blocks[filled_steps])
+            filled_steps = 0
+        else:
+            bar.append(blocks[0])
+
+    return "".join(bar)
+
+async def process_message_xp(message: discord.Message):
+    """Вызывается при отправке сообщений для начисления опыта."""
+    if message.author.bot or not message.guild:
+        return
+
+    user_id = message.author.id
+    now = time.time()
+
+    if user_id in _xp_cooldowns and now - _xp_cooldowns[user_id] < XP_COOLDOWN:
+        return
+
+    _xp_cooldowns[user_id] = now
+
+    content_len = len(message.content.strip())
+    if content_len == 0:
+        return
+        
+    xp_to_add = min(32, max(5, content_len // 2))
+
+    users_col.update_one(
+        {"_id": user_id},
+        {"$inc": {"xp": xp_to_add}},
+        upsert=True
+    )
+
+
+class LevelsCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(name="rank", aliases=["level", "lvl"])
+    @check_access_decorator("rank")
+    async def rank_cmd(self, ctx: commands.Context, target: discord.Member | discord.User = None):
+        target = target or ctx.author
+
+        user_doc = users_col.find_one({"_id": target.id}) or {}
+        total_xp = user_doc.get("xp", 0)
+
+        level, current_xp, needed_xp = calculate_level_from_xp(total_xp)
+
+        # Вычисление места в лидерборде
+        pipeline = [
+            {"$project": {"_id": "$_id", "xp": {"$ifNull": ["$xp", 0]}}},
+            {"$sort": {"xp": -1}}
+        ]
+        all_users = list(users_col.aggregate(pipeline))
+        
+        rank_position = "—"
+        for idx, u in enumerate(all_users, 1):
+            if u["_id"] == target.id:
+                rank_position = f"#{idx}"
+                break
+
+        progress_bar = create_progress_bar(current_xp, needed_xp)
+        percent = int((current_xp / needed_xp) * 100) if needed_xp > 0 else 100
+
+        embed = discord.Embed(
+            title=f"📊 Уровень пользователя — {target.display_name}",
+            color=config.EMBED_COLOR
+        )
+        if hasattr(target, "avatar") and target.avatar:
+            embed.set_thumbnail(url=target.avatar.url)
+
+        embed.add_field(
+            name="Информация",
+            value=(
+                f"• Уровень: **{level}**\name"
+                f"• Место в топе: **{rank_position}**\n"
+                f"• Всего опыта: **{total_xp:,}** XP"
+            ),
+            inline=False
+        )
+        embed.add_field(
+            name="Прогресс уровня",
+            value=(
+                f"{progress_bar} **{percent}%**\n"
+                f"`{current_xp:,}` / `{needed_xp:,}` XP (до следующего уровня: **{needed_xp - current_xp:,}** XP)"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+
+
+async def setup(bot):
+    await bot.add_cog(LevelsCog(bot))

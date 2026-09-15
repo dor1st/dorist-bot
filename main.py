@@ -25,6 +25,7 @@ INITIAL_EXTENSIONS = [
     "cogs.economy",
     "cogs.streak",
     "cogs.mod",
+    "cogs.level"
 ]
 
 @bot.event

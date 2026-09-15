@@ -84,6 +84,7 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "help": False,
     "config": False,
     "streak": False,
+    "rank": False,
 
     # Модерация
     "verbalwarn": True,
@@ -110,6 +111,7 @@ PERMISSION_GROUPS_DEFAULT = {
         "commands": [
             "help",
             "messages",
+            "rank",
             "leaderboard",
             "invites",
             "balance",
@@ -267,7 +269,8 @@ COMMAND_USAGE_HELP = {
     "summaries": "`.summaries` - Просмотреть сводную статистику.",
     "config": "`.config` - Настройка бота.",
     "help": "`.help [команда / категория]` - Показать справку по командам.",
-    "streak": "`.streak` [ID / упоминание] - Посмотреть стрик участника."
+    "streak": "`.streak` [ID / упоминание] - Посмотреть стрик участника.",
+    "rank": "`.rank [ID / упоминание]` - Просмотреть свой или чужой уровень и карточку опыта.",
 }
 
 HELP_CATEGORIES = {
@@ -334,6 +337,7 @@ HELP_CATEGORIES = {
         "allowed_groups": ["everyone", "support", "transcript", "admin", "owner"],
         "commands": [
             "> `.messages` - *Количество отправленных сообщений.*",
+            "> `.rank` - *Посмотреть свой уровень и опыт.*",
             "> `.userinfo` - *Посмотреть профиль, даты и роли участника.*",
             "> `.summaries` - *Посмотреть общие итоги и подсчет.*",
             "> `.leaderboard` - *Посмотреть текущий список лидеров в разных категориях.*",
