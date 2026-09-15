@@ -11,7 +11,9 @@ from utils import (
     log_action, 
     log_mod_action, 
     build_command_help_embed, 
-    send_error_embed
+    send_error_embed,
+    is_staff,
+    is_owner_user
     )
 
 import database
@@ -511,6 +513,23 @@ class ModCog(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("verbalwarn"))
 
+        if ctx.author.id == target.id:
+                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+        
+        if is_staff(target):
+            return await send_error_embed(
+            ctx, 
+            "Отказ в доступе", 
+            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+            )
+
+        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+            return await send_error_embed(
+                ctx, 
+                "Ошибка иерархии", 
+                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+            )
+
         verb_id = database.get_next_sequence_value("verbal_warns")
         
         warn_doc = {
@@ -578,6 +597,23 @@ class ModCog(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("warn"))
 
+        if ctx.author.id == target.id:
+                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+    
+        if is_staff(target):
+            return await send_error_embed(
+            ctx, 
+            "Отказ в доступе", 
+            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+            )
+    
+        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+            return await send_error_embed(
+                ctx, 
+                "Ошибка иерархии", 
+                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+            )
+
         case_id = database.get_next_sequence_value("cases")
         case_doc = {
             "case_id": case_id,
@@ -628,6 +664,23 @@ class ModCog(commands.Cog):
         if not target:
             return await send_error_embed(ctx, "Ошибка", "Участник не найден на сервере.")
 
+        if ctx.author.id == target.id:
+                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+    
+        if is_staff(target):
+            return await send_error_embed(
+            ctx, 
+            "Отказ в доступе", 
+            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+            )
+    
+        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+            return await send_error_embed(
+                ctx, 
+                "Ошибка иерархии", 
+                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+            )
+
         td = parse_duration(duration)
         if not td:
             return await send_error_embed(ctx, "Ошибка", "Неверный формат длительности (примеры: 10m, 2h, 1d).")
@@ -670,12 +723,28 @@ class ModCog(commands.Cog):
         if not target:
             return await send_error_embed(ctx, "Ошибка", "Участник не найден на сервере.")
 
+        if ctx.author.id == target.id:
+                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+    
+        if is_staff(target):
+            return await send_error_embed(
+            ctx, 
+            "Отказ в доступе", 
+            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+            )
+    
+        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+            return await send_error_embed(
+                ctx, 
+                "Ошибка иерархии", 
+                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+            )
+
         try:
             await target.timeout(None, reason=f"[{ctx.author}] {reason}")
         except discord.Forbidden:
             return await send_error_embed(ctx, "Ошибка", "У бота недостаточно прав для снятия тайм-аута.")
 
-        # Отправляем в ЛС уведомление
         await send_punishment_dm(target, "Снятие мьюта", ctx.guild.name, reason)
 
         embed = discord.Embed(
@@ -693,6 +762,23 @@ class ModCog(commands.Cog):
         if target is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("ban"))
+
+        if ctx.author.id == target.id:
+                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+    
+        if is_staff(target):
+            return await send_error_embed(
+            ctx, 
+            "Отказ в доступе", 
+            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+            )
+    
+        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+            return await send_error_embed(
+                ctx, 
+                "Ошибка иерархии", 
+                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+            )
 
         first_word = reason.split()[0]
         if parse_duration(first_word):
@@ -733,6 +819,23 @@ class ModCog(commands.Cog):
         if target is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("unban"))
+
+        if ctx.author.id == target.id:
+                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+    
+        if is_staff(target):
+            return await send_error_embed(
+            ctx, 
+            "Отказ в доступе", 
+            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+            )
+    
+        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+            return await send_error_embed(
+                ctx, 
+                "Ошибка иерархии", 
+                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+            )
 
         try:
             await send_punishment_dm(target, "Разбан", ctx.guild.name, reason)
