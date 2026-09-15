@@ -508,27 +508,28 @@ class ModCog(commands.Cog):
 
     @commands.command(name="verbalwarn", aliases=["verb"])
     @check_access_decorator("verbalwarn")
-    async def verbalwarn(self, ctx: commands.Context, target: discord.User = None, *, reason: str = None):
+    async def verbalwarn(self, ctx: commands.Context, target: discord.Member = None, *, reason: str = None):
         if target is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("verbalwarn"))
 
         if ctx.author.id == target.id:
-                    return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
+            return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
         
         if is_staff(target):
             return await send_error_embed(
-            ctx, 
-            "Отказ в доступе", 
-            f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+                ctx, 
+                "Отказ в доступе", 
+                f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
             )
 
-        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
-            return await send_error_embed(
-                ctx, 
-                "Ошибка иерархии", 
-                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
-            )
+        if isinstance(target, discord.Member):
+            if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+                return await send_error_embed(
+                    ctx, 
+                    "Ошибка иерархии", 
+                    "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+                )
 
         verb_id = database.get_next_sequence_value("verbal_warns")
         
