@@ -893,6 +893,45 @@ class EconomyCog(commands.Cog):
 
         target_cash, _ = get_user_balance(target.id)
 
+        if target_cash <= 0:
+            fine = random.randint(100, 300)
+            update_user_balance_delta(ctx.author.id, cash_delta=-fine)
+            phrase = f"У {target.mention} нет наличных денег! Попытка не удалась, и вы потеряли **-{fine:,}** коинов."
+            await ctx.send(embed=make_status_embed("Ограбление не удалось", phrase, "error"))
+            return
+
+        is_success = random.random() < ROB_SUCCESS_CHANCE
+
+        if is_success:
+            percent = random.randint(ROB_STEEL_MIN_PERCENT, ROB_STEEL_MAX_PERCENT)
+            stolen_amount = int(target_cash * (percent / 100))
+            if stolen_amount <= 0:
+                stolen_amount = 1
+
+            update_user_balance_delta(target.id, cash_delta=-stolen_amount)
+            update_user_balance_delta(ctx.author.id, cash_delta=stolen_amount)
+
+            phrase = random.choice(ROB_SUCCESS_PHRASES).format(
+                target=target.mention,
+                amount=f"{stolen_amount:,}"
+            )
+            embed = make_status_embed("Ограбление успешно", phrase, "success")
+        else:
+            author_cash, _ = get_user_balance(ctx.author.id)
+            fine = int(author_cash * ROB_FINE_PERCENT)
+            if fine <= 0:
+                fine = random.randint(50, 150)
+
+            update_user_balance_delta(ctx.author.id, cash_delta=-fine)
+
+            phrase = random.choice(ROB_FAILURE_PHRASES).format(
+                target=target.mention,
+                amount=f"{fine:,}"
+            )
+            embed = make_status_embed("Ограбление не удалось", phrase, "error")
+
+        await ctx.send(embed=embed)
+
     @commands.command(name="slotmachine", aliases=["slot"])
     @commands.cooldown(1, 3, commands.BucketType.user)
     @check_access_decorator("slotmachine")
