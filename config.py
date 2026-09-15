@@ -23,6 +23,19 @@ COIN_EMOJI = "<:coin:1545425273686597742>"
 MAX_DURATION = timedelta(days=31)
 SETUP_TIMEOUT = 900
 
+GLOBAL_XP_MULTIPLIER = 1.0
+
+ROLE_XP_MULTIPLIERS = {
+    123456789012345678: 1.25,
+    234567890123456789: 1.50,
+}
+
+VOICE_XP_BLACKLIST_CHANNELS = [
+    1467619815635292335
+]
+
+VOICE_XP_PER_MINUTE = 10
+
 COIN_PER_ROBUX = 200
 
 LOGS_PER_PAGE = 3
@@ -85,6 +98,8 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "config": False,
     "streak": False,
     "rank": False,
+    "addexp": True,
+    "setrank": True,
 
     # Модерация
     "verbalwarn": True,
@@ -200,6 +215,8 @@ PERMISSION_GROUPS_DEFAULT = {
             "addcase",
             "deleteverb",
             "delwarn",
+            "addexp",
+            "setrank",
         ],
     },
 }
@@ -271,6 +288,8 @@ COMMAND_USAGE_HELP = {
     "help": "`.help [команда / категория]` - Показать справку по командам.",
     "streak": "`.streak` [ID / упоминание] - Посмотреть стрик участника.",
     "rank": "`.rank [ID / упоминание]` - Просмотреть свой или чужой уровень и карточку опыта.",
+    "addexp": "`.addexp [ID / упоминание] [количество]` - Добавить или отнять опыт у участника.",
+    "setrank": "`.setrank [ID / упоминание] [уровень]` - Установить конкретный уровень участнику.",
 }
 
 HELP_CATEGORIES = {
