@@ -205,7 +205,7 @@ class MinesButton(discord.ui.Button):
             self.style = discord.ButtonStyle.success
             self.disabled = True
             view.revealed_prizes += 1
-            view.multiplier += 0.25
+            view.multiplier += 0.3
 
             current_payout = int(view.bet * view.multiplier)
 
@@ -1188,7 +1188,7 @@ class EconomyCog(commands.Cog):
             title="💣 Минное поле",
             description=f"Выберите любую ячейку на поле 3x3!\n"
                         f"На поле спрятано **5 мин** (💥) и **4 приза** (💰).\n"
-                        f"За каждый найденный приз: **+25%** к ставке.\n\n"
+                        f"За каждый найденный приз: **+30%** к ставке.\n\n"
                         f"📈 **Текущий множитель:** `x1.00`\n"
                         f"💵 **Ваша ставка:** `{amount:,}` {COIN_EMOJI}",
             color=config.EMBED_COLOR

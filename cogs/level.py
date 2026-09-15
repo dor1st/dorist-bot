@@ -161,7 +161,6 @@ def create_progress_bar(current_xp: int, needed_xp: int, length: int = 8) -> str
     # Округляем количество заполненных блоков
     filled_blocks = int(round(ratio * length))
 
-    # Корректируем крайние значения для наглядности (пока < 100%, последний блок не станет зеленым)
     if ratio < 1.0 and filled_blocks == length:
         filled_blocks = length - 1
 
