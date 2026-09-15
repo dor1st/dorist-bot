@@ -7,6 +7,18 @@ import config
 from database import users_col
 from utils import check_access_decorator, make_error_embed, send_error_embed
 
+LEVEL_ROLES = {
+    5: 1323358508900417627,   # [5] Активный
+    10: 1521856940894851102,  # [10] Активный+
+    15: 1323358930105143477,  # [15] Аура Активности
+    20: 1521857282302804181,  # [20] Резидент Чата
+    30: 1323359090243670088,  # [30] Божество Чата
+    40: 1521857391229140992,  # [40] Хранитель Актива
+    50: 1323359198599184405,  # [50] Властелин Актива
+    60: 1521863674829078659,  # [60] Босс Чата
+    67: 1521863650405646500,  # [67] Не Активный
+}
+
 XP_COOLDOWN = 60
 _xp_cooldowns = {}
 
@@ -25,7 +37,6 @@ class LevelsCog(commands.Cog):
 
         for guild in self.bot.guilds:
             for voice_channel in guild.voice_channels:
-                # Пропускаем заблокированные каналы
                 if voice_channel.id in config.VOICE_XP_BLACKLIST_CHANNELS:
                     continue
 
@@ -33,7 +44,6 @@ class LevelsCog(commands.Cog):
                     if member.bot:
                         continue
 
-                    # Проверка микрофона и звука (должен быть размучен)
                     voice_state = member.voice
                     if not voice_state:
                         continue
@@ -45,11 +55,19 @@ class LevelsCog(commands.Cog):
                         multiplier = get_user_xp_multiplier(member)
                         xp_to_add = int(config.VOICE_XP_PER_MINUTE * multiplier)
 
+                        user_doc = users_col.find_one({"_id": member.id}) or {}
+                        old_xp = user_doc.get("xp", 0)
+                        old_lvl, _, _ = calculate_level_from_xp(old_xp)
+
                         users_col.update_one(
                             {"_id": member.id},
                             {"$inc": {"xp": xp_to_add}},
                             upsert=True
                         )
+
+                        new_lvl, _, _ = calculate_level_from_xp(old_xp + xp_to_add)
+                        if new_lvl > old_lvl:
+                            await check_and_assign_level_roles(member, new_lvl)
 
 def get_user_xp_multiplier(member: discord.Member) -> float:
     """Вычисляет максимальный множитель опыта на основе ролей пользователя и глобального множителя."""
@@ -63,6 +81,22 @@ def get_user_xp_multiplier(member: discord.Member) -> float:
                 max_role_mult = config.ROLE_XP_MULTIPLIERS[role.id]
 
     return round(max_role_mult * config.GLOBAL_XP_MULTIPLIER, 2)
+
+async def check_and_assign_level_roles(member: discord.Member, level: int):
+    """Выдает роли за достигнутые уровни и опционально снимает старые."""
+    roles_to_add = []
+    
+    for lvl, role_id in LEVEL_ROLES.items():
+        if level >= lvl:
+            role = member.guild.get_role(role_id)
+            if role and role not in member.roles:
+                roles_to_add.append(role)
+                
+    if roles_to_add:
+        try:
+            await member.add_roles(*roles_to_add)
+        except discord.HTTPException:
+            pass
 
 async def process_message_xp(message: discord.Message):
     if message.author.bot or not message.guild:
@@ -85,11 +119,19 @@ async def process_message_xp(message: discord.Message):
     multiplier = get_user_xp_multiplier(message.author)
     xp_to_add = int(base_xp * multiplier)
 
+    user_doc = users_col.find_one({"_id": user_id}) or {}
+    old_xp = user_doc.get("xp", 0)
+    old_lvl, _, _ = calculate_level_from_xp(old_xp)
+
     users_col.update_one(
         {"_id": user_id},
         {"$inc": {"xp": xp_to_add}},
         upsert=True
     )
+
+    new_lvl, _, _ = calculate_level_from_xp(old_xp + xp_to_add)
+    if new_lvl > old_lvl:
+        await check_and_assign_level_roles(message.author, new_lvl)
 
 def get_xp_for_next_level(level: int) -> int:
     return 280 * level + 320
