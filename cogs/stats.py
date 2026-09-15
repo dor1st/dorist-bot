@@ -3,7 +3,8 @@ import math
 from datetime import datetime, timedelta, timezone
 import discord
 from discord.ext import commands
-from level import process_message_xp, calculate_level_from_xp
+import cogs.level as level
+from cogs.level import process_message_xp, calculate_level_from_xp
 
 import config
 import database
