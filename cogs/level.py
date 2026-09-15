@@ -93,7 +93,7 @@ async def process_message_xp(message: discord.Message):
     )
 
 def get_xp_for_next_level(level: int) -> int:
-    return -140 * (level ** 2) + 980 * level - 520
+    return 280 * level + 320
 
 def calculate_level_from_xp(total_xp: int) -> tuple[int, int, int]:
     """
