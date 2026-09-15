@@ -82,7 +82,6 @@ async def process_message_xp(message: discord.Message):
         
     base_xp = min(32, max(5, content_len // 2))
     
-    # Применяем множитель
     multiplier = get_user_xp_multiplier(message.author)
     xp_to_add = int(base_xp * multiplier)
 
@@ -127,31 +126,6 @@ def create_progress_bar(current_xp: int, needed_xp: int, length: int = 8) -> str
     empty_blocks = length - filled_blocks
 
     return ("🟩" * filled_blocks) + ("⬜" * empty_blocks)
-
-async def process_message_xp(message: discord.Message):
-    """Вызывается при отправке сообщений для начисления опыта."""
-    if message.author.bot or not message.guild:
-        return
-
-    user_id = message.author.id
-    now = time.time()
-
-    if user_id in _xp_cooldowns and now - _xp_cooldowns[user_id] < XP_COOLDOWN:
-        return
-
-    _xp_cooldowns[user_id] = now
-
-    content_len = len(message.content.strip())
-    if content_len == 0:
-        return
-        
-    xp_to_add = min(32, max(5, content_len // 2))
-
-    users_col.update_one(
-        {"_id": user_id},
-        {"$inc": {"xp": xp_to_add}},
-        upsert=True
-    )
 
 
 class LevelsCog(commands.Cog):
