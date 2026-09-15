@@ -111,30 +111,23 @@ def calculate_level_from_xp(total_xp: int) -> tuple[int, int, int]:
         
     return level, total_xp, xp_needed
 
-def create_progress_bar(current_xp: int, needed_xp: int, length: int = 10) -> str:
-    """Генерирует прогресс-бар с плавным заполнением квадратов."""
+def create_progress_bar(current_xp: int, needed_xp: int, length: int = 8) -> str:
+    """Генерирует бинарный прогресс-бар: зеленые (пройдено) и белые (не пройдено) квадраты."""
     if needed_xp <= 0:
         return "🟩" * length
 
     ratio = max(0.0, min(1.0, current_xp / needed_xp))
-    total_steps = length * 4
-    filled_steps = int(round(ratio * total_steps))
+    
+    # Округляем количество заполненных блоков
+    filled_blocks = int(round(ratio * length))
 
-    # 0 = ▫️, 1 = ◽, 2 = ◻️, 3 = ⬜, 4 = 🟩
-    blocks = ["▫️", "◽", "◻️", "⬜", "🟩"]
-    bar = []
+    # Корректируем крайние значения для наглядности (пока < 100%, последний блок не станет зеленым)
+    if ratio < 1.0 and filled_blocks == length:
+        filled_blocks = length - 1
 
-    for _ in range(length):
-        if filled_steps >= 4:
-            bar.append(blocks[4])  # Полный зеленый
-            filled_steps -= 4
-        elif filled_steps > 0:
-            bar.append(blocks[filled_steps])  # Промежуточный квадрат по остатку
-            filled_steps = 0  # Все следующие будут 0 (blocks[0] -> ▫️)
-        else:
-            bar.append(blocks[0])  # Минимальный квадрат
+    empty_blocks = length - filled_blocks
 
-    return "".join(bar)
+    return ("🟩" * filled_blocks) + ("⬜" * empty_blocks)
 
 async def process_message_xp(message: discord.Message):
     """Вызывается при отправке сообщений для начисления опыта."""
@@ -193,7 +186,7 @@ class LevelsCog(commands.Cog):
         percent = int((current_xp / needed_xp) * 100) if needed_xp > 0 else 100
 
         embed = discord.Embed(
-            title=f"📊 Уровень {target.display_name}",
+            title=f"<:pin:1522341130019143880> Уровень участника {target.display_name}",
             color=config.EMBED_COLOR
         )
         if hasattr(target, "avatar") and target.avatar:
