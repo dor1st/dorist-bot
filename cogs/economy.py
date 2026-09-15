@@ -168,10 +168,11 @@ def decrease_item_stock(item_id: str, amount: int = 1) -> int:
     return res["stock"] if res else 0
 
 class MinesButton(discord.ui.Button):
-    def __init__(self, x: int, y: int):
-        super().__init__(style=discord.ButtonStyle.secondary, emoji="🟩", row=y)
+    def __init__(self, x: int, y: int, is_mine: bool):
+        super().__init__(style=discord.ButtonStyle.secondary, emoji="🟫", row=y)
         self.x = x
         self.y = y
+        self.is_mine = is_mine
 
     async def callback(self, interaction: discord.Interaction):
         assert self.view is not None
@@ -183,31 +184,40 @@ class MinesButton(discord.ui.Button):
         if view.game_over:
             return await interaction.response.send_message("Игра уже завершена.", ephemeral=True)
 
-        # Шанс победы 40%
-        is_prize = random.random() < 0.40
+        if self.is_mine:
+            self.emoji = "💥"
+            self.style = discord.ButtonStyle.danger
+            view.game_over = True
+            view.reveal_full_board()
 
-        if is_prize:
+            embed = discord.Embed(
+                title="💣 Минное поле — Поражение!",
+                description=f"💥 Вы наткнулись на мину и потеряли всю ставку!\n\n"
+                            f"📉 **Потеряно:** `-{view.bet:,}` {COIN_EMOJI}",
+                color=0xe74c3c
+            )
+            embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
+            await interaction.response.edit_message(embed=embed, view=view)
+
+        else:
+            # Игрок нашёл приз
             self.emoji = "💰"
             self.style = discord.ButtonStyle.success
             self.disabled = True
-            view.revealed_count += 1
+            view.revealed_prizes += 1
             view.multiplier += 0.25
-
-            # Ограничиваем максимальный множитель на уровне x2.0 (4 угадывания)
-            if view.multiplier >= 2.0:
-                view.multiplier = 2.0
 
             current_payout = int(view.bet * view.multiplier)
 
-            if view.revealed_count >= 4 or view.multiplier >= 2.0:
-                # Автоматический забор денег при достижении максимума
+            # Если собраны все 4 приза
+            if view.revealed_prizes >= 4:
                 view.game_over = True
-                view.disable_all_cells()
-                update_user_balance_delta(view.author_id, cash_delta=current_payout - view.bet)
+                view.reveal_full_board()
+                update_user_balance_delta(view.author_id, cash_delta=current_payout)
 
                 embed = discord.Embed(
                     title="💣 Минное поле — Максимальный выигрыш!",
-                    description=f"🎉 Вы успешно открыли 4 приза!\n\n"
+                    description=f"🎉 Вы успешно открыли все 4 приза!\n\n"
                                 f"💰 **Итоговый множитель:** `x{view.multiplier:.2f}`\n"
                                 f"💵 **Выигрыш:** `+{current_payout:,}` {COIN_EMOJI}",
                     color=0x2ecc71
@@ -215,9 +225,9 @@ class MinesButton(discord.ui.Button):
                 embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
                 return await interaction.response.edit_message(embed=embed, view=view)
 
-            # Если ещё есть куда открывать, обновляем эмбед и разблокируем/показываем кнопку забора
+            # Если ещё остались призы, обновляем кнопку забора и статус
             view.claim_button.disabled = False
-            view.claim_button.label = f"Забрать ({current_payout:,} {COIN_EMOJI})"
+            view.claim_button.label = f"Забрать ({current_payout:,} коинов)"
 
             embed = discord.Embed(
                 title="💣 Минное поле",
@@ -230,24 +240,6 @@ class MinesButton(discord.ui.Button):
             embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
             await interaction.response.edit_message(embed=embed, view=view)
 
-        else:
-            self.emoji = "💥"
-            self.style = discord.ButtonStyle.danger
-            view.game_over = True
-            view.disable_all_cells()
-
-            # Списание ставки
-            update_user_balance_delta(view.author_id, cash_delta=-view.bet)
-
-            embed = discord.Embed(
-                title="💣 Минное поле — Поражение!",
-                description=f"💥 Вы наткнулись на мину и потеряли всю ставку!\n\n"
-                            f"📉 **Потеряно:** `-{view.bet:,}` {COIN_EMOJI}",
-                color=0xe74c3c
-            )
-            embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
-            await interaction.response.edit_message(embed=embed, view=view)
-
 
 class MinesView(discord.ui.View):
     def __init__(self, author_id: int, bet: int):
@@ -255,15 +247,23 @@ class MinesView(discord.ui.View):
         self.author_id = author_id
         self.bet = bet
         self.multiplier = 1.0
-        self.revealed_count = 0
+        self.revealed_prizes = 0
         self.game_over = False
 
-        # Генерируем поле 3x3
-        for y in range(3):
-            for x in range(3):
-                self.add_item(MinesButton(x, y))
+        # Генерируем массив из 5 бомб (True) и 4 призов (False) и перемешиваем
+        board_layout = [True] * 5 + [False] * 4
+        random.shuffle(board_layout)
 
-        # Кнопка для забора выигрыша
+        # Создаем сетку 3x3
+        self.cells: list[MinesButton] = []
+        for index, is_mine in enumerate(board_layout):
+            x = index % 3
+            y = index // 3
+            btn = MinesButton(x, y, is_mine)
+            self.cells.append(btn)
+            self.add_item(btn)
+
+        # Кнопка забора выигрыша
         self.claim_button = discord.ui.Button(
             label="Забрать выигрыш",
             style=discord.ButtonStyle.primary,
@@ -274,28 +274,35 @@ class MinesView(discord.ui.View):
         self.claim_button.callback = self.claim_callback
         self.add_item(self.claim_button)
 
-    def disable_all_cells(self):
+    def reveal_full_board(self):
+        """Вскрывает карту в конце игры."""
         for child in self.children:
-            child.disabled = True
+            if isinstance(child, MinesButton):
+                child.disabled = True
+                if not child.emoji or child.emoji.name == "🟫":
+                    child.emoji = "💥" if child.is_mine else "💰"
+                    child.style = discord.ButtonStyle.secondary
+            elif isinstance(child, discord.ui.Button):
+                child.disabled = True
 
     async def claim_callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.author_id:
             return await interaction.response.send_message("Это не ваша игра!", ephemeral=True)
 
-        if self.game_over or self.revealed_count == 0:
+        if self.game_over or self.revealed_prizes == 0:
             return await interaction.response.send_message("Вы не можете забрать выигрыш сейчас.", ephemeral=True)
 
         self.game_over = True
-        self.disable_all_cells()
-
         total_payout = int(self.bet * self.multiplier)
-        profit = total_payout - self.bet
-        update_user_balance_delta(self.author_id, cash_delta=profit)
+
+        # Возвращаем выигрыш на баланс
+        update_user_balance_delta(self.author_id, cash_delta=total_payout)
+        self.reveal_full_board()
 
         embed = discord.Embed(
             title="💣 Минное поле — Игра завершена!",
             description=f"🎯 Вы решили не рисковать и забрали куш!\n\n"
-                        f"📈 **Множитель:** `x{self.multiplier:.2f}`\n"
+                        f"📈 **Итоговый множитель:** `x{self.multiplier:.2f}`\n"
                         f"💰 **Заработано:** `+{total_payout:,}` {COIN_EMOJI}",
             color=0x2ecc71
         )
@@ -305,9 +312,7 @@ class MinesView(discord.ui.View):
     async def on_timeout(self):
         if not self.game_over:
             self.game_over = True
-            self.disable_all_cells()
-            # При таймауте списываем деньги
-            update_user_balance_delta(self.author_id, cash_delta=-self.bet)
+            self.reveal_full_board()
 
 class RestockSelect(discord.ui.Select):
     def __init__(self, category_key: str):
@@ -1169,12 +1174,15 @@ class EconomyCog(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             return await send_error_embed(ctx, "Ошибка", "У вас недостаточно **наличных** средств для этой ставки.")
 
+        update_user_balance_delta(ctx.author.id, cash_delta=-amount)
+
         view = MinesView(author_id=ctx.author.id, bet=amount)
 
         embed = discord.Embed(
             title="💣 Минное поле",
-            description=f"Выберите любую ячейку на поле!\n"
-                        f"Шанс найти приз (💰): **40%** (+0.25 к множителю за каждый приз).\n\n"
+            description=f"Выберите любую ячейку на поле 3x3!\n"
+                        f"На поле спрятано **5 мин** (💥) и **4 приза** (💰).\n"
+                        f"За каждый найденный приз: **+25%** к ставке.\n\n"
                         f"📈 **Текущий множитель:** `x1.00`\n"
                         f"💵 **Ваша ставка:** `{amount:,}` {COIN_EMOJI}",
             color=config.EMBED_COLOR
