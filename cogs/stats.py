@@ -830,21 +830,21 @@ class StatsCog(commands.Cog):
             color=config.EMBED_COLOR
         )
 
-        embed.add_field(name="<:warn:1549111094121992322> Верб. варны (7 дн.)", value=format_top(get_top_verbs(d7)), inline=True)
-        embed.add_field(name="<:warn:1549111094121992322> Верб. варны (30 дн.)", value=format_top(get_top_verbs(d30)), inline=True)
-        embed.add_field(name="<:warn:1549111094121992322> Верб. варны (Все время)", value=format_top(get_top_verbs()), inline=True)
+        embed.add_field(name="🗣️ Верб. варны (7 дн.)", value=format_top(get_top_verbs(d7)), inline=True)
+        embed.add_field(name="🗣️ Верб. варны (30 дн.)", value=format_top(get_top_verbs(d30)), inline=True)
+        embed.add_field(name="🗣️ Верб. варны (Все время)", value=format_top(get_top_verbs()), inline=True)
         
-        embed.add_field(name=f"{ALERT_EMOJI} Варны (7 дн.)", value=format_top(get_top_cases("Варн", d7)), inline=True)
-        embed.add_field(name=f"{ALERT_EMOJI} Варны (30 дн.)", value=format_top(get_top_cases("Варн", d30)), inline=True)
-        embed.add_field(name=f"{ALERT_EMOJI} Варны (Все время)", value=format_top(get_top_cases("Варн")), inline=True)
+        embed.add_field(name="⚠️ Варны (7 дн.)", value=format_top(get_top_cases("Варн", d7)), inline=True)
+        embed.add_field(name="⚠️ Варны (30 дн.)", value=format_top(get_top_cases("Варн", d30)), inline=True)
+        embed.add_field(name="⚠️ Варны (Все время)", value=format_top(get_top_cases("Варн")), inline=True)
         
-        embed.add_field(name="<:timeout:1549111000437882961> Мьюты (7 дн.)", value=format_top(get_top_cases("Мьют", d7)), inline=True)
-        embed.add_field(name="<:timeout:1549111000437882961> Мьюты (30 дн.)", value=format_top(get_top_cases("Мьют", d30)), inline=True)
-        embed.add_field(name="<:timeout:1549111000437882961> Мьюты (Все время)", value=format_top(get_top_cases("Мьют")), inline=True)
+        embed.add_field(name="🔇 Мьюты (7 дн.)", value=format_top(get_top_cases("Мьют", d7)), inline=True)
+        embed.add_field(name="🔇 Мьюты (30 дн.)", value=format_top(get_top_cases("Мьют", d30)), inline=True)
+        embed.add_field(name="🔇 Мьюты (Все время)", value=format_top(get_top_cases("Мьют")), inline=True)
         
-        embed.add_field(name="<:ban:1549111135742070926> Баны (7 дн.)", value=format_top(get_top_cases("Бан", d7)), inline=True)
-        embed.add_field(name="<:ban:1549111135742070926> Баны (30 дн.)", value=format_top(get_top_cases("Бан", d30)), inline=True)
-        embed.add_field(name="<:ban:1549111135742070926> Баны (Все время)", value=format_top(get_top_cases("Бан")), inline=True)
+        embed.add_field(name="🚫 Баны (7 дн.)", value=format_top(get_top_cases("Бан", d7)), inline=True)
+        embed.add_field(name="🚫 Баны (30 дн.)", value=format_top(get_top_cases("Бан", d30)), inline=True)
+        embed.add_field(name="🚫 Баны (Все время)", value=format_top(get_top_cases("Бан")), inline=True)
         
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
         await ctx.send(embed=embed)
