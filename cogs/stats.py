@@ -29,7 +29,7 @@ def utc_day(dt=None):
     dt = dt or datetime.now(timezone.utc)
     return dt.date().isoformat()
 
-class LeaderboardPaginator(discord.ui.View):
+class LevelLeaderboardPaginator(discord.ui.View):
     def __init__(self, author_id: int, users_data: list, items_per_page: int = 10):
         super().__init__(timeout=120)
         self.author_id = author_id
@@ -52,12 +52,10 @@ class LeaderboardPaginator(discord.ui.View):
         page_items = self.users_data[start_idx:end_idx]
 
         description_lines = []
-        for idx, udata in enumerate(page_items, start=start_idx + 1):
-            user_id = udata["_id"]
-            total_bal = udata["total"]
-
-            member = guild.get_member(user_id) if guild else None
-            name = member.display_name if member else f"Пользователь {user_id}"
+        for idx, doc in enumerate(page_items, start=start_idx + 1):
+            user_id = doc["_id"]
+            total_xp = doc.get("xp", 0)
+            level, _, _ = calculate_level_from_xp(total_xp)
 
             # Значки для первых трех мест
             if idx == 1:
@@ -69,13 +67,13 @@ class LeaderboardPaginator(discord.ui.View):
             else:
                 prefix = f"`{idx}.`"
 
-            description_lines.append(f"{prefix} **{name}** — `{total_bal:,}` {COIN_EMOJI}")
+            description_lines.append(f"{prefix} <@{user_id}> - **{level}** уровень (`{total_xp:,}` XP)")
 
         if not description_lines:
             description_lines.append("Нет данных в таблице лидеров.")
 
         embed = discord.Embed(
-            title="🏆 Таблица лидеров по балансу",
+            title="<:leaderboard:1544301200894070844> Топ по уровню",
             description="\n".join(description_lines),
             color=config.EMBED_COLOR
         )
@@ -112,7 +110,6 @@ class LeaderboardPaginator(discord.ui.View):
         """Отключает кнопки после истечения таймаута."""
         for item in self.children:
             item.disabled = True
-        # Попытка обновить сообщение, если оно существует
         try:
             if hasattr(self, "message") and self.message:
                 await self.message.edit(view=self)
@@ -851,37 +848,26 @@ class StatsCog(commands.Cog):
         
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
         await ctx.send(embed=embed)
-    @commands.command(name="leaderboard", aliases=["top", "lb"])
+    @leaderboard_group.command(name="level", aliases=["lvl", "xp"])
     @check_access_decorator("leaderboard")
-    async def leaderboard(self, ctx: commands.Context):
+    async def lb_level(self, ctx: commands.Context):
         pipeline = [
-            {
-                "$project": {
-                    "_id": "$_id",
-                    "total": {
-                        "$add": [
-                            {"$ifNull": ["$cash", 0]},
-                            {"$ifNull": ["$bank", 0]}
-                        ]
-                    }
-                }
-            },
-            {"$match": {"total": {"$gt": 0}}},
-            {"$sort": {"total": -1}}
+            {"$project": {"_id": "$_id", "xp": {"$ifNull": ["$xp", 0]}}},
+            {"$match": {"xp": {"$gt": 0}}},
+            {"$sort": {"xp": -1}}
         ]
-        
-        all_users = list(users_col.aggregate(pipeline))
+        top_data = list(users_col.aggregate(pipeline))
 
-        if not all_users:
+        if not top_data:
             embed = discord.Embed(
-                description="В таблице лидеров пока нет участников с балансом больше 0.",
+                description="В таблице лидеров пока нет участников с опытом.",
                 color=config.EMBED_COLOR
             )
             return await ctx.send(embed=embed)
 
-        view = LeaderboardPaginator(author_id=ctx.author.id, users_data=all_users, items_per_page=10)
+        view = LevelLeaderboardPaginator(author_id=ctx.author.id, users_data=top_data, items_per_page=10)
         embed = view.build_embed(ctx.guild)
-        
+
         msg = await ctx.send(embed=embed, view=view)
         view.message = msg
 
