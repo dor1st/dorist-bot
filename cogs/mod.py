@@ -969,7 +969,7 @@ class ModCog(commands.Cog):
 
         embed = discord.Embed(
             title=f"<:sparkles:1522342290494849034> Статистика: {target.name}",
-            color=config.EMBED_COLORs
+            color=config.EMBED_COLOR
         )
 
         categories = [
