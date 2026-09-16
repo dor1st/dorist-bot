@@ -29,6 +29,96 @@ def utc_day(dt=None):
     dt = dt or datetime.now(timezone.utc)
     return dt.date().isoformat()
 
+class LeaderboardPaginator(discord.ui.View):
+    def __init__(self, author_id: int, users_data: list, items_per_page: int = 10):
+        super().__init__(timeout=120)
+        self.author_id = author_id
+        self.users_data = users_data
+        self.items_per_page = items_per_page
+        self.current_page = 0
+        self.max_pages = max(1, (len(users_data) + items_per_page - 1) // items_per_page)
+        self.update_buttons()
+
+    def update_buttons(self):
+        """Обновляет состояние кнопок перелистывания."""
+        self.prev_button.disabled = (self.current_page == 0)
+        self.next_button.disabled = (self.current_page >= self.max_pages - 1)
+        self.page_indicator.label = f"{self.current_page + 1}/{self.max_pages}"
+
+    def build_embed(self, guild: discord.Guild) -> discord.Embed:
+        """Формирует эмбед для текущей страницы."""
+        start_idx = self.current_page * self.items_per_page
+        end_idx = start_idx + self.items_per_page
+        page_items = self.users_data[start_idx:end_idx]
+
+        description_lines = []
+        for idx, udata in enumerate(page_items, start=start_idx + 1):
+            user_id = udata["_id"]
+            total_bal = udata["total"]
+
+            member = guild.get_member(user_id) if guild else None
+            name = member.display_name if member else f"Пользователь {user_id}"
+
+            # Значки для первых трех мест
+            if idx == 1:
+                prefix = "🥇"
+            elif idx == 2:
+                prefix = "🥈"
+            elif idx == 3:
+                prefix = "🥉"
+            else:
+                prefix = f"`{idx}.`"
+
+            description_lines.append(f"{prefix} **{name}** — `{total_bal:,}` {COIN_EMOJI}")
+
+        if not description_lines:
+            description_lines.append("Нет данных в таблице лидеров.")
+
+        embed = discord.Embed(
+            title="🏆 Таблица лидеров по балансу",
+            description="\n".join(description_lines),
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=f"Страница {self.current_page + 1} из {self.max_pages} • {config.FOOTER_TEXT}")
+        return embed
+
+    @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.secondary, custom_id="prev_page")
+    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("Вы не можете перелистывать чужую страницу!", ephemeral=True)
+
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            embed = self.build_embed(interaction.guild)
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="1/1", style=discord.ButtonStyle.primary, disabled=True, custom_id="page_indicator")
+    async def page_indicator(self, interaction: discord.Interaction, button: discord.ui.Button):
+        pass
+
+    @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.secondary, custom_id="next_page")
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("Вы не можете перелистывать чужую страницу!", ephemeral=True)
+
+        if self.current_page < self.max_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            embed = self.build_embed(interaction.guild)
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self):
+        """Отключает кнопки после истечения таймаута."""
+        for item in self.children:
+            item.disabled = True
+        # Попытка обновить сообщение, если оно существует
+        try:
+            if hasattr(self, "message") and self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
 class InviteTrackerCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -761,35 +851,39 @@ class StatsCog(commands.Cog):
         
         embed.set_footer(text=f"Сегодня в {now.strftime('%H:%M')} • {config.FOOTER_TEXT}")
         await ctx.send(embed=embed)
-    @leaderboard_group.command(name="level", aliases=["lvl", "xp"])
+    @commands.command(name="leaderboard", aliases=["top", "lb"])
     @check_access_decorator("leaderboard")
-    async def lb_level(self, ctx: commands.Context):
+    async def leaderboard(self, ctx: commands.Context):
         pipeline = [
-            {"$project": {"_id": "$_id", "xp": {"$ifNull": ["$xp", 0]}}},
-            {"$match": {"xp": {"$gt": 0}}},
-            {"$sort": {"xp": -1}},
-            {"$limit": 5}
+            {
+                "$project": {
+                    "_id": "$_id",
+                    "total": {
+                        "$add": [
+                            {"$ifNull": ["$cash", 0]},
+                            {"$ifNull": ["$bank", 0]}
+                        ]
+                    }
+                }
+            },
+            {"$match": {"total": {"$gt": 0}}},
+            {"$sort": {"total": -1}}
         ]
-        top_data = list(users_col.aggregate(pipeline))
+        
+        all_users = list(users_col.aggregate(pipeline))
 
-        embed = discord.Embed(
-            title="<:leaderboard:1544301200894070844> Топ 5 по уровню",
-            color=config.EMBED_COLOR
-        )
+        if not all_users:
+            embed = discord.Embed(
+                description="В таблице лидеров пока нет участников с балансом больше 0.",
+                color=config.EMBED_COLOR
+            )
+            return await ctx.send(embed=embed)
 
-        lines = []
-        for i in range(1, 6):
-            if i <= len(top_data):
-                doc = top_data[i - 1]
-                total_xp = doc.get("xp", 0)
-                level, _, _ = calculate_level_from_xp(total_xp)
-                lines.append(f"`{i}.` <@{doc['_id']}> - **{level}** уровень")
-            else:
-                lines.append(f"`{i}.` -")
-
-        embed.description = "\n".join(lines)
-        embed.set_footer(text=config.FOOTER_TEXT)
-        await ctx.send(embed=embed)
+        view = LeaderboardPaginator(author_id=ctx.author.id, users_data=all_users, items_per_page=10)
+        embed = view.build_embed(ctx.guild)
+        
+        msg = await ctx.send(embed=embed, view=view)
+        view.message = msg
 
 async def setup(bot):
     await bot.add_cog(StatsCog(bot))
