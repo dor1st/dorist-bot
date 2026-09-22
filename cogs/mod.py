@@ -769,30 +769,27 @@ class ModCog(commands.Cog):
 
     @commands.command(name="ban")
     @check_senior_mod()
-    async def ban(self, ctx: commands.Context, target: discord.User = None, *, reason: str = None):
+    async def ban(self, ctx: commands.Context, target: discord.Member = None, *, reason: str = None):
         if target is None or reason is None:
             ctx.command.reset_cooldown(ctx)
             return await ctx.send(embed=build_command_help_embed("ban"))
 
         if ctx.author.id == target.id:
             return await send_error_embed(ctx, "Ошибка", "Вы не можете применить эту команду к самому себе.")
-
-        member = ctx.guild.get_member(target.id)
-
-        if member:
-            if is_staff(member):
-                return await send_error_embed(
-                    ctx, 
-                    "Отказ в доступе", 
-                    f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
-                )
-
-            if ctx.author.top_role <= member.top_role and not is_owner_user(ctx.author):
-                return await send_error_embed(
-                    ctx, 
-                    "Ошибка иерархии", 
-                    "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
-                )
+    
+        if is_staff(target):
+            return await send_error_embed(
+                ctx, 
+                "Отказ в доступе", 
+                f"Вы не можете применить наказание к {target.mention}, так как он является участником персонала."
+            )
+    
+        if ctx.author.top_role <= target.top_role and not is_owner_user(ctx.author):
+            return await send_error_embed(
+                ctx, 
+                "Ошибка иерархии", 
+                "Вы не можете наказать участника, чья высшая роль равна вашей или выше её."
+            )
 
         first_word = reason.split()[0]
         if parse_duration(first_word):
