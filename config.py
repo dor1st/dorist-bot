@@ -23,7 +23,7 @@ COIN_EMOJI = "<:coin:1545425273686597742>"
 MAX_DURATION = timedelta(days=31)
 SETUP_TIMEOUT = 900
 
-GLOBAL_XP_MULTIPLIER = 1.25
+GLOBAL_XP_MULTIPLIER = 1.5
 
 ROLE_XP_MULTIPLIERS = {
     1309460485082714144: 1.20,
@@ -31,8 +31,14 @@ ROLE_XP_MULTIPLIERS = {
     1478395345909190786: 1.15,
     1537847767433617448: 1.05,
     1545472737772970004: 1.10,
-
 }
+
+ALLOWED_ROLES_TO_GIVE = [
+    1437096779693686886,
+    1553720525526794330,
+    1493305349183242391,
+    1537847767433617448,
+]
 
 VOICE_XP_BLACKLIST_CHANNELS = [
     1467619815635292335
@@ -114,6 +120,7 @@ LOGGABLE_COMMANDS_DEFAULT = {
     "moderations": False,
     "delcase": True,
     "addcase": True,
+    "role": True,
 }
 
 PERMISSION_GROUPS_DEFAULT = {
@@ -194,6 +201,7 @@ PERMISSION_GROUPS_DEFAULT = {
             "giveaway",
             "checktime",
             "deleteverb",
+            "role",
         ],
     },
     "owner": {
@@ -244,6 +252,7 @@ COMMAND_USAGE_HELP = {
     "moderations": "`.moderations [ID / упоминание]` - Посмотреть список наказаний, выданных модератором.",
     "delcase": "`.delcase [номер дела]` - Удалить дело из базы данных по его номеру.",
     "addcase": "`.addcase [ID сообщения]` - Автоматически парсит команду модератора из сообщения и вносит дело в базу.",
+    "role": "`.role [ID участника / упоминание]` - Выдать роль участнику."
     
     # Розыгрыши
     "giveaway": "`.giveaway` - Меню управления автоматическими розыгрышами (`create`, `end`, `reroll`, `delete`).",
@@ -383,6 +392,7 @@ HELP_CATEGORIES = {
             "> `.moderations` - *Наказания, выданные модератором.*",
             "> `.delcase` - *Удалить дело из базы по ID.*",
             "> `.addcase` - *Импортировать дело из сообщения.*",
+            "> `.role` - *Выдать роль участнику.*"
         ]
     }
 }

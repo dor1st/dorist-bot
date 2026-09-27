@@ -522,6 +522,19 @@ def build_command_help_embed(command_name: str) -> discord.Embed:
             "**Пример:**\n"
             "`.addcase 134567890123456789`"
         )
+    elif command_name == "role":
+        embed.title = "Команда: role"
+        embed.description = (
+            "Выдать разрешенную роль участнику сервера\n\n"
+            "**Правила аргументов:**\n"
+            "1. Укажите участника (упоминание или ID) и роль (упоминание, ID или название).\n"
+            "2. Выдать можно только те роли, которые входят в список разрешенных.\n\n"
+            "**Использование:**\n"
+            "`.role [участник] [роль]`\n\n"
+            "**Примеры:**\n"
+            "`.role @User @Role`\n"
+            "`.role 123456789012345678 987654321098765432`"
+        )
 
     embed.set_footer(text=config.FOOTER_TEXT)
     return embed

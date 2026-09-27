@@ -34,6 +34,7 @@ ban_counter = defaultdict(list)
 SENIOR_MOD_ROLE_ID = config.SENIOR_MOD_ROLE_ID if hasattr(config, "SENIOR_MOD_ROLE_ID") else 1501500735316164710
 LOGS_PER_PAGE = config.LOGS_PER_PAGE if hasattr(config, "LOGS_PER_PAGE") else 3
 ALERT_EMOJI = config.ALERT_EMOJI if hasattr(config, "ALERT_EMOJI") else "<a:alert:1544047350345891851>"
+ALLOWED_ROLE_IDS = config.ALLOWED_ROLES_TO_GIVE if hasattr(config, "ALLOWED_ROLES_TO_GIVE") else 0
 
 def parse_duration(time_str: str) -> timedelta | None:
     """Парсер длительности вида 10m, 2h, 1d, 7d"""
@@ -870,7 +871,7 @@ class ModCog(commands.Cog):
         await send_punishment_dm(target, "Бан", ctx.guild.name, reason)
         
         try:
-            await ctx.guild.ban(target, reason=f"[{ctx.author}] {reason}")
+            await ctx.guild.ban(target, reason=f"[{ctx.author}] {reason}", delete_message_days=0)
         except discord.Forbidden:
             return await send_error_embed(ctx, "Ошибка", "У бота недостаточно прав для бана данного пользователя.")
 
@@ -923,6 +924,45 @@ class ModCog(commands.Cog):
         embed.set_footer(text=config.FOOTER_TEXT)
         await ctx.send(embed=embed)
         await log_mod_action(ctx.guild, "unban", embed)
+
+    @commands.command(name="role")
+    @check_access_decorator("role")
+    async def give_role(self, ctx: commands.Context, target: discord.Member = None, role: discord.Role = None):
+        if target is None or role is None:
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.send(embed=build_command_help_embed("role"))
+
+        if role.id not in ALLOWED_ROLE_IDS:
+            return await send_error_embed(
+                ctx, 
+                "Ошибка доступа", 
+                "Эту роль нельзя выдать с помощью данной команды."
+            )
+
+        if role in target.roles:
+            return await send_error_embed(
+                ctx, 
+                "Ошибка", 
+                f"У участника {target.mention} уже есть роль {role.mention}."
+            )
+
+        try:
+            await target.add_roles(role, reason=f"Выдано модератором {ctx.author}")
+        except discord.Forbidden:
+            return await send_error_embed(
+                ctx, 
+                "Ошибка", 
+                "У бота недостаточно прав для выдачи этой роли (роль бота должна быть выше выдаваемой роли)."
+            )
+
+        embed = discord.Embed(
+            title="Роль успешно выдана",
+            description=f"**Участник:** {target.mention} (`{target.id}`)\n**Модератор:** {ctx.author.mention}\n**Роль:** {role.mention}",
+            color=config.EMBED_COLOR
+        )
+        embed.set_footer(text=config.FOOTER_TEXT)
+        await ctx.send(embed=embed)
+        await log_mod_action(ctx.guild, "role_add", embed)
 
     @commands.command(name="modlogs")
     @check_access_decorator("modlogs")
